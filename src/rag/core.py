@@ -14,6 +14,7 @@ class Chunk:
     text: str
     source: str
     number: int
+    page_number: int | None = None
 
 
 def chunk_text(text: str, source: str, size: int = 900, overlap: int = 150) -> list[Chunk]:
@@ -66,14 +67,16 @@ class RagEngine:
                 )
 
     def ingest(self, text: str, source: str) -> int:
-        chunks = chunk_text(text, source)
+        return self.ingest_chunks(chunk_text(text, source))
+
+    def ingest_chunks(self, chunks) -> int:
         if not chunks:
             return 0
         points = []
         for chunk in chunks:
             vector = self.embed(chunk.text)
             self.ensure_collection(len(vector))
-            digest = hashlib.sha256(f"{source}:{chunk.number}:{chunk.text}".encode()).hexdigest()
+            digest = hashlib.sha256(f"{chunk.source}:{chunk.number}:{chunk.text}".encode()).hexdigest()
             point_id = (
                 digest[:8] + "-" + digest[8:12] + "-" + digest[12:16]
                 + "-" + digest[16:20] + "-" + digest[20:32]
@@ -82,7 +85,7 @@ class RagEngine:
                 models.PointStruct(
                     id=point_id,
                     vector=vector,
-                    payload={"source": source, "chunk": chunk.number, "text": chunk.text},
+                    payload={"source": chunk.source, "chunk": chunk.number, "text": chunk.text, "page_number": chunk.page_number},
                 )
             )
         self.db.upsert(collection_name=self.config.qdrant_collection, points=points, wait=True)
@@ -104,13 +107,14 @@ class RagEngine:
                 "chunk": p.payload["chunk"],
                 "score": round(float(p.score), 4),
                 "text": p.payload["text"],
+                "page_number": p.payload.get("page_number"),
             }
             for p in result.points
         ]
         if not sources:
             return {"answer": "I don't know based on the available documents.", "sources": []}
         context = "\n\n".join(
-            f"[{i}] {s['source']} (chunk {s['chunk']}): {s['text']}"
+            f"[{i}] {s['source']} (page {s['page_number']}, chunk {s['chunk']}): {s['text']}"
             for i, s in enumerate(sources, 1)
         )
         prompt = (
