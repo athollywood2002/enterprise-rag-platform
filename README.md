@@ -57,3 +57,22 @@ Current ingestion is **text via JSON**, not PDF upload; PDF parsing, hybrid retr
 ## License
 
 MIT. Contributions welcome.
+
+## Document-aware ingestion (AiMiniRig migration branch)
+
+This branch integrates the Unstructured title-aware parsing strategy from AiMiniRig.
+
+Install the optional parsing dependencies with `pip install -e '.[dev,documents]'`.
+Then upload a **non-sensitive sample document** (10 MiB maximum):
+
+```bash
+curl -X POST http://127.0.0.1:8000/ingest/document \
+  -H "x-api-key: $RAG_API_KEY" -F "file=@sample.pdf"
+```
+
+The response includes the number of indexed chunks. Query with `/ask` and inspect
+`sources[].page_number` and `sources[].chunk`.
+
+See [AiMiniRig migration notes](docs/aiminirig-migration.md).
+Parsing supports the file extensions listed there; some formats require additional
+OS dependencies. This code has not yet passed a live document-to-answer test.
