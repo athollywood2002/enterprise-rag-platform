@@ -1,0 +1,12 @@
+[project]
+name = "enterprise-rag-platform"
+version = "0.1.0"
+description = "Local-first, citation-backed RAG API with Ollama and Qdrant"
+requires-python = ">=3.11"
+dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "qdrant-client>=1.12,<2", "httpx>=0.27,<1", "pydantic-settings>=2.5,<3", "pypdf>=5,<7"]
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.7,<1"]
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+[tool.ruff]
+line-length = 100
