@@ -1,0 +1,1 @@
+RAG demonstration handbook: The prototype stores document chunks in Qdrant, computes embeddings using Ollama, and generates answers with retrieved evidence. This text is synthetic and can be shared publicly.
