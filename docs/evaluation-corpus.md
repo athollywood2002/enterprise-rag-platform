@@ -51,22 +51,46 @@ Blank physical pages remain empty with the empty-text hash; all-empty documents,
 unknown/out-of-range page metadata and encrypted PDFs are rejected.
 
 `extract_document` dispatches `.pdf` and `.md` only. HTML is explicitly unsupported.
-`extract_markdown` strictly decodes UTF-8 and normalizes the entire literal source
-as **logical page 1**. Headings, emphasis, links, frontmatter and fenced code are
-preserved as source syntax, not rendered or executed. No includes/remote resources
-are resolved. This deliberately avoids renderer/version-dependent identifier loss.
-It uses one whole-file chunk (`markdown-source-whole-file-v1`), **not** the serving
-Markdown partitioner/title chunker. Do not present it as serving Markdown retrieval
-parity; that remains a separate integration gate before Markdown ranking claims.
-Its parser profile is `markdown-source-utf8-v1`, with no parser packages required.
+`extract_markdown` requires local UTF-8 bytes and explicit offline flags. It calls
+the same `.md` Unstructured partition helper as serving exactly once. Canonical
+**logical page 1** is the nonempty element texts, in order, joined with two LF
+characters and normalized exactly as PDF elements. The same elements go through
+`chunk_by_title(**TITLE_CHUNKING)` and sequential offset mapping. Unknown physical
+page numbers from this adapter are rejected, not presented as PDF citations.
+There is no whole-file embedding shortcut. The previous
+`markdown-source-utf8-v1` profile is rejected, invalidating its synthetic manifests
+and labels instead of treating source markup offsets as rendered-text offsets.
+
+Markdown profile `unstructured-markdown-v1` checks and records Unstructured
+0.18.32, Markdown 3.11.2, lxml 6.1.3, beautifulsoup4 4.15.0, html5lib 1.1,
+charset-normalizer 3.5.2, filetype 1.2.0, python-magic 0.4.27, langdetect 1.0.9,
+and NLTK 3.10.4. These selective pins are in `parser-tests` and `MARKDOWN_PINS`;
+the full parser identity/package list participates in the corpus SHA-256 fingerprint.
+They are not a complete transitive/native lock (e.g. libmagic/libxml2).
+The local parser can warn that native libmagic is unavailable; no privileged
+installation is implied. Shared filename dispatch and exact canonical hashes
+still require verification in each target environment.
+
+Python-Markdown renders with tables/fenced-code extensions before Unstructured
+extracts text. The fixture preserves inline/fenced identifiers `--max-pods=110`,
+`kube-apiserver`, `AC-2(4)`, `a.b`, `kubectl` command lines and YAML key/value
+punctuation. It strips heading/emphasis/backtick/fence markup, link destination
+URLs and HTML comments. Canonical whitespace collapse removes YAML indentation
+and command line breaks; canonical text is for labeling, **not executable config**.
+Survival on synthetic fixtures is not a guarantee for all Kubernetes templates,
+shortcodes, tables or embedded HTML. Review each acquired document for content
+loss; record failures/identifier losses rather than silently repairing them.
+No resource URL is passed to the parser, and tests block network access.
 Document, gold and chunk references carry `page_kind: physical|logical`; logical
 page 1 must never be cited as a physical PDF page.
 
-PDF chunk parameters live in frozen `rag.chunking.TITLE_CHUNKING`, shared by both
-adapters without changing serving arguments. The evaluation policy ID encodes
+PDF and Markdown chunk parameters live in frozen `rag.chunking.TITLE_CHUNKING`,
+shared with serving without changing serving arguments. The evaluation policy ID encodes
 version, max=1200, new=1000, combine=200 and multipage=false. Tests compare normalized
-evaluation and serving PDF chunk text in order. Metadata must travel with future
-scorecards; Markdown and PDF policies are not interchangeable.
+evaluation and serving PDF/Markdown chunk text in order. Markdown tests include
+an authored >10k-character guide: all chunks are bounded by 1200 characters,
+sequentially mapped, and retrieving an early chunk does not cover a late gold span.
+Metadata, including parser profile/page kind, must travel with future scorecards.
 
 `doc_version` is SHA-256 of the raw source bytes; it does not depend on chunk IDs.
 `doc_id` groups a document's revisions. Source metadata records canonical URL,
@@ -87,7 +111,7 @@ Use `load_corpus` / `load_development_labels` for serialized inputs: explicit
 version tags are required, duplicate JSON keys and unknown fields rejected.
 Corpus documents/versions, ordered contiguous pages and query IDs must be unique.
 
-Every gold span carries `doc_id`, `doc_version`, physical `page`, `page_sha256`,
+Every gold span carries `doc_id`, `doc_version`, `page`, `page_sha256`,
 `page_kind`, `start`, `end`, and normalized verbatim `excerpt`. Loading checks the corpus
 identity, source version/page, page hash, bounds and exact
 `page.text[start:end] == excerpt`. A mismatch requires reannotation/revalidation;
@@ -102,8 +126,10 @@ separately. `review_status` defaults to `draft`; code/schema conformance is not
 human review. Real human verification and the timed ~20-question mixed pilot
 remain owner work after the helper/acquisition reviews, not generated ground truth.
 `query_type` is `identifier|semantic|mixed`; `difficulty` is `easy|medium|hard`;
-`tags` are unique validated identifiers. Defaults are semantic/medium/empty for
-synthetic construction, not human judgments. Later split tooling can stratify by
+both fields are **required**, with no silent defaults. The future CLI must prompt
+for them. Existing v2 serialized labels missing either field fail validation;
+synthetic fixtures supply explicit values. `tags` are unique validated identifiers
+and may be empty. Later split tooling can stratify by
 category/type/difficulty and tags; no real split or annotation is generated here.
 
 This loader only accepts the **development** split. `HoldoutCommitment` permits
@@ -136,11 +162,13 @@ surface counts/reasons and withhold affected evaluation claims, not catch the
 error and substitute zero. Even manually constructed mapped locations are checked
 against canonical bounds/text/hash/page kind and occurrence count before scoring.
 Sequential locations additionally store the ordered normalized prefix, replayed
-against canonical text before accepting their offset. A bare cursor or a claimed
-`mapped` status cannot bypass validation; standalone locations retain uniqueness
-checks. Prefix storage is intentionally simple and can be quadratic across many
-small chunks; compact authenticated/run-bound provenance is future optimization,
-not permission to trust unvalidated cursors.
+against canonical text before accepting their offset; standalone locations retain
+uniqueness checks. This proves canonical text alignment, **not actual parser-run
+provenance**: a caller can construct a prefix by slicing canonical text. Prefix
+storage is quadratic and match counting can be costly on long pages. Review #52
+is deferred to a narrow G1(c) change: consider an ordered per-document
+page/start/end/policy chunk-map commitment rather than claiming prefixes are
+tamper-evident parser proof. No such commitment is implemented here.
 
 A chunk is relevant to a gold span only on the same document/version/page/hash
 and when it covers **at least 50%** of gold code points **at the gold location**.
@@ -156,13 +184,14 @@ belong to G1(c), not an invented result here.
 
 ```bash
 python -m pytest -q tests/test_canonical_corpus.py
-python -m pytest -q --run-document-tests tests/test_canonical_corpus.py tests/test_canonical_pdf.py
+python -m pytest -q --run-document-tests tests/test_canonical_corpus.py tests/test_canonical_pdf.py tests/test_canonical_markdown.py
 python -m pytest -q --run-document-tests
 python -m ruff check .
 python -m ruff format --check .
 ```
 
-Tests use tiny authored synthetic text/PDFs. The real-parser suite checks a single
+Tests use authored synthetic text/PDFs/Markdown, including a >10k-character guide.
+The real-parser suite checks a single
 partition call, independent physical-page extraction, normalized element splits,
 titles and page boundaries, drift rejection, and same-runtime canonical/span
 repeatability. It does not assert ranking/metric repeatability or cross-hardware
@@ -170,11 +199,15 @@ float equivalence. Compose, limits/health behavior, CPU tolerance and vector/
 snapshot replay remain unimplemented or runtime-unverified until their own gates.
 No model downloads/calls, services, containers, holdout access or corpus fetches.
 
-### Correction decisions (#44–#50)
+### Correction decisions (#44–#53)
 
 Keep strict contiguous ordered alignment rather than guessing across omitted
-content; prefer explicit failure over inflated retrieval scores. Preserve Markdown
-source syntax rather than introducing a renderer or silently stripping identifiers.
+content; prefer explicit failure over inflated retrieval scores. Review #51
+supersedes the literal-source Markdown decision: use serving-equivalent rendered
+elements and bounded chunks, and disclose rendering losses instead of measuring
+a whole-file retrieval system that serving does not use. No PDF contract change
+is needed for this repair. Review #53 requires explicit type/difficulty; #52 is
+deferred as described above.
 Version normalization/schema before human labeling; permit cross-Unicode runtime
 loads only after actual text/hash verification. Use location-only relevance and
 explicit stratification fields. Independent review is required before dependent

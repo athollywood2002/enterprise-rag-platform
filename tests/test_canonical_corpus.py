@@ -8,7 +8,7 @@ from dataclasses import replace
 import pytest
 from pydantic import ValidationError
 
-from evaluation.canonical import PARSER_PINS, extract_pdf, normalize, text_sha256
+from evaluation.canonical import MARKDOWN_PINS, PARSER_PINS, extract_pdf, normalize, text_sha256
 from evaluation.corpus import (
     CanonicalDocument,
     CanonicalPage,
@@ -72,6 +72,8 @@ def label_payload(corpus, spans):
                 query_id="q1",
                 question="Which synthetic word?",
                 category="answerable",
+                query_type="semantic",
+                difficulty="easy",
                 spans=tuple(spans),
             ),
         ),
@@ -199,29 +201,53 @@ def test_invalid_empty_gold(start, end, excerpt):
 
 @pytest.mark.parametrize("category", ["near_miss", "off_topic"])
 def test_unknown_categories_have_no_gold(category):
-    question = GoldQuestion(query_id="unknown", question="Absent fact?", category=category)
+    question = GoldQuestion(
+        query_id="unknown",
+        question="Absent fact?",
+        category=category,
+        query_type="semantic",
+        difficulty="easy",
+    )
     assert question.spans == ()
     with pytest.raises(ValidationError):
         GoldQuestion(
             query_id="unknown",
             question="Absent fact?",
             category=category,
+            query_type="semantic",
+            difficulty="easy",
             spans=(gold(document()),),
         )
     with pytest.raises(ValidationError):
-        GoldQuestion(query_id="known", question="Present fact?", category="answerable")
+        GoldQuestion(
+            query_id="known",
+            question="Present fact?",
+            category="answerable",
+            query_type="semantic",
+            difficulty="easy",
+        )
 
 
 def test_duplicate_queries_and_overlapping_gold_rejected():
     doc = document()
     question = GoldQuestion(
-        query_id="q1", question="A fact?", category="answerable", spans=(gold(doc),)
+        query_id="q1",
+        question="A fact?",
+        category="answerable",
+        spans=(gold(doc),),
+        query_type="semantic",
+        difficulty="easy",
     )
     with pytest.raises(ValidationError):
         DevelopmentLabels(corpus_sha256="0" * 64, questions=(question, question))
     with pytest.raises(ValidationError):
         GoldQuestion(
-            query_id="q1", question="A fact?", category="answerable", spans=(gold(doc), gold(doc))
+            query_id="q1",
+            question="A fact?",
+            category="answerable",
+            spans=(gold(doc), gold(doc)),
+            query_type="semantic",
+            difficulty="easy",
         )
 
 
@@ -435,29 +461,61 @@ def test_cursor_resets_per_page_and_replays_serialized_prefix():
             chunk_relevant(gold(doc, "Same", page), replace(restored, start=0, end=4), corpus)
 
 
-def test_markdown_is_literal_source_on_one_logical_page_and_html_unsupported():
+def test_markdown_invalid_input_and_html_unsupported():
     from evaluation.canonical import extract_document
 
-    raw = b"# Heading\n\n**bold** [link](https://example.org)\n```yaml\nkube-apiserver: --max-pods\na.b: AC-2(4)\n```"
-    result = extract_document(
-        raw, filename="fixture.md", doc_id="markdown", source=document().source
-    )
-    assert result.document.page_kind == result.chunks[0].page_kind == "logical"
-    assert result.document.pages[0].text == normalize(raw.decode())
-    assert result.chunks[0].status == "mapped"
-    corpus = CorpusManifest(documents=(result.document,))
-    span = gold(result.document, "--max-pods")
-    with pytest.raises(ValueError, match="page kind"):
-        load_development_labels(label_payload(corpus, [span]), corpus)
-    span = GoldSpan(**{**span.model_dump(), "page_kind": "logical"})
-    assert chunk_relevant(span, result.chunks[0], corpus)
-    assert load_corpus(corpus.model_dump_json()) == corpus
     with pytest.raises(ValueError, match="HTML not implemented"):
         extract_document(
             b"<p>example</p>", filename="fixture.html", doc_id="html", source=document().source
         )
     with pytest.raises(UnicodeDecodeError):
         extract_document(b"\xff", filename="fixture.md", doc_id="bad", source=document().source)
+    with pytest.raises(ValueError, match="Empty Markdown"):
+        extract_document(b" \n", filename="fixture.md", doc_id="empty", source=document().source)
+
+
+@pytest.mark.parametrize("field", ["query_type", "difficulty"])
+def test_stratum_fields_are_required_in_model_schema_and_serialized_labels(field):
+    corpus = CorpusManifest(documents=(document(),))
+    payload = json.loads(label_payload(corpus, [gold(corpus.documents[0])]))
+    fields = payload["questions"][0]
+    del fields[field]
+    with pytest.raises(ValidationError) as error:
+        GoldQuestion(**fields)
+    assert any(e["loc"] == (field,) and e["type"] == "missing" for e in error.value.errors())
+    with pytest.raises(ValidationError):
+        load_development_labels(json.dumps(payload), corpus)
+    assert field in GoldQuestion.model_json_schema()["required"]
+
+
+def test_markdown_old_source_profile_is_rejected():
+    with pytest.raises(ValidationError):
+        ParserIdentity(
+            profile="markdown-source-utf8-v1",
+            packages=(),
+            unicode_version=unicodedata.unidata_version,
+        )
+
+
+@pytest.mark.parametrize("name", ["AUTO_DOWNLOAD_NLTK", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"])
+def test_markdown_requires_offline_flags_before_parser_imports(monkeypatch, name):
+    from evaluation.canonical import extract_markdown
+
+    monkeypatch.delenv(name)
+    with pytest.raises(ValueError, match="offline parser environment"):
+        extract_markdown(b"# Synthetic", doc_id="md", source=document().source)
+
+
+@pytest.mark.parametrize("changed", [name for name, _ in MARKDOWN_PINS])
+def test_markdown_dependency_drift_fails_before_partition(monkeypatch, changed):
+    from evaluation.canonical import extract_markdown
+
+    pins = dict(MARKDOWN_PINS)
+    monkeypatch.setattr(
+        "evaluation.canonical.version", lambda name: "drift" if name == changed else pins[name]
+    )
+    with pytest.raises(ValueError, match="Parser profile drift"):
+        extract_markdown(b"# Synthetic", doc_id="md", source=document().source)
 
 
 def test_question_strata_are_validated_and_groupable():

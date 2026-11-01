@@ -28,6 +28,19 @@ PARSER_PINS = (
     ("pypdf", "6.21.4"),
     ("nltk", "3.10.4"),
 )
+MARKDOWN_PROFILE = "unstructured-markdown-v1"
+MARKDOWN_PINS = (
+    ("unstructured", "0.18.32"),
+    ("Markdown", "3.11.2"),
+    ("lxml", "6.1.3"),
+    ("beautifulsoup4", "4.15.0"),
+    ("html5lib", "1.1"),
+    ("charset-normalizer", "3.5.2"),
+    ("filetype", "1.2.0"),
+    ("python-magic", "0.4.27"),
+    ("langdetect", "1.0.9"),
+    ("nltk", "3.10.4"),
+)
 _QUOTES = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"'})
 _ARTIFACTS = str.maketrans(
     {
@@ -136,32 +149,53 @@ def extract_pdf(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalE
 
 
 def extract_markdown(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalExtraction:
-    """UTF-8 Markdown SOURCE text, not rendered prose, as one logical page.
+    """Serving-equivalent pinned Markdown elements/chunks on logical page 1.
 
-    Keep headings, links, fences and identifiers verbatim before normalization.
-    No HTML interpretation, includes, frontmatter evaluation or remote resources.
+    Strict UTF-8 local input only. Markup is rendered by Unstructured, not kept
+    as source syntax. Canonical text and chunks use the same partition pass.
     """
-    from evaluation.corpus import CanonicalDocument, CanonicalPage, ParserIdentity
+    from evaluation.corpus import CanonicalDocument, CanonicalPage, Package, ParserIdentity
     from evaluation.spans import map_chunks
 
-    text = normalize(data.decode("utf-8", errors="strict"))
+    decoded = data.decode("utf-8", errors="strict")
+    if not decoded.strip():
+        raise ValueError("Empty Markdown")
+    if any(
+        os.environ.get(name) != expected
+        for name, expected in (
+            ("AUTO_DOWNLOAD_NLTK", "false"),
+            ("HF_HUB_OFFLINE", "1"),
+            ("TRANSFORMERS_OFFLINE", "1"),
+        )
+    ):
+        raise ValueError("Set explicit offline parser environment before extraction")
+    identity = ParserIdentity(
+        profile=MARKDOWN_PROFILE,
+        packages=tuple(Package(name=name, version=version(name)) for name, _ in MARKDOWN_PINS),
+        unicode_version=unicodedata.unidata_version,
+    )
+
+    from unstructured.chunking.title import chunk_by_title
+
+    from rag.documents import _page_number, _partition_document
+
+    with TemporaryDirectory(prefix="canonical-md-") as temporary:
+        path = Path(temporary) / "document.md"
+        path.write_bytes(data)
+        elements = [e for e in _partition_document(path, ".md") if str(e).strip()]
+    if any(_page_number(e) is not None for e in elements):
+        raise ValueError("Unexpected physical Markdown pages; canonicalization rejected")
+    text = normalize("\n\n".join(str(e) for e in elements))
     document = CanonicalDocument(
         doc_id=doc_id,
         doc_version=hashlib.sha256(data).hexdigest(),
         source=source,
-        parser=ParserIdentity(
-            profile="markdown-source-utf8-v1",
-            packages=(),
-            unicode_version=unicodedata.unidata_version,
-        ),
+        parser=identity,
         page_kind="logical",
         pages=(CanonicalPage(page=1, text=text, sha256=text_sha256(text)),),
     )
-    # Source-text adapter has no title semantics. It exposes the entire logical
-    # page as one chunk; do not misrepresent it as the serving Markdown parser.
-    return CanonicalExtraction(
-        document, map_chunks(document, 1, (text,)), chunking_policy="markdown-source-whole-file-v1"
-    )
+    chunks = chunk_by_title(elements, **asdict(TITLE_CHUNKING))
+    return CanonicalExtraction(document, map_chunks(document, 1, tuple(str(c) for c in chunks)))
 
 
 def extract_document(

@@ -9,7 +9,13 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from evaluation.canonical import NORMALIZATION_VERSION, PARSER_PINS, normalize, text_sha256
+from evaluation.canonical import (
+    MARKDOWN_PINS,
+    NORMALIZATION_VERSION,
+    PARSER_PINS,
+    normalize,
+    text_sha256,
+)
 
 Digest = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 Identifier = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")]
@@ -26,7 +32,7 @@ class Package(StrictRecord):
 
 
 class ParserIdentity(StrictRecord):
-    profile: Literal["unstructured-pdf-fast-v1", "markdown-source-utf8-v1"] = (
+    profile: Literal["unstructured-pdf-fast-v1", "unstructured-markdown-v1"] = (
         "unstructured-pdf-fast-v1"
     )
     normalization: Literal["nfc-quotes-artifacts-whitespace-v2"] = NORMALIZATION_VERSION
@@ -36,7 +42,7 @@ class ParserIdentity(StrictRecord):
     @model_validator(mode="after")
     def require_supported_profile(self) -> Self:
         actual = tuple((p.name, p.version) for p in self.packages)
-        expected = PARSER_PINS if self.profile == "unstructured-pdf-fast-v1" else ()
+        expected = PARSER_PINS if self.profile == "unstructured-pdf-fast-v1" else MARKDOWN_PINS
         if sorted(actual) != sorted(expected) or len(actual) != len(expected):
             raise ValueError("Parser profile drift; rebuild/revalidate corpus and labels")
         # Page validators recompute normalization and UTF-8 hashes on every load,
@@ -77,7 +83,7 @@ class CanonicalDocument(StrictRecord):
 
     @model_validator(mode="after")
     def physical_pages(self) -> Self:
-        if (self.parser.profile == "markdown-source-utf8-v1") != (self.page_kind == "logical") or (
+        if (self.parser.profile == "unstructured-markdown-v1") != (self.page_kind == "logical") or (
             self.page_kind == "logical" and len(self.pages) != 1
         ):
             raise ValueError("Parser/page kind mismatch; Markdown requires logical page 1")
@@ -133,8 +139,8 @@ class GoldQuestion(StrictRecord):
     query_id: Identifier
     question: Nonempty
     category: Literal["answerable", "near_miss", "off_topic"]
-    query_type: Literal["identifier", "semantic", "mixed"] = "semantic"
-    difficulty: Literal["easy", "medium", "hard"] = "medium"
+    query_type: Literal["identifier", "semantic", "mixed"]
+    difficulty: Literal["easy", "medium", "hard"]
     tags: tuple[Identifier, ...] = ()
     review_status: Literal["draft", "human_reviewed"] = "draft"
     spans: tuple[GoldSpan, ...] = ()
