@@ -1,9 +1,12 @@
 import json
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
 from evaluation.abstention import is_abstention, main
+from rag.config import Settings
+from rag.core import RagEngine
 
 TOPIC = "the color of the Helios team's uniform"
 
@@ -24,6 +27,7 @@ TOPIC = "the color of the Helios team's uniform"
         "There is insufficient information in the provided excerpts to answer.",
         "  I DON'T KNOW.  [1] [2]  ",
         "I don’t know.",
+        "I don't know based on the available documents.",
     ],
 )
 def test_clear_abstentions(answer):
@@ -53,6 +57,9 @@ def test_clear_abstentions(answer):
         "<think>I don't know.</think>The uniform is blue.",
         "I don't know. [0]",
         "I don't know. [x]",
+        "I don't know based on the available documents. The uniform is blue.",
+        "The uniform is blue. I don't know based on the available documents.",
+        "I don't know based on the available documents, but my guess is blue.",
     ],
 )
 def test_non_abstentions_and_mixed_claims_fail(answer):
@@ -65,6 +72,33 @@ def test_topic_is_literal_not_regex():
 
 def test_empty_topic_fails_closed():
     assert not is_abstention("I don't know.", topic=" ")
+
+
+@pytest.mark.parametrize("collection_exists", [False, True])
+def test_application_fallback_stays_recognized(collection_exists):
+    """Exercise both actual fallback branches so evaluator wording cannot drift."""
+    database = Mock()
+    database.collection_exists.return_value = collection_exists
+    database.query_points.return_value = Mock(points=[])
+    engine = RagEngine(
+        Settings(
+            _env_file=None,
+            api_key="synthetic-unit-test-only",
+            qdrant_collection="synthetic_abstention_unit_test",
+        ),
+        qdrant=database,
+    )
+    engine.embed = Mock(return_value=[0.1, 0.2])
+    result = engine.ask("What color is the synthetic uniform?")
+    assert result == {
+        "answer": "I don't know based on the available documents.",
+        "sources": [],
+    }
+    assert is_abstention(result["answer"], topic=TOPIC)
+    if collection_exists:
+        database.query_points.assert_called_once()
+    else:
+        database.query_points.assert_not_called()
 
 
 def test_preserved_synthetic_response_replay():

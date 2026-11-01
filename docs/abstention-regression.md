@@ -16,6 +16,7 @@ From the repository root, with project development dependencies installed:
 
 ```bash
 python -m pytest -q tests/test_abstention.py
+pytest -q tests/test_abstention.py
 python -m evaluation.abstention tests/fixtures/synthetic_abstention.json
 ```
 
@@ -26,7 +27,23 @@ abstention, 1 unrecognized answer, 2 invalid/unreadable fixture. Tests run under
 the existing network/database-blocking fixtures.
 
 This is intentionally conservative. Unrecognized wording needs manual review;
-false negatives are possible. Passing recognizes wording only: it does not prove
+false negatives are possible. Topic-specific matches require the configured topic
+word for word after normalization. For example, “the uniform color” does not
+match “the color of the Helios team's uniform”, and “include information about”
+is not a supported substitute for “mention”. Many valid live paraphrases may
+therefore need manual review. The preserved fixture is a regression for one
+observed wording, not evidence of broad paraphrase recognition. Do not derive the
+expected topic from future candidate answers to force a match.
+
+The precise application fallback “I don't know based on the available documents.”
+is also recognized. There is no shared application constant; the coupling test
+executes both actual `RagEngine.ask` fallback branches (missing collection and
+empty search result) with mocked embedding/database access and checks their
+returned answer against the evaluator. Wording drift fails that test without
+changing serving code. An extra fabricated answer before or after the fallback
+still fails the whole-sentence check.
+
+Passing recognizes wording only: it does not prove
 the question is unanswerable, validate citations, judge factual grounding, or
 protect against arbitrary adversarial text. The topic is trusted test
 configuration, never extracted from a candidate answer. Generic “I don't know”

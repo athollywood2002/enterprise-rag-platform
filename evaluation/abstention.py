@@ -29,6 +29,7 @@ def is_abstention(answer: str, *, topic: str) -> bool:
             rf"(?:mention|specify|state|provide|contain) {subject}"
         ),
         r"i (?:do not|don't) know(?: the answer)?",
+        r"i don't know based on the available documents",
         rf"i (?:cannot|can't) determine the answer from {context}",
         rf"there is insufficient information in {context} to answer",
     )

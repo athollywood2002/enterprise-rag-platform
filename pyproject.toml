@@ -16,7 +16,7 @@ parser-tests = [
     "reportlab==4.4.4",
 ]
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 markers = ["documents: optional real Unstructured parser/chunker tests (explicit opt-in)"]
 [tool.ruff]
 line-length = 100
