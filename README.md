@@ -92,6 +92,15 @@ jobs; neither is a live RAG test. [Offline abstention regression](docs/abstentio
 recognizes limited wordings and sends unsupported phrasing to manual review; it
 does not establish semantic grounding.
 
+### Offline development labeling
+
+The [PDF-only excerpt-labeling CLI](docs/labeling-cli.md) displays canonical page
+text and records uniquely matched supporting spans as development drafts. It needs
+an explicitly supplied, rights-admitted canonical JSON manifest, not running
+services or parser packages. Run `python -m evaluation.label --help` from this
+repository root. Type/difficulty are explicit; no holdout mode or secrecy claim.
+Real annotation remains owner/review gated; the tests use synthetic data only.
+
 A separately run two-page synthetic fixture at `fa6c9e5` established ingestion,
 page provenance, answer/citation selection, manually reviewed abstention and stable
 exact-byte reingestion (2 points before and after). Its first automated harness

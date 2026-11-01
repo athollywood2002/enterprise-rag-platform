@@ -137,8 +137,10 @@ only a plaintext SHA-256 and positive question count (plus schema version), not
 questions, labels, sensitive paths or keys. No holdout file is created or opened.
 The same macOS account is not a secrecy control. Real holdout requires owner-held
 encryption/key custody or a separate account/machine and later explicit evaluation
-approval. CLI path refusal, split freezing/stratification and protected final
-evaluation are subsequent work; none is claimed implemented by this PR.
+approval. The [PDF-only development CLI](labeling-cli.md) implements display,
+unique excerpt matching and accidental-use path/mode guards; these are not real
+holdout isolation. Split freezing/stratification and protected final evaluation
+remain subsequent work. No real annotation or holdout setup is implied.
 
 ## Mapping and relevance
 
@@ -269,7 +271,8 @@ Version normalization/schema before human labeling; permit cross-Unicode runtime
 loads only after actual text/hash verification. Use location-only relevance and
 explicit stratification fields. Independent review is required before dependent
 labeling or final canonical real-corpus builds. The labeling CLI must display the
-canonical page for owner copy/paste (future G1(b) CLI work, not implemented here).
+canonical page for owner copy/paste; the PDF-only G1(b) helper now does this.
+Markdown labeling and real corpus/annotation use remain separate review/owner gates.
 
 Rollback: reviewed revert of the corrections, restoring the serving literal
 arguments if the shared policy module is removed. No storage or index migration.
