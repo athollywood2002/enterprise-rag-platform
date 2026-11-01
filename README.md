@@ -17,8 +17,15 @@ Question -> Ollama embedding -> top-k retrieval -> Ollama chat -> Answer + sourc
 ## Prerequisites
 
 - Python 3.11+
-- Owner-approved Ollama and isolated Qdrant endpoints, accessed through localhost or private transport
+- Ollama and a dedicated Qdrant test instance, accessed through localhost or private transport
 - Ollama models: `ollama pull nomic-embed-text` and `ollama pull qwen3:8b` (or set your actual installed model tag)
+
+The synthetic live tests used **Qdrant server 1.17.0 with qdrant-client 1.17.0**.
+The client dependency is restricted to `>=1.17,<1.18` to stay within that minor
+version while allowing patch updates. Other client/server pairings have not been
+live-tested here; check compatibility before using a different server version.
+Development dependencies pin **Ruff 0.17.3**, the CI-validated lint/format version.
+These selective pins are not a complete dependency lock or a security-update policy.
 
 ## Run
 
@@ -28,7 +35,7 @@ source .venv/bin/activate
 pip install -e '.[dev]'
 cp .env.example .env
 # Edit API_KEY and model names in .env; URLs should point at your local lab.
-# Set QDRANT_COLLECTION to a new, explicitly approved disposable collection.
+# Set QDRANT_COLLECTION to a new disposable test collection; never use existing data.
 uvicorn rag.api:app --app-dir src --host 127.0.0.1 --port 8000
 ```
 
