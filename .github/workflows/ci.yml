@@ -10,3 +10,22 @@ jobs:
           python-version: '3.11'
       - run: pip install -e '.[dev]'
       - run: python -m pytest -q
+  document-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AUTO_DOWNLOAD_NLTK: "false"
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      NLTK_DATA: ${{ runner.temp }}/rag-nltk-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # Avoid downloading CUDA runtimes for this text-only PDF test job.
+      - run: pip install torch==2.10.0 torchvision==0.25.0 --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -e '.[dev,parser-tests]'
+      # Explicit setup-time downloads, never automatic downloads inside tests.
+      - run: python -m nltk.downloader -d "$NLTK_DATA" punkt_tab averaged_perceptron_tagger_eng
+      - run: python -m pytest -q --run-document-tests
