@@ -15,21 +15,8 @@ PAGE_FACTS = (
 
 
 @pytest.fixture
-def two_page_pdf() -> bytes:
-    from reportlab.pdfgen.canvas import Canvas
-
-    data = BytesIO()
-    pdf = Canvas(data, invariant=1, pageCompression=0)
-    pdf.setAuthor("Synthetic test fixture")
-    pdf.setTitle("Parser provenance fixture")
-    for page, fact in enumerate(PAGE_FACTS, 1):
-        pdf.setFont("Helvetica-Bold", 18)
-        pdf.drawString(72, 740, f"Synthetic Section {page}")
-        pdf.setFont("Helvetica", 12)
-        pdf.drawString(72, 700, fact)
-        pdf.showPage()
-    pdf.save()
-    return data.getvalue()
+def two_page_pdf(pdf_factory) -> bytes:
+    return pdf_factory(PAGE_FACTS)
 
 
 @pytest.fixture

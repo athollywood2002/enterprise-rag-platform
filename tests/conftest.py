@@ -3,6 +3,7 @@
 import os
 import socket
 import sys
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -46,3 +47,26 @@ def block_service_access(monkeypatch):
 def isolate_collection_environment(monkeypatch):
     monkeypatch.delenv("QDRANT_COLLECTION", raising=False)
     monkeypatch.delenv("qdrant_collection", raising=False)
+
+
+@pytest.fixture
+def pdf_factory():
+    """Generate embedded-text PDFs only when an optional test requests one."""
+
+    def build(facts: tuple[str, ...]) -> bytes:
+        from reportlab.pdfgen.canvas import Canvas
+
+        data = BytesIO()
+        pdf = Canvas(data, invariant=1, pageCompression=0)
+        pdf.setAuthor("Synthetic test fixture")
+        pdf.setTitle("Parser provenance fixture")
+        for page, fact in enumerate(facts, 1):
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawString(72, 740, f"Synthetic Section {page}")
+            pdf.setFont("Helvetica", 12)
+            pdf.drawString(72, 700, fact)
+            pdf.showPage()
+        pdf.save()
+        return data.getvalue()
+
+    return build

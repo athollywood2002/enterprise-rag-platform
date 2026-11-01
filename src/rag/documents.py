@@ -43,9 +43,7 @@ def parse_document(data: bytes, filename: str) -> list[DocumentChunk]:
     Optional imports follow input validation. PDF extraction is text-only (fast),
     never an automatic OCR/model fallback. Unknown pages stay unknown.
     """
-    if any(ord(char) < 32 for char in filename):
-        raise ValueError("Invalid filename")
-    safe_name = Path(filename.replace("\\", "/")).name
+    safe_name = sanitize_document_filename(filename)
     suffix = Path(safe_name).suffix.lower()
     if suffix not in SUPPORTED_EXTENSIONS:
         raise ValueError(f"Unsupported extension: {suffix}")
@@ -81,6 +79,13 @@ def parse_document(data: bytes, filename: str) -> list[DocumentChunk]:
                 DocumentChunk(text=text, source=safe_name, number=len(results), page_number=page)
             )
     return results
+
+
+def sanitize_document_filename(filename: str) -> str:
+    """Return only a cross-platform basename; never accept control characters."""
+    if any(ord(char) < 32 for char in filename):
+        raise ValueError("Invalid filename")
+    return Path(filename.replace("\\", "/")).name
 
 
 def _page_number(element: Element) -> int | None:
