@@ -1,7 +1,8 @@
-# Kubernetes Hugo preparation: `k8s-hugo-preprocess-v1`
+# Kubernetes Hugo preparation: versioned v1 and v2
 
-Status: proposed G1b contract for independent review. Do not use it to create
-real Kubernetes canonical text or labels before that review. The merged PDF and
+Status: v1 reviewed as safe but insufficient for a useful corpus; v2 is proposed
+for independent review (#56). Do not use v2 to create real Kubernetes canonical
+text or labels before that review. The merged PDF and
 Markdown canonical parser contracts are unchanged. This helper does not download,
 follow includes, call a model, create a corpus, or label anything.
 
@@ -15,11 +16,13 @@ Rendering loss and template handling are separate checks; serving parity does
 not establish source completeness.
 
 `evaluation.kubernetes_hugo.prepare_kubernetes_markdown(raw)` is a pure, bounded
-function. It returns a `PreparedMarkdown` containing a strict `PreparationRecord`
+function, now defaulting to `k8s-hugo-preprocess-v2`. Pass
+`policy="k8s-hugo-preprocess-v1"` for explicit historical replay. It returns a
+`PreparedMarkdown` containing a strict `PreparationRecord`
 and either complete UTF-8 bytes or **None**. Excluded inputs never expose a partial
 prepared body. It does not infer rights from an accepted transformation.
 
-## Exact supported subset
+## Exact v1 subset (preserved for replay)
 
 1. Maximum input: **131,072 bytes**. Decode strict UTF-8, reject BOM-prefixed
    frontmatter, NUL/other ASCII controls except TAB/LF, DEL, and bare CR. Convert
@@ -75,6 +78,45 @@ are sorted/unique for deterministic records. Reapplying this preprocessor to its
 own output is not the workflow: it requires raw frontmatter and rejects missing
 frontmatter rather than silently applying a second transformation.
 
+## Narrow v2 additions
+
+V2 retains v1's input limits, metadata/glossary handling, code-context checks and
+whole-document exclusion. It adds only these local transforms:
+
+- **Paired callouts:** angle-form `note`, `caution`, `warning` with no attributes,
+  and corresponding closing forms. Tags must occupy their own lines, with at most
+  three leading spaces and no other content. Validate balanced, correctly nested,
+  matching types before admitting output. Remove tag lines; preserve inner text,
+  whitespace, fenced code and its order exactly. Inline, mismatched, unclosed,
+  attributed and percent-form callouts are excluded. Callout type labels are not
+  retained in prose; their counts remain in provenance.
+- **Generic headings:** percent-form `heading "<key>"`, where the key is exactly
+  `synopsis`, `options`, `seealso`, `whatsnext` or `prerequisites`. Require a
+  standalone line, optionally prefixed by one to six Markdown heading `#`
+  characters and whitespace, with at most three leading spaces. Remove the whole
+  line, not surrounding content. Do not look up i18n or invent rendered heading
+  text. Other keys/forms, extra arguments and inline content are excluded.
+- **Feature-state badges:** angle-form `feature-state` on standalone lines,
+  at most three leading spaces. Attributes are unique double-quoted literal
+  `feature_gate_name`, `state` and `for_k8s_version`, in any order. Allow a gate
+  name alone (`[A-Za-z][A-Za-z0-9]{0,127}`), or state/version together, with an
+  optional gate name. State is `alpha|beta|stable|deprecated`; version is
+  `v[0-9]+\.[0-9]+`. Reject other/missing/duplicate attributes and inline forms.
+  Remove the whole marker line, without fetching feature data or rendering a badge.
+
+Dropping generic headings and status badges is **declared content loss**, not
+lossless rendering. Actual body paragraphs, commands and flags are not dropped.
+The v2 changes notice discloses these losses. `transform_counts` records each
+`heading:<key>`, `feature-state`, `callout:<type>` opening pair candidate, and
+supported glossary replacement; raw shortcode counts also include closing tags.
+On exclusion, all counts are diagnostic/prospective: no transformed body or
+changes notice is returned. An empty body or any unsupported nested content still
+excludes the whole document.
+
+Both policies continue excluding `code_sample`, includes, tabs/tab, API references,
+param/skew, glossary definitions, figures, third-party content, missing glossary
+visible text and all unknown syntax. No external file/site data is interpreted.
+
 ## Identity, source record and attribution
 
 The sidecar `PreparationManifest` has explicit schema
@@ -85,7 +127,8 @@ The sidecar `PreparationManifest` has explicit schema
 - `doc_version`: SHA-256 of complete prepared UTF-8 bytes, or null on exclusion;
 - `preprocessor_id`, preserved `title` and `content_type`, counts, reasons and
   acceptance status;
-- `changes_notice`: the fixed, versioned changes statement on acceptance only.
+- `changes_notice`: the fixed statement matching the specific policy, on acceptance
+  only; optional `transform_counts` adds v2 loss/unwrap diagnostics.
 
 `manifest.source.title` must equal the preserved title. `content_type` remains
 in the structured preparation portion of this composite source record. An
@@ -96,7 +139,11 @@ does not change `canonical-corpus-v2` or silently attach unknown fields to it.
 The full acquisition/corpus assembly step must retain and bind this sidecar;
 that step is pending, not claimed implemented here.
 
-`PreparedMarkdown.verify(raw)` recomputes the entire preparation and compares
+The sidecar schema stays `k8s-hugo-preparation-v1` with additive optional transform
+diagnostics; the explicit policy and policy-matched changes notice distinguish v1
+from v2. Historical v1 records remain readable and their prepared bytes unchanged.
+`PreparedMarkdown.verify(raw)` replays its recorded policy, not the current
+default, recomputes the entire preparation and compares
 both bytes and record. Before later canonicalization, verify the raw/prepared
 pair; give exactly `prepared.data` to `extract_markdown` and to serving upload.
 The resulting canonical document's `doc_version` must equal the sidecar's
@@ -112,7 +159,8 @@ to this specification. Do not imply Kubernetes endorsement. Example structure:
 > Kubernetes documentation contributors, [actual title and pinned source].
 > Licensed CC BY 4.0. Changes: prepared by `k8s-hugo-preprocess-v1`; frontmatter
 > and supported markers removed, glossary text substituted, line endings
-> normalized. See this preprocessing specification.
+> normalized. For v2 also state that callouts were unwrapped and generic
+> headings/status badges were dropped and counted. See this specification.
 
 This is a template, not the attribution for a distributed corpus. The strict
 record checks strings/identity, not legal permission. Inspect each actual source
@@ -120,7 +168,7 @@ and any third-party content; exclude unresolved dependencies or rights. Keep
 raw files private unless redistribution is verified. No accepted real source or
 real transformed content is published with this PR.
 
-## Bounded inspection evidence
+## Initial v1 bounded inspection evidence
 
 `docs/kubernetes-source-inspection.json` records one inspected upstream Pods
 source, pinned revision/URLs, raw/license checksums, counts and exclusion.
@@ -139,11 +187,73 @@ included content was not fetched or rights-cleared. The inspection decision is
 local-only/excluded, not a blanket redistribution approval. Do not broaden the
 pattern set or fetch its includes just to make the sample pass.
 
+## Fixed v2 coverage sample, before corpus selection
+
+The ten paths in `evaluation/kubernetes_sample.py` were frozen before requests,
+at the same pinned revision used for v1 inspection. No additional pages were
+chosen after seeing results. The pure `assess_fixed_sample` always reports all
+ten rows; missing acquisitions stay in the denominator, and unexpected paths
+are rejected. Report: `docs/kubernetes-v2-coverage.json`.
+
+| Page | v1 | v2 | Remaining blockers (summary) |
+| --- | --- | --- | --- |
+| kubelet reference | excluded | accepted for preparation | none |
+| kube-apiserver reference | excluded | accepted for preparation | none |
+| kubectl quick reference | excluded | excluded | code context, unresolved delimiters, skew |
+| components | excluded | excluded | figure, third-party content |
+| ConfigMap | excluded | excluded | code_sample, glossary definition |
+| Service | excluded | excluded | tabs, includes/examples, params, glossary, skew |
+| liveness/readiness/startup probes | excluded | excluded | code_sample, include |
+| RBAC | excluded | excluded | code_sample, glossary without visible text |
+| Pods | excluded | excluded | examples, API reference, figure, params/skew, glossary |
+| Nodes | excluded | excluded | glossary without visible text, param |
+
+**V1 0/10; v2 2/10 (20%); excluded 8/10; acquisition failures 0/10.** Nine new
+unauthenticated raw-file requests plus one verified cached Pods download;
+345,194 total source bytes, below a 1-MiB aggregate cap and 128-KiB per-file cap.
+The pinned CC BY 4.0 license hash was reused and verified. No includes followed,
+no crawling, no alternate sources, no source/prepared bodies committed. Accepted
+prepared bodies existed only in memory for this assessment; real canonicalization,
+corpus selection, redistribution approval and labels were **not** performed.
+
+Lexical identifier retention is measured only for the two prepared documents.
+Kubelet retains all 266 flag occurrences (129 distinct flags); kube-apiserver
+retains all 217 (172 distinct). Their `--max-pods`/`--anonymous-auth` probes,
+and other present body probes, retain their occurrence counts. One raw-source
+`kube-apiserver` occurrence was in the removed frontmatter title: raw 15, body 14,
+prepared 14. The title is preserved separately in metadata, not silently counted
+as body retention. Report raw/body/frontmatter/prepared counts separately. Excluded rows
+have null retention, not zero-loss success. Flags are full ASCII `--name` tokens;
+the five named probes are literal substring counts, not semantic query labels.
+No `AC-2(4)` match is manufactured when absent. This is not a canonical-parser,
+embedding, ranking, accuracy or completeness result. Actual included content and
+third-party rights remain unreviewed/excluded; repository licensing alone is not
+per-document corpus admission.
+
+To replay with already acquired private raw files in sample order:
+
+```python
+from pathlib import Path
+from evaluation.kubernetes_sample import SAMPLE_PATHS, assess_fixed_sample
+
+sources = {
+    path: (private_raw_directory / f"{i:02d}.md").read_bytes()
+    for i, path in enumerate(SAMPLE_PATHS)
+}
+report = assess_fixed_sample(sources)  # no network, parser or corpus I/O
+```
+
+The v2 report does not select these two pages for M1. Independent review should
+decide whether this coverage and the declared heading/badge losses are suitable;
+NIST control IDs remain an authorized alternative. No broader Hugo renderer or
+automatic include support is proposed to increase acceptance.
+
 ## Verification and deferred work
 
 ```bash
 python -m pytest -q tests/test_kubernetes_hugo.py
 python -m pytest -q --run-document-tests tests/test_kubernetes_hugo.py
+python -m pytest -q tests/test_kubernetes_hugo_v2.py
 python -m pytest -q --run-document-tests
 python -m ruff check .
 python -m ruff format --check .
@@ -160,8 +270,10 @@ or parser behavior is changed here. G1(b)/(c)/(d), NIST acquisition, a useful
 licensed pilot corpus and the owner annotation pilot remain pending. The demo/lab
 Compose proposal adds no image build/publish/model-download/runtime permission.
 
-Decision: keep the v1 allowlist deliberately small, accepting exclusions rather
-than implementing Hugo or inventing missing content. Expand only through a new
-reviewed policy version and source tests. Rollback: reviewed revert of these
-preparation-only additions; no serving, storage or index migration. Do not undo
+Decision: preserve the small v1 policy for replay; v2 adds only reviewed-requested
+local unwrap/drop rules with explicit loss accounting, not a Hugo renderer.
+Further expansion needs another reviewed policy version and fixed-sample evidence.
+Rollback: reviewed revert of the v2 correction restores the v1 default; no corpus
+migration is needed because no real corpus was created. Removing the entire
+preparation-only addition also needs no serving/storage/index migration. Do not undo
 the merged canonical contract or revive whole-file Markdown chunking.

@@ -9,13 +9,15 @@ import pytest
 from pydantic import ValidationError
 
 from evaluation.corpus import SourceRecord
-from evaluation.kubernetes_hugo import (
-    CHANGES_NOTICE,
-    MAX_SOURCE_BYTES,
-    PREPROCESSOR_ID,
-    PreparationManifest,
-    prepare_kubernetes_markdown,
-)
+from evaluation.kubernetes_hugo import LEGACY_CHANGES_NOTICE as CHANGES_NOTICE
+from evaluation.kubernetes_hugo import LEGACY_PREPROCESSOR_ID as PREPROCESSOR_ID
+from evaluation.kubernetes_hugo import MAX_SOURCE_BYTES, PreparationManifest, PreparedMarkdown
+from evaluation.kubernetes_hugo import prepare_kubernetes_markdown as prepare_current_policy
+
+
+def prepare_kubernetes_markdown(raw: bytes) -> PreparedMarkdown:
+    """Keep the original v1 regression contract explicit after adding v2."""
+    return prepare_current_policy(raw, policy=PREPROCESSOR_ID)
 
 
 def source_bytes(
