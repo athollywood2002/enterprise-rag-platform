@@ -9,6 +9,11 @@ We retained Unstructured's `partition()` and `chunk_by_title()` parameters:
 `max_characters=1200`, `new_after_n_chars=1000`,
 `combine_text_under_n_chars=200`, `multipage_sections=True`.
 
+The parser-provenance follow-up changes that last setting to `False` and groups
+elements by actual page metadata before chunking. PDF extraction explicitly uses
+local fast/text-only mode with no OCR fallback. See [parser verification](parser-verification.md)
+for the reproduced attribution failure, tests and supported scope.
+
 ## Differences
 
 - File parsing uses temporary files, not hardcoded home-directory mounts.

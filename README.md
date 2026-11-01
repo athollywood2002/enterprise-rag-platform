@@ -81,4 +81,7 @@ variables. See the [collection safety policy and tests](docs/collection-safety.m
 before any ingestion run. Use an explicitly approved disposable collection for tests.
 
 Parsing supports the file extensions listed there; some formats require additional
-OS dependencies. This code has not yet passed a live document-to-answer test.
+OS dependencies. PDF parsing now uses local fast/text-only extraction and page-local
+chunking; scanned PDFs require future OCR work. See [parser tests and provenance
+limits](docs/parser-verification.md). This code has not yet passed a live
+document-to-answer test.
