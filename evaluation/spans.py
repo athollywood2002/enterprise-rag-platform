@@ -21,7 +21,14 @@ class ChunkLocation:
     page_sha256: str | None
     text: str
     status: Literal[
-        "mapped", "empty", "missing_page", "unlocatable", "ambiguous", "overlap", "blocked"
+        "mapped",
+        "empty",
+        "empty_skipped",
+        "missing_page",
+        "unlocatable",
+        "ambiguous",
+        "overlap",
+        "blocked",
     ]
     match_count: int
     start: int | None = None
@@ -73,6 +80,8 @@ def map_chunks(
 
     Only canonical separator spaces may be skipped. Never jump over content to
     resolve a repeat. Failure blocks the suffix, avoiding a poisoned cursor.
+    Empty normalized outputs retain empty_skipped diagnostics but never change
+    the cursor/prefix/blocked state. Extractors separate these before scoring.
     """
     from dataclasses import replace
 
@@ -84,10 +93,15 @@ def map_chunks(
     blocked = False
     for text in texts:
         location = map_chunk(document, page, text)
+        if location.status == "empty":
+            # Serving ignores these, including TableChunks with HTML metadata
+            # but no text. Retain a diagnostic, never move/block the cursor.
+            results.append(replace(location, status="empty_skipped"))
+            continue
         if blocked:
             results.append(replace(location, status="blocked", start=None, end=None))
             continue
-        if location.status in ("missing_page", "empty"):
+        if location.status == "missing_page":
             results.append(location)
             blocked = True
             continue
@@ -107,7 +121,16 @@ def map_chunks(
             blocked = True
     # No silently omitted trailing elements: output must cover the whole page.
     if results and not blocked and cursor != len(document.pages[page - 1].text):
-        results[-1] = replace(results[-1], status="unlocatable", start=None, end=None)
+        last_mapped = next(
+            (i for i in reversed(range(len(results))) if results[i].status == "mapped"), None
+        )
+        if last_mapped is None:
+            # All-empty output cannot silently stand in for nonempty page text.
+            results.append(replace(map_chunk(document, page, ""), status="unlocatable"))
+        else:
+            results[last_mapped] = replace(
+                results[last_mapped], status="unlocatable", start=None, end=None
+            )
     return tuple(results)
 
 
