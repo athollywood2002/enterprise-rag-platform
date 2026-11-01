@@ -23,6 +23,150 @@ from evaluation.corpus import (
 )
 
 
+def test_retry_choices_numbers_and_excerpt_preserves_prior_answers(files, corpus):
+    source, output = files
+    answers = [
+        "q-retry",
+        "Which synthetic flag?",
+        "wrong",
+        "ANSWERABLE",
+        "IDENTIFIER",
+        "Medium",
+        "",
+        "0",
+        "2",
+        "1",
+        "nope",
+        "3",
+        "1",
+        "beta",
+        ".",
+        "missing",
+        ".",
+        "",
+        ".",
+        "Café 😀 uses --max-pods.",
+        ".",
+        "NO",
+        "YES",
+    ]
+    code, out, err = invoke(["add", "--corpus", str(source), "--output", str(output)], answers)
+    assert code == 0 and not err
+    question = load_development_labels(output.read_text(), corpus).questions[0]
+    assert question.query_id == "q-retry" and question.difficulty == "medium"
+    assert question.spans[0].excerpt == "Café 😀 uses --max-pods."
+    assert "ambiguous; matches: 2" in out and "unlocatable; matches: 0" in out
+    assert out.count("Query ID:") == out.count("Question:") == 1
+    assert out.count("Document number:") == 3
+    assert out.count("Physical page number:") == 3
+    assert out.count("retry this span only") == 3
+
+
+def test_duplicate_id_checked_before_question_with_next_free_suggestion(files, corpus):
+    source, output = files
+    args = ["add", "--corpus", str(source), "--output", str(output)]
+    assert invoke(args, answerable("dev-0001"))[0] == 0
+    code, out, _ = invoke(args, ["dev-0001"])
+    assert code == 130 and "next free suggestion: dev-0002" in out
+    assert "Question:" not in out
+    answers = ["dev-0001", *answerable("dev-0002")]
+    assert invoke(args, answers)[0] == 0
+    assert [q.query_id for q in load_development_labels(output.read_text(), corpus).questions] == [
+        "dev-0001",
+        "dev-0002",
+    ]
+
+
+def test_retry_second_span_keeps_first_and_rejects_overlap(files, corpus):
+    source, output = files
+    answers = answerable()[:-2] + [
+        "yes",
+        "1",
+        "1",
+        "Café 😀",
+        ".",
+        "missing",
+        ".",
+        "Alpha beta beta.",
+        ".",
+        "no",
+        "yes",
+    ]
+    code, out, _ = invoke(["add", "--corpus", str(source), "--output", str(output)], answers)
+    assert code == 0
+    spans = load_development_labels(output.read_text(), corpus).questions[0].spans
+    assert [s.excerpt for s in spans] == ["Café 😀 uses --max-pods.", "Alpha beta beta."]
+    assert "overlapping supporting span" in out
+    assert out.count("Question:") == 1
+
+
+def test_invalid_id_question_and_tags_retry_without_echoing(files, corpus):
+    source, output = files
+    answers = [
+        "bad/id",
+        "q1",
+        "",
+        "A synthetic question?",
+        "off_topic",
+        "semantic",
+        "easy",
+        "bad/tag",
+        "tag,tag",
+        "valid",
+        "yes",
+    ]
+    code, out, err = invoke(["add", "--corpus", str(source), "--output", str(output)], answers)
+    assert code == 0 and not err
+    assert "bad/id" not in out and "bad/tag" not in out
+    assert load_development_labels(output.read_text(), corpus).questions[0].tags == ("valid",)
+
+
+def test_display_wrap_is_copyable_without_changing_canonical_identity(corpus):
+    original = corpus.documents[0]
+    text = normalize(("Synthetic context --max-pods AC-2(4) " * 12) + "unique final excerpt.")
+    page = CanonicalPage(page=1, text=text, sha256=text_sha256(text))
+    document = CanonicalDocument(**{**original.model_dump(), "pages": (page,)})
+    manifest = CorpusManifest(documents=(document,))
+    before = manifest.model_dump_json()
+    out = io.StringIO()
+    label.show_page(manifest, document, 1, out)
+    displayed = out.getvalue().split("Canonical text (copy from here, not a PDF viewer):\n")[1]
+    assert len(displayed.splitlines()) > 1
+    assert all(len(line) <= 88 for line in displayed.splitlines())
+    assert normalize(displayed) == text
+    assert "--max-\npods" not in displayed and "AC-\n2" not in displayed
+    span = label.excerpt_span(document, 1, displayed)
+    assert (span.start, span.end, span.page_sha256) == (0, len(text), page.sha256)
+    assert manifest.model_dump_json() == before
+
+
+def test_display_never_breaks_long_identifiers(corpus):
+    original = corpus.documents[0]
+    identifier = "--" + "synthetic-" * 15
+    text = normalize("before " + identifier + " after")
+    page = CanonicalPage(page=1, text=text, sha256=text_sha256(text))
+    document = CanonicalDocument(**{**original.model_dump(), "pages": (page,)})
+    out = io.StringIO()
+    label.show_page(CorpusManifest(documents=(document,)), document, 1, out)
+    assert identifier in out.getvalue().splitlines()
+
+
+def test_duplicate_introduced_during_prompt_is_still_rejected_at_save(files, corpus):
+    source, output = files
+    args = ["add", "--corpus", str(source), "--output", str(output)]
+    answers = iter(answerable())
+
+    def answer():
+        value = next(answers)
+        if value == "yes":
+            assert invoke(args, answerable())[0] == 0
+        return value
+
+    code = label.main(args, input_fn=answer, out=io.StringIO(), err=io.StringIO())
+    assert code == 2
+    assert len(load_development_labels(output.read_text(), corpus).questions) == 1
+
+
 @pytest.fixture
 def corpus():
     texts = ("Café 😀 uses --max-pods. Alpha beta beta.", "Second physical page has a unique fact.")
@@ -163,9 +307,10 @@ def test_unicode_offsets_are_codepoints_and_hash_bound(corpus):
 def test_type_and_difficulty_never_silently_default(files, index):
     source, output = files
     answers = answerable()
-    answers[index] = ""
-    code, _, _ = invoke(["add", "--corpus", str(source), "--output", str(output)], answers)
-    assert code == 2 and not output.exists()
+    answers.insert(index, "")
+    code, out, _ = invoke(["add", "--corpus", str(source), "--output", str(output)], answers)
+    assert code == 0 and output.exists()
+    assert "choice required; try again" in out
 
 
 @pytest.mark.parametrize("answers", [[], answerable()[:-1], answerable()[:-1] + ["no"]])
@@ -265,7 +410,9 @@ def test_existing_invalid_or_incompatible_data_is_never_replaced(files, corpus, 
             obj["corpus_sha256"] = "0" * 64
         output.write_text(json.dumps(obj))
     before = output.read_bytes()
-    assert invoke(args, answerable())[0] == 2
+    assert invoke(args, ["q1"] if mutation == "duplicate" else answerable())[0] == (
+        130 if mutation == "duplicate" else 2
+    )
     assert output.read_bytes() == before
 
 
@@ -435,9 +582,9 @@ def test_oversized_input_fails_before_json_decode(files, monkeypatch):
 def test_invalid_numeric_input_is_not_echoed(files):
     source, output = files
     answers = answerable()
-    answers[6] = "private-paste-not-a-number"
+    answers.insert(6, "private-paste-not-a-number")
     code, out, err = invoke(["add", "--corpus", str(source), "--output", str(output)], answers)
-    assert code == 2 and not output.exists()
+    assert code == 0 and output.exists()
     assert "private-paste-not-a-number" not in out + err
 
 

@@ -9,12 +9,13 @@ import re
 import stat
 import sys
 import tempfile
+import textwrap
 import unicodedata
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import TextIO
 
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from evaluation.corpus import (
     CanonicalDocument,
@@ -22,6 +23,8 @@ from evaluation.corpus import (
     DevelopmentLabels,
     GoldQuestion,
     GoldSpan,
+    Identifier,
+    Nonempty,
     corpus_sha256,
     find_page,
     load_corpus,
@@ -87,7 +90,8 @@ def excerpt_span(document: CanonicalDocument, page: int, excerpt: str) -> GoldSp
     location = map_chunk(document, page, excerpt)
     if location.status != "mapped" or location.start is None or location.end is None:
         raise ValueError(
-            f"Excerpt mapping failed: {location.status}; use a longer canonical excerpt"
+            f"Excerpt mapping failed: {location.status}; matches: {location.match_count}; "
+            "use a longer canonical excerpt"
         )
     return GoldSpan(
         doc_id=document.doc_id,
@@ -165,52 +169,113 @@ def show_page(corpus: CorpusManifest, document: CanonicalDocument, page: int, ou
     )
     print(f"Physical page: {page}  SHA-256: {reference.sha256}", file=out)
     print("Canonical text (copy from here, not a PDF viewer):", file=out)
-    print(_terminal_text(reference.text), file=out)
+    print(
+        textwrap.fill(
+            _terminal_text(reference.text), width=88, break_on_hyphens=False, break_long_words=False
+        ),
+        file=out,
+    )
 
 
 def _interactive_question(
-    corpus: CorpusManifest, ask: Callable[[str], str], out: TextIO
+    corpus: CorpusManifest,
+    ask: Callable[[str], str],
+    out: TextIO,
+    existing_ids: frozenset[str] = frozenset(),
 ) -> GoldQuestion:
     def choice(prompt: str, values: tuple[str, ...]) -> str:
-        value = ask(f"{prompt} ({'/'.join(values)}; required): ").strip()
-        if value not in values:
-            raise ValueError(f"Explicit {prompt.lower()} choice required")
-        return value
+        while True:
+            value = ask(f"{prompt} ({'/'.join(values)}; required): ").strip().casefold()
+            if value in values:
+                return value
+            print(f"Explicit {prompt.lower()} choice required; try again.", file=out)
 
-    def number(prompt: str) -> int:
-        value = ask(prompt).strip()
-        if len(value) > 9 or re.fullmatch(r"[1-9][0-9]*", value) is None:
-            raise ValueError("Positive integer selection required")
-        return int(value)
+    def number(prompt: str, maximum: int) -> int:
+        while True:
+            value = ask(prompt).strip()
+            if len(value) <= 9 and re.fullmatch(r"[1-9][0-9]*", value):
+                selected = int(value)
+                if selected <= maximum:
+                    return selected
+            print(f"Choose a positive integer from 1 to {maximum}; try again.", file=out)
 
-    query_id = ask("Query ID: ").strip()
-    question = _terminal_text(ask("Question: ").strip())
+    next_id = 1
+    while f"dev-{next_id:04d}" in existing_ids:
+        next_id += 1
+    while True:
+        query_id = ask("Query ID: ").strip()
+        try:
+            TypeAdapter(Identifier).validate_python(query_id)
+        except ValidationError:
+            print("Invalid query ID; use 1–128 identifier characters.", file=out)
+            continue
+        if query_id not in existing_ids:
+            break
+        print(f"Duplicate query ID; next free suggestion: dev-{next_id:04d}.", file=out)
+    while True:
+        try:
+            question = _terminal_text(ask("Question: ").strip())
+            TypeAdapter(Nonempty).validate_python(question)
+            break
+        except ValueError:
+            print("A nonempty question without terminal controls is required; try again.", file=out)
     category = choice("Category", ("answerable", "near_miss", "off_topic"))
     query_type = choice("Question type", ("identifier", "semantic", "mixed"))
     difficulty = choice("Difficulty", ("easy", "medium", "hard"))
-    tags = tuple(
-        t.strip() for t in ask("Tags (comma separated; blank for none): ").split(",") if t.strip()
-    )
+    while True:
+        tags = tuple(
+            t.strip()
+            for t in ask("Tags (comma separated; blank for none): ").split(",")
+            if t.strip()
+        )
+        try:
+            TypeAdapter(tuple[Identifier, ...]).validate_python(tags)
+            if len(set(tags)) == len(tags):
+                break
+        except ValidationError:
+            pass
+        print("Tags must be unique identifiers; try again.", file=out)
     spans = []
     if category == "answerable":
         while True:
             for i, document in enumerate(corpus.documents, 1):
                 print(f"[{i}] {_terminal_text(document.doc_id)}  {document.doc_version}", file=out)
-            selected = number("Document number: ")
-            if not 1 <= selected <= len(corpus.documents):
-                raise ValueError("Document number outside corpus")
+            selected = number("Document number: ", len(corpus.documents))
             document = corpus.documents[selected - 1]
-            page = number("Physical page number: ")
+            page = number("Physical page number: ", len(document.pages))
             show_page(corpus, document, page, out)
-            print("Paste supporting excerpt, then a line containing only . to finish:", file=out)
-            lines = []
-            length = 0
-            while (line := ask("")) != ".":
-                length += len(line) + 1
-                if length > MAX_JSON_BYTES:
-                    raise ValueError("Excerpt size limit exceeded")
-                lines.append(line)
-            spans.append(excerpt_span(document, page, "\n".join(lines)))
+            while True:
+                print(
+                    "Paste supporting excerpt, then a line containing only . to finish:", file=out
+                )
+                lines = []
+                length = 0
+                while (line := ask("")) != ".":
+                    length += len(line) + 1
+                    if length > MAX_JSON_BYTES:
+                        raise ValueError("Excerpt size limit exceeded")
+                    lines.append(line)
+                try:
+                    candidate = excerpt_span(document, page, "\n".join(lines))
+                    GoldQuestion(
+                        query_id=query_id,
+                        question=question,
+                        category=category,
+                        query_type=query_type,
+                        difficulty=difficulty,
+                        tags=tags,
+                        spans=(*spans, candidate),
+                    )
+                except ValidationError:
+                    print(
+                        "Duplicate or overlapping supporting span; retry this span only.", file=out
+                    )
+                    continue
+                except ValueError as error:
+                    print(f"{error}; retry this span only.", file=out)
+                    continue
+                spans.append(candidate)
+                break
             if choice("Another supporting span", ("yes", "no")) == "no":
                 break
     return GoldQuestion(
@@ -279,12 +344,20 @@ def main(
             "Development PDF labels only. No holdout/encryption support or secrecy guarantee.",
             file=out,
         )
-        question = _interactive_question(corpus, ask, out)
+        existing_ids = (
+            frozenset(
+                q.query_id
+                for q in load_development_labels(read_json(output_path), corpus).questions
+            )
+            if output_path.exists()
+            else frozenset()
+        )
+        question = _interactive_question(corpus, ask, out, existing_ids)
         print(
             f"Draft {question.query_id}: {len(question.spans)} supporting spans. No human-review status set.",
             file=out,
         )
-        if ask("Save this development draft? Type yes to confirm: ").strip() != "yes":
+        if ask("Save this development draft? Type yes to confirm: ").strip().casefold() != "yes":
             print("Cancelled; no labels saved.", file=out)
             return 0
         if corpus_sha256(load_pdf_corpus(source_path)) != corpus_sha256(corpus):

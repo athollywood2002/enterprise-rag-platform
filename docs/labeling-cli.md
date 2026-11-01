@@ -32,21 +32,33 @@ Missing schema tags, duplicate JSON keys and extra fields are rejected.
 
 ## One draft question at a time
 
-`show` displays the exact normalized canonical page with document version,
+`show` displays the normalized canonical page with document version,
 physical page number and page hash. Copy **this text**, not a PDF viewer's text.
 Terminal control/format characters are refused rather than rewritten, so displayed
-text and code-point offsets cannot silently diverge.
+text and code-point offsets cannot silently diverge. Page text wraps at 88 columns
+for display only, without breaking words or identifiers at hyphens. A longer token
+can exceed 88 columns. Copying wrapped lines is safe: excerpt normalization turns
+those line breaks back into spaces. Stored canonical text, hashes and offsets do
+not change.
 
 `add` prompts for query ID, question, category, **required explicit question type**
 (`identifier|semantic|mixed`), **required difficulty** (`easy|medium|hard`) and
 optional unique identifier tags. No type/difficulty is silently defaulted.
+Choices are case-insensitive. Invalid choices, numeric selections, IDs, questions
+and tags retry in place without discarding earlier answers or echoing bad input.
+Existing development output is validated before prompting. Duplicate query IDs
+are rejected when entered, with a next-free `dev-NNNN` suggestion (not an automatic
+assignment). Save-time validation still rejects duplicates introduced concurrently.
 
 For `answerable`, choose an explicitly listed document/version and physical page.
 The helper displays that canonical page, then accepts a pasted excerpt until a
 line containing only `.`. It normalizes the paste under the corpus policy and
 requires **exactly one** page-local match, including overlapping matches when
-checking ambiguity. Empty/missing/ambiguous text errors; use a longer excerpt
-instead of accepting an arbitrary occurrence. It stores half-open code-point
+checking ambiguity. Empty/missing/ambiguous text reports status and match count
+and retries **that span only**; use a longer excerpt instead of accepting an
+arbitrary occurrence. Earlier fields and accepted spans are retained.
+Duplicate/overlapping spans also retry in place. Oversized excerpts remain a
+fail-closed session error instead of consuming unbounded input. It stores half-open code-point
 offsets, normalized excerpt, source version and page hash. It never relocates
 existing gold automatically. You can explicitly add more supporting spans;
 duplicate/overlapping gold is rejected by the schema.
@@ -111,6 +123,18 @@ private files. Real holdout requires owner-controlled encryption/key custody
 outside the agent session or a separate account/machine, with separate approval
 for final evaluation. No key/passphrase, encryption/decryption, holdout output,
 commitment creation or hidden-file discovery is provided here.
+
+## Separate follow-ups (not implemented)
+
+- #61: optional batch-entry loop; still one question per invocation.
+- #62: count Unicode `Cf` characters per page during any separately approved NIST
+  canonicalization. Direction marks/word joiners may block terminal display.
+  Decide any normalization-v3 or placeholder policy before real labeling through
+  dedicated review; this change does not alter normalization or the control guard.
+- #63: macOS `/tmp` and `/var` are symlink aliases and are refused by path guards.
+  Use an explicit non-symlink physical path (e.g. under `/private/...`) instead;
+  do not relax the guard or infer holdout secrecy from that path.
+- Optional excerpt `find`/context search is outside this correction.
 
 ## Verification and rollback
 
