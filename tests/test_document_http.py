@@ -1,11 +1,14 @@
 """In-process HTTP contract tests; never construct a real ingestion engine."""
 
+import asyncio
 import builtins
+import threading
 from importlib.util import find_spec
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -203,6 +206,8 @@ def test_encoded_control_filename_is_not_decoded_into_supported_extension(http):
         (ImportError(DIAGNOSTIC), 503, "Document parser is unavailable"),
         (ModuleNotFoundError(DIAGNOSTIC), 503, "Document parser is unavailable"),
         (LookupError(DIAGNOSTIC), 503, "Document parser is unavailable"),
+        (KeyError(DIAGNOSTIC), 500, "Document processing failed"),
+        (IndexError(DIAGNOSTIC), 500, "Document processing failed"),
         (RuntimeError(DIAGNOSTIC), 500, "Document processing failed"),
     ],
 )
@@ -285,6 +290,72 @@ def test_upload_read_failure_is_sanitized(http, monkeypatch):
     assert DIAGNOSTIC not in response.text
     http.parser.assert_not_called()
     no_ingestion(http)
+
+
+def test_parsing_and_ingestion_run_off_event_loop(http, monkeypatch):
+    from starlette.datastructures import UploadFile
+
+    threads = {}
+    original_read = UploadFile.read
+
+    async def read(file, *args, **kwargs):
+        asyncio.get_running_loop()  # Upload reading stays in the async route.
+        threads["read"] = threading.get_ident()
+        return await original_read(file, *args, **kwargs)
+
+    def parser(data, name):
+        with pytest.raises(RuntimeError, match="no running event loop"):
+            asyncio.get_running_loop()
+        threads["parse"] = threading.get_ident()
+        return [DocumentChunk("Synthetic fact.", name, 0, 1)]
+
+    def ingest(chunks):
+        with pytest.raises(RuntimeError, match="no running event loop"):
+            asyncio.get_running_loop()
+        threads["ingest"] = threading.get_ident()
+        return len(chunks)
+
+    monkeypatch.setattr(UploadFile, "read", read)
+    http.parser.side_effect = parser
+    http.ingestion.ingest_chunks.side_effect = ingest
+    response = upload(http)
+    assert response.status_code == 200
+    assert threads["read"] != threads["parse"] == threads["ingest"]
+
+
+def test_health_can_complete_while_parser_is_waiting(http):
+    started = threading.Event()
+    release = threading.Event()
+
+    def parser(data, name):
+        started.set()
+        assert release.wait(timeout=3), "Parser was not released while health completed"
+        return [DocumentChunk("Synthetic fact.", name, 0, 1)]
+
+    http.parser.side_effect = parser
+
+    async def exercise():
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=api.app), base_url="http://testserver"
+        ) as client:
+            task = asyncio.create_task(
+                client.post(
+                    "/ingest/document",
+                    headers=http.headers,
+                    files={"file": ("fixture.pdf", b"synthetic")},
+                )
+            )
+            try:
+                assert await asyncio.to_thread(started.wait, 1)
+                response = await asyncio.wait_for(client.get("/health"), timeout=1)
+                assert response.status_code == 200
+                assert not task.done(), "Upload must still be waiting for parser release"
+            finally:
+                release.set()
+                result = await asyncio.wait_for(task, timeout=3)
+            assert result.status_code == 200
+
+    asyncio.run(exercise())
 
 
 @pytest.mark.documents

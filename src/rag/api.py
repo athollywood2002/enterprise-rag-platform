@@ -10,6 +10,7 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from .collection_safety import UnsafeCollectionError
 from .config import Settings
@@ -93,10 +94,21 @@ async def ingest_document(file: Annotated[UploadFile, File()]):
         raise HTTPException(status_code=413, detail="Maximum upload size is 10 MiB")
     if not data:
         raise HTTPException(status_code=400, detail="Empty document")
+    # Parsing and synchronous embedding/database I/O must not occupy the ASGI loop.
+    return await run_in_threadpool(_process_document, data, filename)
+
+
+def _process_document(data: bytes, filename: str) -> dict[str, str | int]:
     try:
         chunks = parse_document(data, filename)
-    except (ImportError, LookupError) as error:
+    except ImportError as error:
         raise HTTPException(status_code=503, detail="Document parser is unavailable") from error
+    except LookupError as error:
+        # NLTK raises the exact built-in LookupError for absent language resources.
+        # KeyError/IndexError and other subclasses indicate processing failures.
+        if type(error) is LookupError:
+            raise HTTPException(status_code=503, detail="Document parser is unavailable") from error
+        raise HTTPException(status_code=500, detail="Document processing failed") from error
     except ValueError as error:
         raise HTTPException(
             status_code=400, detail="Invalid document or no extractable text"

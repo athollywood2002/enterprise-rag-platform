@@ -2,18 +2,20 @@ name: ci
 on: [push, pull_request]
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: '3.11'
       - run: pip install -e '.[dev]'
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
       - name: Verify optional parser is absent in the base-only job
         run: python -c "from importlib.util import find_spec; assert find_spec('unstructured') is None"
       - run: python -m pytest -q
   document-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       AUTO_DOWNLOAD_NLTK: "false"
@@ -21,8 +23,8 @@ jobs:
       TRANSFORMERS_OFFLINE: "1"
       NLTK_DATA: ${{ github.workspace }}/.venv/nltk_data
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: '3.12'
       # Avoid downloading CUDA runtimes for this text-only PDF test job.

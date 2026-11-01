@@ -1,4 +1,4 @@
-from rag.documents import DocumentChunk, SUPPORTED_EXTENSIONS
+from rag.documents import SUPPORTED_EXTENSIONS, DocumentChunk
 
 
 def test_document_chunk():
