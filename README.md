@@ -10,13 +10,14 @@ See [architecture notes and roadmap](docs/architecture.md).
 
 ```text
 Text -> Normalize / overlapping chunks -> Ollama embeddings -> Qdrant
+Document upload -> Unstructured -> page-local/title-aware chunks -> embeddings -> Qdrant
 Question -> Ollama embedding -> top-k retrieval -> Ollama chat -> Answer + source excerpts
 ```
 
 ## Prerequisites
 
 - Python 3.11+
-- Existing Ollama endpoint (11434) and Qdrant endpoint (6333), locally or on your private lab network
+- Owner-approved Ollama and isolated Qdrant endpoints, accessed through localhost or private transport
 - Ollama models: `ollama pull nomic-embed-text` and `ollama pull qwen3:8b` (or set your actual installed model tag)
 
 ## Run
@@ -27,6 +28,7 @@ source .venv/bin/activate
 pip install -e '.[dev]'
 cp .env.example .env
 # Edit API_KEY and model names in .env; URLs should point at your local lab.
+# Set QDRANT_COLLECTION to a new, explicitly approved disposable collection.
 uvicorn rag.api:app --app-dir src --host 127.0.0.1 --port 8000
 ```
 
@@ -43,6 +45,55 @@ curl -s -X POST http://127.0.0.1:8000/ask \
 python -m pytest -q
 ```
 
+## Document upload
+
+Install optional parsing dependencies in the isolated environment:
+
+```bash
+pip install -e '.[dev,documents]'
+curl -X POST http://127.0.0.1:8000/ingest/document \
+  -H "x-api-key: $RAG_API_KEY" -F "file=@synthetic-sample.pdf"
+```
+
+The multipart file-content limit is 10 MiB. Successful responses contain `source`
+and `chunks_indexed`; `/ask` returns excerpts with filename, chunk index, score
+and `page_number` when known. Unknown pages remain unknown. PDF extraction uses
+local fast/text-only parsing, with page-local title-aware chunks; scanned/OCR,
+encrypted and textless PDFs are not supported.
+
+The extension allowlist also includes TXT, DOCX, PPTX, XLSX, HTML/HTM, MD, CSV,
+EML and MSG. These routes depend on installed parser/OS capabilities; being
+allowlisted is not evidence of full format validation. Real automated parsing
+coverage focuses on text PDFs and TXT. See [parser verification](docs/parser-verification.md),
+[HTTP contract](docs/document-http-contract.md) and [migration notes](docs/aiminirig-migration.md).
+
+## Tests and observed scope
+
+Base tests run with `python -m pytest -q` (or `pytest -q`). For optional real
+parser tests, install the recorded test extra and setup-time language resources:
+
+```bash
+pip install -e '.[dev,parser-tests]'
+python -m nltk.downloader -d .venv/nltk_data punkt_tab averaged_perceptron_tagger_eng
+python -m pytest -q --run-document-tests
+python -m ruff check .
+python -m ruff format --check .
+```
+
+Tests block live database/inference access. CI runs base-only and parser-enabled
+jobs; neither is a live RAG test. [Offline abstention regression](docs/abstention-regression.md)
+recognizes limited wordings and sends unsupported phrasing to manual review; it
+does not establish semantic grounding.
+
+A separately run two-page synthetic fixture at `fa6c9e5` established ingestion,
+page provenance, answer/citation selection, manually reviewed abstention and stable
+exact-byte reingestion (2 points before and after). Its first automated harness
+stopped on an abstention-detector false negative; later offline replay does not
+make it an uninterrupted automated pass. A separate single raw-answer sample had
+no reasoning tags. Two points queried with top_k=2 did **not** establish retrieval
+selectivity or retrieval-quality metrics. These are scoped lab observations, not
+production-readiness claims.
+
 ## Key design choices
 
 - **Local-first:** no required external inference API.
@@ -52,41 +103,22 @@ python -m pytest -q
 
 ## Limitations and next steps
 
-Current ingestion is **text via JSON**, not PDF upload; PDF parsing, hybrid retrieval, reranking, authorization, observability, and robust retrieval evaluation are planned improvements. This intentionally avoids claiming unfinished capabilities. Large documents should be split by the client or processed through a future ingestion worker. For long-term operation, document IDs, replacement semantics and deletion must be added (reingesting changed content currently leaves older chunks present).
+- The 10 MiB file check does **not** bound total request bodies, multipart spooling,
+  disk use, document expansion, parser CPU/RAM/time or concurrency. Parsing and
+  synchronous indexing run in a worker thread, not the event loop; this is not
+  process isolation, a durable job queue or a guarantee of cancellation/rollback.
+- Missing parser imports and exact built-in resource `LookupError` return opaque
+  503s; `KeyError`/`IndexError` are opaque processing 500s. Error text is sanitized,
+  not a global log-redaction policy. See [pre-merge corrections](docs/premerge-corrections.md).
+- Changed documents can leave stale chunks. Replacement/deletion semantics,
+  batching, hybrid retrieval, reranking, retrieval evaluation, observability and
+  enterprise identity/authorization remain future work.
+- Application protected-name and alias guards are not server-side authorization.
+  Never use existing data-bearing collections for tests. See the
+  [collection safety policy](docs/collection-safety.md) before ingestion.
+- Local inference is not guaranteed deterministic: model temperature/seed are not
+  pinned, and reasoning behavior has not been exhaustively tested.
 
 ## License
 
 MIT. Contributions welcome.
-
-## Document-aware ingestion (AiMiniRig migration branch)
-
-This branch integrates the Unstructured title-aware parsing strategy from AiMiniRig.
-
-Install the optional parsing dependencies with `pip install -e '.[dev,documents]'`.
-Then upload a **non-sensitive sample document** (10 MiB maximum):
-
-```bash
-curl -X POST http://127.0.0.1:8000/ingest/document \
-  -H "x-api-key: $RAG_API_KEY" -F "file=@sample.pdf"
-```
-
-The response includes the number of indexed chunks. Query with `/ask` and inspect
-`sources[].page_number` and `sources[].chunk`.
-
-See [AiMiniRig migration notes](docs/aiminirig-migration.md).
-
-Writes to protected collections (including `hdd_knowledge`) and collection aliases
-are refused by the application, including when configured through environment
-variables. See the [collection safety policy and tests](docs/collection-safety.md)
-before any ingestion run. Use an explicitly approved disposable collection for tests.
-
-Parsing supports the file extensions listed there; some formats require additional
-OS dependencies. PDF parsing now uses local fast/text-only extraction and page-local
-chunking; scanned PDFs require future OCR work. See [parser tests and provenance
-limits](docs/parser-verification.md). This code has not yet passed a live
-document-to-answer test.
-
-The [document HTTP contract](docs/document-http-contract.md) records authenticated
-upload validation, sanitized errors (including HTTP 503 without parser dependencies),
-and synthetic endpoint tests. The 10 MiB file check does **not** bound the total
-request body, multipart spooling, document expansion or parser resources.

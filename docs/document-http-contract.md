@@ -37,8 +37,8 @@ replace raw parser messages and previously unhandled exceptions:
 | Empty file contents | 400 | `Empty document` |
 | Uploaded file exceeds 10 MiB | 413 | `Maximum upload size is 10 MiB` |
 | Malformed, encrypted or textless PDF; parser `ValueError`; empty chunk list | 400 | `Invalid document or no extractable text` |
-| Parser import/resource lookup failure (`ImportError` or `LookupError`) | 503 | `Document parser is unavailable` |
-| Unexpected parser failure | 500 | `Document processing failed` |
+| Parser import failure or exact built-in `LookupError` (resource compatibility) | 503 | `Document parser is unavailable` |
+| Unexpected parser failure, including `KeyError`, `IndexError` and other `LookupError` subclasses | 500 | `Document processing failed` |
 | Upload read failure | 500 | `Unable to read document upload` |
 | Engine raises `UnsafeCollectionError` | 403 | `Collection write policy forbids this operation` |
 | Other ingestion/engine-construction failure | 500 | `Document ingestion failed` |
@@ -53,12 +53,14 @@ deployment; no real writes are performed by these tests.
 Error payloads omit exception strings, paths, document contents and configuration
 values. The API-key comparison uses bytes so non-ASCII header values cannot cause
 the string-only `compare_digest` failure. Parser dependency classification remains
-coarse: for example, a parser `KeyError` also belongs to `LookupError`. This is not
+coarse: the exact built-in `LookupError` used by NLTK for missing resources is
+still treated as unavailable, but its subclasses are no longer included. This is not
 a complete operational error taxonomy or a global redaction/logging system.
 
 ## Automated verification
 
-`tests/test_document_http.py` has 50 cases using FastAPI's in-process TestClient.
+`tests/test_document_http.py` has 54 in-process cases, including worker execution
+and same-event-loop responsiveness tests (no live network).
 Its default `raise_server_exceptions=True` is retained, so an unhandled error
 fails the test rather than being hidden by a simulated generic server response.
 Ingestion is mocked in every HTTP test. The shared network/DNS and implicit
@@ -85,7 +87,7 @@ environment, a guarded import hook simulates the same failure. Both must return
 HTTP 503 with the same fixed message, without indexing. CI's base-only job also
 asserts that `find_spec('unstructured') is None` before running tests.
 
-## Reproduction and observed results
+## Original HTTP-contract reproduction and observed results
 
 Full local Python 3.12 environment, with the parser setup described in
 [parser verification](parser-verification.md):
@@ -124,8 +126,10 @@ extra parts, concurrency, disk exhaustion and slow uploads require separate
 request/server controls. The tests check one file's contents, not a hardened
 reverse-proxy deployment.
 
-Compressed document expansion, parser CPU/RAM/time limits, parser subprocess
-isolation and synchronous work blocking the async route are still unresolved.
+Parsing and synchronous indexing now run in a worker thread, with async upload
+reading unchanged; see [pre-merge corrections](premerge-corrections.md).
+Compressed document expansion, parser CPU/RAM/time limits and parser subprocess
+isolation remain unresolved. Worker-thread dispatch is not resource isolation.
 Do not expose the prototype publicly based on this change. OCR/scanned PDFs,
 complex layouts, malware scanning, production error telemetry and end-to-end
 Ollama/Qdrant indexing/retrieval remain outside this verification.
