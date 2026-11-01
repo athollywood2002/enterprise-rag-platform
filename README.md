@@ -74,5 +74,11 @@ The response includes the number of indexed chunks. Query with `/ask` and inspec
 `sources[].page_number` and `sources[].chunk`.
 
 See [AiMiniRig migration notes](docs/aiminirig-migration.md).
+
+Writes to protected collections (including `hdd_knowledge`) and collection aliases
+are refused by the application, including when configured through environment
+variables. See the [collection safety policy and tests](docs/collection-safety.md)
+before any ingestion run. Use an explicitly approved disposable collection for tests.
+
 Parsing supports the file extensions listed there; some formats require additional
 OS dependencies. This code has not yet passed a live document-to-answer test.
