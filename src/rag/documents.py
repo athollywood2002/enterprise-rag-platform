@@ -5,11 +5,13 @@ No hardcoded filesystem paths or Qdrant collection names. Do not send sensitive 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from itertools import groupby
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
+
+from rag.chunking import TITLE_CHUNKING
 
 if TYPE_CHECKING:
     from unstructured.documents.elements import Element
@@ -66,10 +68,7 @@ def parse_document(data: bytes, filename: str) -> list[DocumentChunk]:
     for page, page_elements in groupby(elements, key=_page_number):
         chunks = chunk_by_title(
             list(page_elements),
-            max_characters=1200,
-            new_after_n_chars=1000,
-            combine_text_under_n_chars=200,
-            multipage_sections=False,
+            **asdict(TITLE_CHUNKING),
         )
         for element in chunks:
             text = str(element).strip()
