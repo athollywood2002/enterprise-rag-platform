@@ -94,6 +94,12 @@ test observed only page 1 in returned chunk metadata. During test development on
 OCR-guard test also failed because it referenced the wrong private backend hook;
 it was corrected to the hooks present in the pinned version.
 
+The first remote workflow run failed before jobs started because `runner.temp`
+is not available in job-level `env`. The follow-up uses the supported
+`github.workspace` context and keeps language resources under the ignored
+`.venv/nltk_data` path. Remote CI results must be checked separately from local
+parser results; the initial workflow rejection is not a passing test run.
+
 After the change, the full local Python 3.12 suite passed with 136 tests, including
 21 opt-in parser cases. The lightweight run reports parser cases separately as
 skipped. The detailed command results are recorded in the pull request/relay
