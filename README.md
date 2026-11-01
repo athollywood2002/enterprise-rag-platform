@@ -85,3 +85,8 @@ OS dependencies. PDF parsing now uses local fast/text-only extraction and page-l
 chunking; scanned PDFs require future OCR work. See [parser tests and provenance
 limits](docs/parser-verification.md). This code has not yet passed a live
 document-to-answer test.
+
+The [document HTTP contract](docs/document-http-contract.md) records authenticated
+upload validation, sanitized errors (including HTTP 503 without parser dependencies),
+and synthetic endpoint tests. The 10 MiB file check does **not** bound the total
+request body, multipart spooling, document expansion or parser resources.
