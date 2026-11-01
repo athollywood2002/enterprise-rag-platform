@@ -151,10 +151,31 @@ can be adjacent with no separator. Repeats resolve by this verified prefix, not
 by choosing the next arbitrary occurrence. Cursor resets at each page. The final
 chunk must reach page end. Noncontiguous order, injected titles, overlap or omitted
 text fail closed instead of inventing alignment.
-Empty, missing-page, ambiguous (including overlapping occurrences), overlap,
-blocked and unlocatable chunks retain explicit statuses and whole-page match counts.
-After a failure, later chunks are blocked. None is dropped.
-`CanonicalExtraction.mapping_counts` summarizes them. Invented title prefixes,
+Normalized-empty emitted chunks (including `TableChunk` objects whose only
+remaining content is HTML metadata) are **not retrievable text candidates**.
+The shared mapper records `empty_skipped` diagnostics for every one, without
+advancing the cursor/prefix or changing failure state. It never promotes HTML
+metadata into canonical text. `CanonicalExtraction.from_mappings` separates
+these diagnostics from `.chunks` and records their count as `.empty_skipped`;
+`.mapping_counts` reports that count alongside candidate statuses. Both PDF and
+Markdown extractors use the same path. Actual empty-table output now matches
+serving's `if not text: continue` behavior. Artifact-only strings that normalize
+to empty are likewise diagnosed; serving raw text is not changed by this adapter.
+
+Nonempty missing-page, ambiguous (including overlapping occurrences), overlap,
+blocked and unlocatable candidates retain explicit statuses and match counts.
+After a genuine failure, later nonempty chunks stay blocked, even if empty
+outputs intervene. Trailing empty outputs cannot hide omitted canonical text:
+the last mapped candidate becomes unlocatable on incomplete coverage. An
+all-empty output stream for a nonempty page keeps a missing-content failure
+sentinel, not a successful empty mapping. A completely missing output stream
+still fails. Standalone `map_chunk` retains its `empty` failure behavior.
+
+Raw `map_chunks` output includes the explicit skipped diagnostics. Use the
+extraction factory and score `.chunks`, not those diagnostics. Passing a raw
+diagnostic to scoring still raises rather than silently creating a retrieval
+miss. The factory rejects purported empty diagnostics with nonempty text,
+offsets or nonzero/invalid match counts. Invented title prefixes,
 chunker transformations or page-crossing text may be unlocatable; report these as
 mapping failures rather than inventing an alignment or scoring retrieval misses.
 Scoring primitives raise `MappingFailure` for unmapped chunks. Consumers must
@@ -184,7 +205,7 @@ belong to G1(c), not an invented result here.
 
 ```bash
 python -m pytest -q tests/test_canonical_corpus.py
-python -m pytest -q --run-document-tests tests/test_canonical_corpus.py tests/test_canonical_pdf.py tests/test_canonical_markdown.py
+python -m pytest -q --run-document-tests tests/test_canonical_corpus.py tests/test_canonical_pdf.py tests/test_canonical_markdown.py tests/test_canonical_tables.py
 python -m pytest -q --run-document-tests
 python -m ruff check .
 python -m ruff format --check .
@@ -198,6 +219,42 @@ repeatability. It does not assert ranking/metric repeatability or cross-hardware
 float equivalence. Compose, limits/health behavior, CPU tolerance and vector/
 snapshot replay remain unimplemented or runtime-unverified until their own gates.
 No model downloads/calls, services, containers, holdout access or corpus fetches.
+
+### Empty-table regression (#57)
+
+An authored Markdown pipe table with oversized description cells and empty
+separator rows makes the actual pinned Markdown parser/title chunker emit four
+empty `TableChunk`s carrying nonempty `text_as_html`. The regression requires
+those actual outputs (not fabricated empty chunks), checks `empty_skipped=4`,
+and compares all retained chunk texts/counts and independently located offsets
+with serving. It verifies mapping/scoring after the final skipped chunk.
+
+The PDF adapter is checked with the same real parsed Table/chunker and controlled
+physical-page metadata; **PDF partition is stubbed in that case** because fast
+PDF extraction does not promise table structure. A separate drawn-grid PDF runs
+the real text-only PDF parser and checks serving parity and physical offsets.
+No OCR, layout/model inference or table reconstruction is added.
+
+Decision: skip/count empty emitted text exactly at the evaluation mapping boundary,
+not modify serving or recover HTML-only content. Canonical text/hashes, source
+versions, normalization, schemas and chunking parameters stay unchanged. Previously
+blocked extraction must be rerun; no automatic label migration is implied.
+Rollback is a reviewed revert of this correction; no serving/storage/index change.
+
+### Backlog: row-aware tables (#58; ADR-002/P2-B input)
+
+The baseline title chunker can split oversized rows/cells into separate chunks,
+separating a flag from its description. The synthetic table above demonstrates
+this with `--synthetic-000` in a different chunk from `row-00-word-000`. Whole
+rows may be retained when they fit; this is not a claim that every table is split
+without row awareness.
+
+Record this as an ADR candidate and a **future measured variant**, not a baseline
+repair: compare row/identifier-aware table chunks only after measuring the current
+serving baseline. A variant needs a distinct policy ID and tests for provenance,
+mapping/coverage, oversized rows, latency and token cost. Do not invent/repeat flag
+text without explicit mapping semantics. No row-aware variant, corpus choice,
+quality improvement or P2-B execution is authorized or implemented by this fix.
 
 ### Correction decisions (#44–#53)
 

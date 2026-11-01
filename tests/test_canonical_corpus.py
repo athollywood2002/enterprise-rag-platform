@@ -551,3 +551,83 @@ def test_empty_output_and_partial_overlap_fail_closed():
     # Repeated candidates away from the next verified boundary stay ambiguous.
     repeated = map_chunks(document(("prefix Same Same",)), 1, ("Same",))
     assert repeated[0].status == "ambiguous"
+
+
+def test_sequential_empty_diagnostics_do_not_advance_or_block_cursor():
+    from evaluation.canonical import CanonicalExtraction
+    from evaluation.spans import map_chunks
+
+    doc = document(("Alpha beta gamma",))
+    mapped = map_chunks(doc, 1, ("", "Alpha", " \t", "\u200b", "beta gamma", ""))
+    assert [c.status for c in mapped] == [
+        "empty_skipped",
+        "mapped",
+        "empty_skipped",
+        "empty_skipped",
+        "mapped",
+        "empty_skipped",
+    ]
+    result = CanonicalExtraction.from_mappings(doc, mapped)
+    assert [(c.start, c.end) for c in result.chunks] == [(0, 5), (6, 16)]
+    assert result.chunks[1].prefix == ("Alpha",)
+    assert result.empty_skipped == 4
+    assert result.mapping_counts == {"mapped": 2, "empty_skipped": 4}
+    assert (
+        span_coverage(gold(doc, "beta gamma"), result.chunks, CorpusManifest(documents=(doc,))) == 1
+    )
+
+
+def test_empty_diagnostics_do_not_clear_a_real_mapping_failure():
+    from evaluation.canonical import CanonicalExtraction
+    from evaluation.spans import map_chunks
+
+    doc = document(("Alpha beta gamma",))
+    mapped = map_chunks(doc, 1, ("Alpha", "invented", "", "beta gamma"))
+    assert [c.status for c in mapped] == ["mapped", "unlocatable", "empty_skipped", "blocked"]
+    result = CanonicalExtraction.from_mappings(doc, mapped)
+    with pytest.raises(MappingFailure):
+        span_coverage(gold(doc, "Alpha"), result.chunks, CorpusManifest(documents=(doc,)))
+
+
+@pytest.mark.parametrize("first,second,skipped", [("Alpha", "", 1), ("", " ", 2)])
+def test_empty_chunks_do_not_hide_missing_canonical_content(first, second, skipped):
+    from evaluation.canonical import CanonicalExtraction
+    from evaluation.spans import map_chunks
+
+    doc = document(("Alpha beta gamma",))
+    result = CanonicalExtraction.from_mappings(doc, map_chunks(doc, 1, (first, second)))
+    assert result.empty_skipped == skipped
+    assert result.mapping_counts["unlocatable"] == 1
+    with pytest.raises(MappingFailure):
+        span_coverage(gold(doc, "Alpha"), result.chunks, CorpusManifest(documents=(doc,)))
+
+
+def test_empty_diagnostics_and_cursor_reset_at_page_boundary():
+    from evaluation.canonical import CanonicalExtraction
+    from evaluation.spans import map_chunks
+
+    doc = document(("Same Same", "Same Same"))
+    mapped = tuple(
+        c for page in (1, 2) for c in map_chunks(doc, page, ("", "Same", "", "Same", ""))
+    )
+    result = CanonicalExtraction.from_mappings(doc, mapped)
+    assert [(c.page, c.start, c.end) for c in result.chunks] == [
+        (1, 0, 4),
+        (1, 5, 9),
+        (2, 0, 4),
+        (2, 5, 9),
+    ]
+    assert result.empty_skipped == 6
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [{"text": "beta"}, {"start": 0, "end": 1}, {"match_count": 1}, {"match_count": False}],
+)
+def test_empty_diagnostic_cannot_disguise_nonempty_or_located_text(changes):
+    from evaluation.canonical import CanonicalExtraction
+
+    doc = document()
+    invalid = replace(map_chunk(doc, 1, ""), status="empty_skipped", **changes)
+    with pytest.raises(ValueError, match="Invalid empty-skipped"):
+        CanonicalExtraction.from_mappings(doc, (invalid,))

@@ -70,10 +70,35 @@ class CanonicalExtraction:
     document: CanonicalDocument
     chunks: tuple[ChunkLocation, ...]
     chunking_policy: str = TITLE_CHUNKING.policy_id
+    empty_skipped: int = 0
+
+    @classmethod
+    def from_mappings(
+        cls, document: CanonicalDocument, mappings: tuple[ChunkLocation, ...]
+    ) -> CanonicalExtraction:
+        """Separate non-retrievable empty diagnostics from candidate locations."""
+        skipped = tuple(c for c in mappings if c.status == "empty_skipped")
+        if any(
+            c.text
+            or c.start is not None
+            or c.end is not None
+            or type(c.match_count) is not int
+            or c.match_count != 0
+            for c in skipped
+        ):
+            raise ValueError("Invalid empty-skipped mapping diagnostic")
+        return cls(
+            document=document,
+            chunks=tuple(c for c in mappings if c.status != "empty_skipped"),
+            empty_skipped=len(skipped),
+        )
 
     @property
     def mapping_counts(self) -> dict[str, int]:
-        return dict(Counter(chunk.status for chunk in self.chunks))
+        counts = Counter(chunk.status for chunk in self.chunks)
+        if self.empty_skipped:
+            counts["empty_skipped"] = self.empty_skipped
+        return dict(counts)
 
 
 def extract_pdf(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalExtraction:
@@ -145,7 +170,7 @@ def extract_pdf(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalE
             **asdict(TITLE_CHUNKING),
         )
         located.extend(map_chunks(document, number, tuple(str(chunk) for chunk in chunks)))
-    return CanonicalExtraction(document=document, chunks=tuple(located))
+    return CanonicalExtraction.from_mappings(document, tuple(located))
 
 
 def extract_markdown(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalExtraction:
@@ -195,7 +220,9 @@ def extract_markdown(data: bytes, *, doc_id: str, source: SourceRecord) -> Canon
         pages=(CanonicalPage(page=1, text=text, sha256=text_sha256(text)),),
     )
     chunks = chunk_by_title(elements, **asdict(TITLE_CHUNKING))
-    return CanonicalExtraction(document, map_chunks(document, 1, tuple(str(c) for c in chunks)))
+    return CanonicalExtraction.from_mappings(
+        document, map_chunks(document, 1, tuple(str(c) for c in chunks))
+    )
 
 
 def extract_document(
