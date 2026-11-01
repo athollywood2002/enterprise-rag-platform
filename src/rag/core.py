@@ -1,12 +1,16 @@
 """Chunk, embed, retrieve, and answer with explicit source attribution."""
+
 import hashlib
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 import httpx
 from qdrant_client import QdrantClient, models
 
+from .collection_safety import UnsafeCollectionError, validate_writable_collection_name
 from .config import Settings
+from .documents import DocumentChunk
 
 
 @dataclass(frozen=True)
@@ -37,6 +41,8 @@ def chunk_text(text: str, source: str, size: int = 900, overlap: int = 150) -> l
 
 class RagEngine:
     def __init__(self, config: Settings, qdrant: QdrantClient | None = None):
+        # model_construct/model_copy can bypass Pydantic field validators.
+        validate_writable_collection_name(config.qdrant_collection)
         self.config = config
         self.db = qdrant or QdrantClient(url=config.qdrant_url, timeout=30)
 
@@ -52,12 +58,25 @@ class RagEngine:
             raise ValueError("Ollama returned an empty embedding")
         return data[0]
 
-    def ensure_collection(self, dimensions: int) -> None:
-        name = self.config.qdrant_collection
+    def _assert_writable_target(self, name: str) -> None:
+        validate_writable_collection_name(name)
+        # A harmless-looking alias could resolve to a protected collection.
+        # Refuse every alias, and let lookup errors fail closed before writes.
+        if any(alias.alias_name == name for alias in self.db.get_aliases().aliases):
+            raise UnsafeCollectionError("Qdrant aliases cannot be used as write targets")
+
+    def ensure_collection(self, dimensions: int, *, collection_name: str | None = None) -> None:
+        name = validate_writable_collection_name(
+            self.config.qdrant_collection if collection_name is None else collection_name
+        )
+        self._assert_writable_target(name)
         if not self.db.collection_exists(name):
+            self._assert_writable_target(name)
             self.db.create_collection(
                 collection_name=name,
-                vectors_config=models.VectorParams(size=dimensions, distance=models.Distance.COSINE),
+                vectors_config=models.VectorParams(
+                    size=dimensions, distance=models.Distance.COSINE
+                ),
             )
         else:
             actual = self.db.get_collection(name).config.params.vectors.size
@@ -69,26 +88,47 @@ class RagEngine:
     def ingest(self, text: str, source: str) -> int:
         return self.ingest_chunks(chunk_text(text, source))
 
-    def ingest_chunks(self, chunks) -> int:
+    def ingest_chunks(self, chunks: Iterable[Chunk | DocumentChunk]) -> int:
+        # Capture once: changes to shared settings during embedding must not
+        # redirect a validated operation to a different collection.
+        name = validate_writable_collection_name(self.config.qdrant_collection)
         if not chunks:
             return 0
         points = []
         for chunk in chunks:
             vector = self.embed(chunk.text)
-            self.ensure_collection(len(vector))
-            digest = hashlib.sha256(f"{chunk.source}:{chunk.number}:{chunk.text}".encode()).hexdigest()
+            self.ensure_collection(len(vector), collection_name=name)
+            digest = hashlib.sha256(
+                f"{chunk.source}:{chunk.number}:{chunk.text}".encode()
+            ).hexdigest()
             point_id = (
-                digest[:8] + "-" + digest[8:12] + "-" + digest[12:16]
-                + "-" + digest[16:20] + "-" + digest[20:32]
+                digest[:8]
+                + "-"
+                + digest[8:12]
+                + "-"
+                + digest[12:16]
+                + "-"
+                + digest[16:20]
+                + "-"
+                + digest[20:32]
             )
             points.append(
                 models.PointStruct(
                     id=point_id,
                     vector=vector,
-                    payload={"source": chunk.source, "chunk": chunk.number, "text": chunk.text, "page_number": chunk.page_number},
+                    payload={
+                        "source": chunk.source,
+                        "chunk": chunk.number,
+                        "text": chunk.text,
+                        "page_number": chunk.page_number,
+                    },
                 )
             )
-        self.db.upsert(collection_name=self.config.qdrant_collection, points=points, wait=True)
+        if not points:
+            return 0
+        # Recheck independently of ensure_collection, even if it is overridden.
+        self._assert_writable_target(name)
+        self.db.upsert(collection_name=name, points=points, wait=True)
         return len(points)
 
     def ask(self, question: str, top_k: int = 5) -> dict:
