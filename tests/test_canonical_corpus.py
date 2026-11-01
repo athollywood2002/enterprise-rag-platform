@@ -102,7 +102,7 @@ def test_manifest_roundtrip_hash_and_generated_schema():
     assert DevelopmentLabels.model_json_schema()["additionalProperties"] is False
 
 
-@pytest.mark.parametrize("mutation", ["text", "hash", "parser", "unicode", "extra", "schema"])
+@pytest.mark.parametrize("mutation", ["text", "hash", "parser", "extra", "schema"])
 def test_manifest_rejects_drift_and_unknown_fields(mutation):
     obj = json.loads(CorpusManifest(documents=(document(),)).model_dump_json())
     doc = obj["documents"][0]
@@ -112,8 +112,6 @@ def test_manifest_rejects_drift_and_unknown_fields(mutation):
         doc["pages"][0]["sha256"] = "0" * 64
     elif mutation == "parser":
         doc["parser"]["packages"][0]["version"] = "0.0.0"
-    elif mutation == "unicode":
-        doc["parser"]["unicode_version"] = "unsupported"
     elif mutation == "extra":
         doc["extra"] = "unsupported"
     else:
@@ -357,3 +355,141 @@ def test_extractor_requires_explicit_offline_environment(monkeypatch, name):
     monkeypatch.delenv(name)
     with pytest.raises(ValueError, match="offline parser environment"):
         extract_pdf(b"synthetic", doc_id="synthetic", source=document().source)
+
+
+def test_normalization_artifacts_and_identifier_punctuation():
+    assert normalize("ﬀ ﬁ ﬂ ﬃ ﬄ ﬅ ﬆ") == "ff fi fl ffi ffl st st"
+    assert normalize("con\u00adfi\u200bg\u200cu\u200dr\ufeffation") == "configuration"
+    assert normalize("kube-\napiserver --max-pods AC-2(4) a.b – Ａ") == (
+        "kube- apiserver --max-pods AC-2(4) a.b – Ａ"
+    )
+
+
+def test_unicode_mismatch_verifies_text_and_hash_instead_of_runtime_identity():
+    obj = json.loads(CorpusManifest(documents=(document(),)).model_dump_json())
+    obj["documents"][0]["parser"]["unicode_version"] = "different-producer"
+    assert load_corpus(json.dumps(obj)).documents[0].parser.unicode_version == "different-producer"
+    obj["documents"][0]["pages"][0]["text"] = "unfolded ﬁ"
+    obj["documents"][0]["pages"][0]["sha256"] = text_sha256("unfolded ﬁ")
+    with pytest.raises(ValueError, match="Canonical text/hash mismatch"):
+        load_corpus(json.dumps(obj))
+
+
+def test_old_normalization_and_schemas_are_explicitly_invalidated():
+    obj = json.loads(CorpusManifest(documents=(document(),)).model_dump_json())
+    obj["documents"][0]["parser"]["normalization"] = "nfc-quotes-whitespace-v1"
+    with pytest.raises(ValueError):
+        load_corpus(json.dumps(obj))
+    obj["schema_version"] = "canonical-corpus-v1"
+    with pytest.raises(ValueError):
+        load_corpus(json.dumps(obj))
+
+
+def test_sequential_repeated_boilerplate_and_location_only_relevance():
+    from evaluation.spans import map_chunks
+
+    doc = document(("AC-1 Discussion: None. AC-2 Discussion: None.",))
+    chunks = map_chunks(doc, 1, ("AC-1", "Discussion: None.", "AC-2", "Discussion: None."))
+    assert all(c.status == "mapped" for c in chunks)
+    assert chunks[1].match_count == chunks[3].match_count == 2
+    corpus = CorpusManifest(documents=(doc,))
+    span = gold(doc, "Discussion: None.")
+    assert chunk_relevant(span, chunks[1], corpus)
+    assert not chunk_relevant(span, chunks[3], corpus)
+    with pytest.raises(MappingFailure):
+        chunk_relevant(span, replace(chunks[3], prefix=()), corpus)
+    with pytest.raises(MappingFailure):
+        chunk_relevant(span, replace(chunks[3], prefix=None), corpus)
+
+
+@pytest.mark.parametrize(
+    "texts,status",
+    [
+        (("Alpha beta", "Alpha beta", "gamma"), "overlap"),
+        (("gamma", "Alpha beta"), "unlocatable"),
+        (("Invented title Alpha", "beta gamma"), "unlocatable"),
+        (("Alpha",), "unlocatable"),
+    ],
+)
+def test_sequential_mapping_rejects_overlap_reordering_prefix_and_omission(texts, status):
+    from evaluation.spans import map_chunks
+
+    chunks = map_chunks(document(("Alpha beta gamma",)), 1, texts)
+    assert status in [c.status for c in chunks]
+    assert any(c.status != "mapped" for c in chunks)
+
+
+def test_cursor_resets_per_page_and_replays_serialized_prefix():
+    from dataclasses import asdict
+
+    from evaluation.spans import ChunkLocation, map_chunks
+
+    doc = document(("Same Same", "Same Same"))
+    corpus = CorpusManifest(documents=(doc,))
+    for page in (1, 2):
+        chunks = map_chunks(doc, page, ("Same", "Same"))
+        assert [c.start for c in chunks] == [0, 5]
+        restored = ChunkLocation(**asdict(chunks[1]))
+        assert chunk_relevant(gold(doc, "Same", page), restored, corpus) is False
+        with pytest.raises(MappingFailure):
+            chunk_relevant(gold(doc, "Same", page), replace(restored, start=0, end=4), corpus)
+
+
+def test_markdown_is_literal_source_on_one_logical_page_and_html_unsupported():
+    from evaluation.canonical import extract_document
+
+    raw = b"# Heading\n\n**bold** [link](https://example.org)\n```yaml\nkube-apiserver: --max-pods\na.b: AC-2(4)\n```"
+    result = extract_document(
+        raw, filename="fixture.md", doc_id="markdown", source=document().source
+    )
+    assert result.document.page_kind == result.chunks[0].page_kind == "logical"
+    assert result.document.pages[0].text == normalize(raw.decode())
+    assert result.chunks[0].status == "mapped"
+    corpus = CorpusManifest(documents=(result.document,))
+    span = gold(result.document, "--max-pods")
+    with pytest.raises(ValueError, match="page kind"):
+        load_development_labels(label_payload(corpus, [span]), corpus)
+    span = GoldSpan(**{**span.model_dump(), "page_kind": "logical"})
+    assert chunk_relevant(span, result.chunks[0], corpus)
+    assert load_corpus(corpus.model_dump_json()) == corpus
+    with pytest.raises(ValueError, match="HTML not implemented"):
+        extract_document(
+            b"<p>example</p>", filename="fixture.html", doc_id="html", source=document().source
+        )
+    with pytest.raises(UnicodeDecodeError):
+        extract_document(b"\xff", filename="fixture.md", doc_id="bad", source=document().source)
+
+
+def test_question_strata_are_validated_and_groupable():
+    questions = [
+        GoldQuestion(
+            query_id=f"q{i}",
+            question="Synthetic?",
+            category="off_topic",
+            query_type=kind,
+            difficulty="hard",
+            tags=("kubernetes",),
+        )
+        for i, kind in enumerate(("identifier", "semantic", "mixed"))
+    ]
+    assert len({(q.category, q.query_type, q.difficulty) for q in questions}) == 3
+    for changes in (
+        {"query_type": "unknown"},
+        {"difficulty": "unknown"},
+        {"tags": ("repeat", "repeat")},
+        {"tags": ("bad tag",)},
+    ):
+        with pytest.raises(ValueError):
+            GoldQuestion(**{**questions[0].model_dump(), **changes})
+
+
+def test_empty_output_and_partial_overlap_fail_closed():
+    from evaluation.spans import map_chunks
+
+    doc = document(("Alpha beta gamma",))
+    assert map_chunks(doc, 1, ())[0].status == "empty"
+    chunks = map_chunks(doc, 1, ("Alpha beta", "beta gamma", "gamma"))
+    assert [c.status for c in chunks] == ["mapped", "overlap", "blocked"]
+    # Repeated candidates away from the next verified boundary stay ambiguous.
+    repeated = map_chunks(document(("prefix Same Same",)), 1, ("Same",))
+    assert repeated[0].status == "ambiguous"

@@ -50,6 +50,9 @@ def test_real_canonical_pdf_and_chunks_share_single_partition(monkeypatch, pdf_f
         assert canonical.text[chunk.start : chunk.end] == chunk.text
     second = extract_pdf(data, doc_id="synthetic-pdf", source=source)
     assert first == second  # Same-runtime canonical hashes, spans and chunk ordering.
+    serving = documents.parse_document(data, "fixture.pdf")
+    assert [normalize(c.text) for c in serving] == [c.text for c in first.chunks]
+    assert "max=1200:new=1000:combine=200:multipage=false" in first.chunking_policy
     assert CorpusManifest.model_validate_json(
         CorpusManifest(documents=(first.document,)).model_dump_json()
     ).documents == (first.document,)
@@ -98,3 +101,34 @@ def test_long_element_split_and_page_boundary_use_real_chunker(monkeypatch, pdf_
 def test_recorded_parser_pins_match_extractor(source, pdf_factory):
     result = extract_pdf(pdf_factory(("Synthetic fact.",)), doc_id="synthetic-pdf", source=source)
     assert tuple((p.name, p.version) for p in result.document.parser.packages) == PARSER_PINS
+
+
+def test_real_chunker_repeating_control_boilerplate(monkeypatch, pdf_factory, source):
+    from unstructured.documents.elements import ElementMetadata, Text, Title
+
+    elements = []
+    for control in ("AC-1", "AC-2"):
+        elements.extend(
+            [
+                Title(control, metadata=ElementMetadata(page_number=1)),
+                Text("Discussion: " + "synthetic " * 130, metadata=ElementMetadata(page_number=1)),
+                Text("Related Controls: None.", metadata=ElementMetadata(page_number=1)),
+            ]
+        )
+    monkeypatch.setattr("rag.documents._partition_document", lambda *args: elements)
+    result = extract_pdf(
+        pdf_factory(("Synthetic control page.",)), doc_id="controls", source=source
+    )
+    assert len(result.chunks) >= 4
+    assert all(c.status == "mapped" for c in result.chunks)
+    assert any(c.match_count > 1 for c in result.chunks)
+    assert all(a.end <= b.start for a, b in zip(result.chunks, result.chunks[1:]))
+
+
+def test_out_of_order_parser_pages_are_rejected(monkeypatch, pdf_factory, source):
+    from unstructured.documents.elements import ElementMetadata, Text
+
+    elements = [Text("Synthetic page.", metadata=ElementMetadata(page_number=p)) for p in (1, 2, 1)]
+    monkeypatch.setattr("rag.documents._partition_document", lambda *args: elements)
+    with pytest.raises(ValueError, match="pages out of order"):
+        extract_pdf(pdf_factory(("Page one.", "Page two.")), doc_id="bad-order", source=source)

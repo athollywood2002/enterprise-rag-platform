@@ -1,10 +1,9 @@
-"""Strict v1 corpus and development gold schemas; no holdout contents or I/O."""
+"""Strict v2 corpus and development gold schemas; no holdout contents or I/O."""
 
 from __future__ import annotations
 
 import hashlib
 import json
-import unicodedata
 from itertools import pairwise
 from typing import Annotated, Literal, Self
 
@@ -27,18 +26,21 @@ class Package(StrictRecord):
 
 
 class ParserIdentity(StrictRecord):
-    profile: Literal["unstructured-pdf-fast-v1"] = "unstructured-pdf-fast-v1"
-    normalization: Literal["nfc-quotes-whitespace-v1"] = NORMALIZATION_VERSION
+    profile: Literal["unstructured-pdf-fast-v1", "markdown-source-utf8-v1"] = (
+        "unstructured-pdf-fast-v1"
+    )
+    normalization: Literal["nfc-quotes-artifacts-whitespace-v2"] = NORMALIZATION_VERSION
     unicode_version: Nonempty
     packages: tuple[Package, ...]
 
     @model_validator(mode="after")
     def require_supported_profile(self) -> Self:
         actual = tuple((p.name, p.version) for p in self.packages)
-        if sorted(actual) != sorted(PARSER_PINS) or len(actual) != len(PARSER_PINS):
+        expected = PARSER_PINS if self.profile == "unstructured-pdf-fast-v1" else ()
+        if sorted(actual) != sorted(expected) or len(actual) != len(expected):
             raise ValueError("Parser profile drift; rebuild/revalidate corpus and labels")
-        if self.unicode_version != unicodedata.unidata_version:
-            raise ValueError("Unicode runtime drift; canonical text must be revalidated")
+        # Page validators recompute normalization and UTF-8 hashes on every load,
+        # including Unicode-version mismatch. Preserve the producer's version.
         return self
 
 
@@ -70,10 +72,15 @@ class CanonicalDocument(StrictRecord):
     doc_version: Digest  # SHA-256 of source bytes, independent of chunking policy.
     source: SourceRecord
     parser: ParserIdentity
+    page_kind: Literal["physical", "logical"] = "physical"
     pages: Annotated[tuple[CanonicalPage, ...], Field(min_length=1)]
 
     @model_validator(mode="after")
     def physical_pages(self) -> Self:
+        if (self.parser.profile == "markdown-source-utf8-v1") != (self.page_kind == "logical") or (
+            self.page_kind == "logical" and len(self.pages) != 1
+        ):
+            raise ValueError("Parser/page kind mismatch; Markdown requires logical page 1")
         if tuple(p.page for p in self.pages) != tuple(range(1, len(self.pages) + 1)):
             raise ValueError("Physical pages must be ordered, contiguous and unique")
         if not any(p.text for p in self.pages):
@@ -82,7 +89,7 @@ class CanonicalDocument(StrictRecord):
 
 
 class CorpusManifest(StrictRecord):
-    schema_version: Literal["canonical-corpus-v1"] = "canonical-corpus-v1"
+    schema_version: Literal["canonical-corpus-v2"] = "canonical-corpus-v2"
     documents: Annotated[tuple[CanonicalDocument, ...], Field(min_length=1)]
 
     @model_validator(mode="after")
@@ -109,6 +116,7 @@ class GoldSpan(StrictRecord):
     doc_id: Identifier
     doc_version: Digest
     page: Annotated[int, Field(ge=1)]
+    page_kind: Literal["physical", "logical"] = "physical"
     page_sha256: Digest
     start: Annotated[int, Field(ge=0)]
     end: Annotated[int, Field(ge=1)]
@@ -125,11 +133,16 @@ class GoldQuestion(StrictRecord):
     query_id: Identifier
     question: Nonempty
     category: Literal["answerable", "near_miss", "off_topic"]
+    query_type: Literal["identifier", "semantic", "mixed"] = "semantic"
+    difficulty: Literal["easy", "medium", "hard"] = "medium"
+    tags: tuple[Identifier, ...] = ()
     review_status: Literal["draft", "human_reviewed"] = "draft"
     spans: tuple[GoldSpan, ...] = ()
 
     @model_validator(mode="after")
     def category_and_spans(self) -> Self:
+        if len(self.tags) != len(set(self.tags)):
+            raise ValueError("Duplicate stratum tags")
         if not self.question.strip() or bool(self.spans) != (self.category == "answerable"):
             raise ValueError("Answerable questions require gold; unknown categories forbid gold")
         grouped: dict[tuple[str, str, int], list[GoldSpan]] = {}
@@ -143,7 +156,7 @@ class GoldQuestion(StrictRecord):
 
 
 class DevelopmentLabels(StrictRecord):
-    schema_version: Literal["span-labels-v1"] = "span-labels-v1"
+    schema_version: Literal["span-labels-v2"] = "span-labels-v2"
     split: Literal["development"] = "development"
     corpus_sha256: Digest
     questions: Annotated[tuple[GoldQuestion, ...], Field(min_length=1)]
@@ -175,6 +188,11 @@ def find_page(corpus: CorpusManifest, doc_id: str, doc_version: str, page: int) 
 
 def validate_gold(span: GoldSpan, corpus: CorpusManifest) -> None:
     page = find_page(corpus, span.doc_id, span.doc_version, span.page)
+    document = next(
+        d for d in corpus.documents if (d.doc_id, d.doc_version) == (span.doc_id, span.doc_version)
+    )
+    if document.page_kind != span.page_kind:
+        raise ValueError("Gold page kind mismatch")
     if page.sha256 != span.page_sha256:
         raise ValueError("Gold page hash drift; reannotation required")
     if span.end > len(page.text) or page.text[span.start : span.end] != span.excerpt:
@@ -196,14 +214,14 @@ def _check_versioned_json(payload: str, version: str) -> None:
 
 
 def load_corpus(payload: str) -> CorpusManifest:
-    """Require an explicit v1 tag and reject duplicate JSON keys at every level."""
-    _check_versioned_json(payload, "canonical-corpus-v1")
+    """Require an explicit v2 tag and reject duplicate JSON keys at every level."""
+    _check_versioned_json(payload, "canonical-corpus-v2")
     return CorpusManifest.model_validate_json(payload)
 
 
 def load_development_labels(payload: str, corpus: CorpusManifest) -> DevelopmentLabels:
     """Validate caller-supplied development JSON; never discover/open any files."""
-    _check_versioned_json(payload, "span-labels-v1")
+    _check_versioned_json(payload, "span-labels-v2")
     labels = DevelopmentLabels.model_validate_json(payload)
     if labels.corpus_sha256 != corpus_sha256(corpus):
         raise ValueError("Corpus identity drift; labels require revalidation")
