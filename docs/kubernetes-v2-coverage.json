@@ -1,0 +1,1103 @@
+{
+  "schema_version": "k8s-hugo-coverage-v1",
+  "revision": "f4ec4968d939d533ecc82b7a352155caed3c932d",
+  "policy": "k8s-hugo-preprocess-v2",
+  "sample_size": 10,
+  "accepted": 2,
+  "excluded": 8,
+  "not_acquired": 0,
+  "v1_accepted": 0,
+  "rows": [
+    {
+      "path": "content/en/docs/reference/command-line-tools-reference/kubelet.md",
+      "bytes": 76419,
+      "status": "accepted",
+      "v1_status": "excluded",
+      "v1_exclusions": [
+        "unsupported_shortcode:heading"
+      ],
+      "preparation": {
+        "preprocessor_id": "k8s-hugo-preprocess-v2",
+        "raw_sha256": "41372e8e149063d8e10c7879d84765bef971ccc9a2297e16a5d20371f40f19b3",
+        "doc_version": "6a2d4797ec819ad41b5547f3a748a6fefb72e186a6ed7622ed02f72d28e4a103",
+        "title": "kubelet",
+        "content_type": "tool-reference",
+        "status": "accepted",
+        "shortcode_counts": [
+          {
+            "name": "heading",
+            "count": 2
+          }
+        ],
+        "recognized_markers": 0,
+        "transform_counts": [
+          {
+            "name": "heading:options",
+            "count": 1
+          },
+          {
+            "name": "heading:synopsis",
+            "count": 1
+          }
+        ],
+        "exclusions": [],
+        "changes_notice": "Prepared by k8s-hugo-preprocess-v2: removed YAML frontmatter and standalone overview/body comment markers, replaced supported glossary_tooltip shortcodes with visible text, unwrapped paired note/caution/warning callouts while preserving their bodies, dropped supported standalone generic headings and feature-state badges (counted content losses), and normalized CRLF line endings to LF. Specification: docs/kubernetes-hugo-preprocessing.md."
+      },
+      "raw_flag_occurrences": 266,
+      "raw_distinct_flags": 129,
+      "missing_flag_occurrences": {},
+      "identifier_probes": {
+        "--max-pods": {
+          "raw_occurrences": 1,
+          "body_occurrences": 1,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": 1
+        },
+        "--anonymous-auth": {
+          "raw_occurrences": 1,
+          "body_occurrences": 1,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": 1
+        },
+        "kube-apiserver": {
+          "raw_occurrences": 2,
+          "body_occurrences": 2,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": 2
+        },
+        "kubectl": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": 0
+        },
+        "AC-2(4)": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": 0
+        }
+      }
+    },
+    {
+      "path": "content/en/docs/reference/command-line-tools-reference/kube-apiserver.md",
+      "bytes": 76527,
+      "status": "accepted",
+      "v1_status": "excluded",
+      "v1_exclusions": [
+        "unsupported_shortcode:heading"
+      ],
+      "preparation": {
+        "preprocessor_id": "k8s-hugo-preprocess-v2",
+        "raw_sha256": "163867b136fe8ece0209903d95464cc0a34e0446a865c4043fc8bb7a1b52dab2",
+        "doc_version": "65ce6ffd3c557d52424ee5e6c92d368841cc0bcfd427914fe526f0f997136d9b",
+        "title": "kube-apiserver",
+        "content_type": "tool-reference",
+        "status": "accepted",
+        "shortcode_counts": [
+          {
+            "name": "heading",
+            "count": 2
+          }
+        ],
+        "recognized_markers": 0,
+        "transform_counts": [
+          {
+            "name": "heading:options",
+            "count": 1
+          },
+          {
+            "name": "heading:synopsis",
+            "count": 1
+          }
+        ],
+        "exclusions": [],
+        "changes_notice": "Prepared by k8s-hugo-preprocess-v2: removed YAML frontmatter and standalone overview/body comment markers, replaced supported glossary_tooltip shortcodes with visible text, unwrapped paired note/caution/warning callouts while preserving their bodies, dropped supported standalone generic headings and feature-state badges (counted content losses), and normalized CRLF line endings to LF. Specification: docs/kubernetes-hugo-preprocessing.md."
+      },
+      "raw_flag_occurrences": 217,
+      "raw_distinct_flags": 172,
+      "missing_flag_occurrences": {},
+      "identifier_probes": {
+        "--max-pods": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": 0
+        },
+        "--anonymous-auth": {
+          "raw_occurrences": 2,
+          "body_occurrences": 2,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": 2
+        },
+        "kube-apiserver": {
+          "raw_occurrences": 15,
+          "body_occurrences": 14,
+          "frontmatter_occurrences": 1,
+          "prepared_occurrences": 14
+        },
+        "kubectl": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": 0
+        },
+        "AC-2(4)": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": 0
+        }
+      }
+    },
+    {
+      "path": "content/en/docs/reference/kubectl/quick-reference.md",
+      "bytes": 25496,
+      "status": "excluded",
+      "v1_status": "excluded",
+      "v1_exclusions": [
+        "template_or_marker_in_code_context",
+        "unresolved_template_delimiter",
+        "unsupported_shortcode:/note",
+        "unsupported_shortcode:heading",
+        "unsupported_shortcode:note",
+        "unsupported_shortcode:skew"
+      ],
+      "preparation": {
+        "preprocessor_id": "k8s-hugo-preprocess-v2",
+        "raw_sha256": "26be2bc44e26accc738c1bc689a3f372d1582de9d61a01b545ed1abfaef16056",
+        "doc_version": null,
+        "title": "kubectl Quick Reference",
+        "content_type": "concept",
+        "status": "excluded",
+        "shortcode_counts": [
+          {
+            "name": "/note",
+            "count": 3
+          },
+          {
+            "name": "heading",
+            "count": 1
+          },
+          {
+            "name": "note",
+            "count": 3
+          },
+          {
+            "name": "skew",
+            "count": 1
+          }
+        ],
+        "recognized_markers": 2,
+        "transform_counts": [
+          {
+            "name": "callout:note",
+            "count": 3
+          },
+          {
+            "name": "heading:whatsnext",
+            "count": 1
+          }
+        ],
+        "exclusions": [
+          "template_or_marker_in_code_context",
+          "unresolved_template_delimiter",
+          "unsupported_shortcode:skew"
+        ],
+        "changes_notice": null
+      },
+      "raw_flag_occurrences": 89,
+      "raw_distinct_flags": 43,
+      "missing_flag_occurrences": null,
+      "identifier_probes": {
+        "--max-pods": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "--anonymous-auth": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kube-apiserver": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kubectl": {
+          "raw_occurrences": 197,
+          "body_occurrences": 196,
+          "frontmatter_occurrences": 1,
+          "prepared_occurrences": null
+        },
+        "AC-2(4)": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        }
+      }
+    },
+    {
+      "path": "content/en/docs/concepts/overview/components.md",
+      "bytes": 3334,
+      "status": "excluded",
+      "v1_status": "excluded",
+      "v1_exclusions": [
+        "unsupported_shortcode:figure",
+        "unsupported_shortcode:thirdparty-content"
+      ],
+      "preparation": {
+        "preprocessor_id": "k8s-hugo-preprocess-v2",
+        "raw_sha256": "18c5c61f4db074b6fc899b18047b4423e7a2404e43261868d2da6fadcf9688f0",
+        "doc_version": null,
+        "title": "Kubernetes Components",
+        "content_type": "concept",
+        "status": "excluded",
+        "shortcode_counts": [
+          {
+            "name": "figure",
+            "count": 1
+          },
+          {
+            "name": "glossary_tooltip",
+            "count": 2
+          },
+          {
+            "name": "thirdparty-content",
+            "count": 1
+          }
+        ],
+        "recognized_markers": 2,
+        "transform_counts": [
+          {
+            "name": "glossary_tooltip",
+            "count": 2
+          }
+        ],
+        "exclusions": [
+          "unsupported_shortcode:figure",
+          "unsupported_shortcode:thirdparty-content"
+        ],
+        "changes_notice": null
+      },
+      "raw_flag_occurrences": 0,
+      "raw_distinct_flags": 0,
+      "missing_flag_occurrences": null,
+      "identifier_probes": {
+        "--max-pods": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "--anonymous-auth": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kube-apiserver": {
+          "raw_occurrences": 2,
+          "body_occurrences": 2,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kubectl": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "AC-2(4)": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        }
+      }
+    },
+    {
+      "path": "content/en/docs/concepts/configuration/configmap.md",
+      "bytes": 12932,
+      "status": "excluded",
+      "v1_status": "excluded",
+      "v1_exclusions": [
+        "unsupported_shortcode:/caution",
+        "unsupported_shortcode:/note",
+        "unsupported_shortcode:caution",
+        "unsupported_shortcode:code_sample",
+        "unsupported_shortcode:feature-state",
+        "unsupported_shortcode:glossary_definition",
+        "unsupported_shortcode:heading",
+        "unsupported_shortcode:note"
+      ],
+      "preparation": {
+        "preprocessor_id": "k8s-hugo-preprocess-v2",
+        "raw_sha256": "2e3860f6aeb7d86e6d2dd8f32493dbc1d52ce1c54606cb08455107b297a63a2a",
+        "doc_version": null,
+        "title": "ConfigMaps",
+        "content_type": "concept",
+        "status": "excluded",
+        "shortcode_counts": [
+          {
+            "name": "/caution",
+            "count": 1
+          },
+          {
+            "name": "/note",
+            "count": 3
+          },
+          {
+            "name": "caution",
+            "count": 1
+          },
+          {
+            "name": "code_sample",
+            "count": 2
+          },
+          {
+            "name": "feature-state",
+            "count": 1
+          },
+          {
+            "name": "glossary_definition",
+            "count": 1
+          },
+          {
+            "name": "glossary_tooltip",
+            "count": 9
+          },
+          {
+            "name": "heading",
+            "count": 1
+          },
+          {
+            "name": "note",
+            "count": 3
+          }
+        ],
+        "recognized_markers": 2,
+        "transform_counts": [
+          {
+            "name": "callout:caution",
+            "count": 1
+          },
+          {
+            "name": "callout:note",
+            "count": 3
+          },
+          {
+            "name": "feature-state",
+            "count": 1
+          },
+          {
+            "name": "glossary_tooltip",
+            "count": 9
+          },
+          {
+            "name": "heading:whatsnext",
+            "count": 1
+          }
+        ],
+        "exclusions": [
+          "unsupported_shortcode:code_sample",
+          "unsupported_shortcode:glossary_definition"
+        ],
+        "changes_notice": null
+      },
+      "raw_flag_occurrences": 0,
+      "raw_distinct_flags": 0,
+      "missing_flag_occurrences": null,
+      "identifier_probes": {
+        "--max-pods": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "--anonymous-auth": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kube-apiserver": {
+          "raw_occurrences": 1,
+          "body_occurrences": 1,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kubectl": {
+          "raw_occurrences": 4,
+          "body_occurrences": 4,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "AC-2(4)": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        }
+      }
+    },
+    {
+      "path": "content/en/docs/concepts/services-networking/service.md",
+      "bytes": 46852,
+      "status": "excluded",
+      "v1_status": "excluded",
+      "v1_exclusions": [
+        "unsupported_shortcode:/caution",
+        "unsupported_shortcode:/note",
+        "unsupported_shortcode:/tab",
+        "unsupported_shortcode:/tabs",
+        "unsupported_shortcode:caution",
+        "unsupported_shortcode:code_sample",
+        "unsupported_shortcode:feature-state",
+        "unsupported_shortcode:glossary_definition",
+        "unsupported_shortcode:glossary_tooltip",
+        "unsupported_shortcode:heading",
+        "unsupported_shortcode:note",
+        "unsupported_shortcode:param",
+        "unsupported_shortcode:skew",
+        "unsupported_shortcode:tab",
+        "unsupported_shortcode:tabs"
+      ],
+      "preparation": {
+        "preprocessor_id": "k8s-hugo-preprocess-v2",
+        "raw_sha256": "6d014ced1fe171abbea82556cecac6601333fe27ffa834aff1c3d5d6246a5398",
+        "doc_version": null,
+        "title": "Service",
+        "content_type": "concept",
+        "status": "excluded",
+        "shortcode_counts": [
+          {
+            "name": "/caution",
+            "count": 1
+          },
+          {
+            "name": "/note",
+            "count": 9
+          },
+          {
+            "name": "/tab",
+            "count": 10
+          },
+          {
+            "name": "/tabs",
+            "count": 1
+          },
+          {
+            "name": "caution",
+            "count": 1
+          },
+          {
+            "name": "code_sample",
+            "count": 1
+          },
+          {
+            "name": "feature-state",
+            "count": 8
+          },
+          {
+            "name": "glossary_definition",
+            "count": 1
+          },
+          {
+            "name": "glossary_tooltip",
+            "count": 12
+          },
+          {
+            "name": "heading",
+            "count": 1
+          },
+          {
+            "name": "note",
+            "count": 9
+          },
+          {
+            "name": "param",
+            "count": 1
+          },
+          {
+            "name": "skew",
+            "count": 1
+          },
+          {
+            "name": "tab",
+            "count": 10
+          },
+          {
+            "name": "tabs",
+            "count": 1
+          }
+        ],
+        "recognized_markers": 2,
+        "transform_counts": [
+          {
+            "name": "callout:caution",
+            "count": 1
+          },
+          {
+            "name": "callout:note",
+            "count": 9
+          },
+          {
+            "name": "feature-state",
+            "count": 8
+          },
+          {
+            "name": "glossary_tooltip",
+            "count": 9
+          },
+          {
+            "name": "heading:whatsnext",
+            "count": 1
+          }
+        ],
+        "exclusions": [
+          "unsupported_shortcode:/tab",
+          "unsupported_shortcode:/tabs",
+          "unsupported_shortcode:code_sample",
+          "unsupported_shortcode:glossary_definition",
+          "unsupported_shortcode:glossary_tooltip",
+          "unsupported_shortcode:param",
+          "unsupported_shortcode:skew",
+          "unsupported_shortcode:tab",
+          "unsupported_shortcode:tabs"
+        ],
+        "changes_notice": null
+      },
+      "raw_flag_occurrences": 8,
+      "raw_distinct_flags": 4,
+      "missing_flag_occurrences": null,
+      "identifier_probes": {
+        "--max-pods": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "--anonymous-auth": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kube-apiserver": {
+          "raw_occurrences": 2,
+          "body_occurrences": 2,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kubectl": {
+          "raw_occurrences": 3,
+          "body_occurrences": 3,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "AC-2(4)": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        }
+      }
+    },
+    {
+      "path": "content/en/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes.md",
+      "bytes": 14823,
+      "status": "excluded",
+      "v1_status": "excluded",
+      "v1_exclusions": [
+        "unsupported_shortcode:/caution",
+        "unsupported_shortcode:/note",
+        "unsupported_shortcode:caution",
+        "unsupported_shortcode:code_sample",
+        "unsupported_shortcode:feature-state",
+        "unsupported_shortcode:heading",
+        "unsupported_shortcode:include",
+        "unsupported_shortcode:note"
+      ],
+      "preparation": {
+        "preprocessor_id": "k8s-hugo-preprocess-v2",
+        "raw_sha256": "bf80ca8ec4ffa9c71c06a11c515dcb34f18132b4cbe52896b5acd9b5989c6c0c",
+        "doc_version": null,
+        "title": "Configure Liveness, Readiness and Startup Probes",
+        "content_type": "task",
+        "status": "excluded",
+        "shortcode_counts": [
+          {
+            "name": "/caution",
+            "count": 1
+          },
+          {
+            "name": "/note",
+            "count": 1
+          },
+          {
+            "name": "caution",
+            "count": 1
+          },
+          {
+            "name": "code_sample",
+            "count": 6
+          },
+          {
+            "name": "feature-state",
+            "count": 3
+          },
+          {
+            "name": "heading",
+            "count": 2
+          },
+          {
+            "name": "include",
+            "count": 1
+          },
+          {
+            "name": "note",
+            "count": 1
+          }
+        ],
+        "recognized_markers": 1,
+        "transform_counts": [
+          {
+            "name": "callout:caution",
+            "count": 1
+          },
+          {
+            "name": "callout:note",
+            "count": 1
+          },
+          {
+            "name": "feature-state",
+            "count": 3
+          },
+          {
+            "name": "heading:prerequisites",
+            "count": 1
+          },
+          {
+            "name": "heading:whatsnext",
+            "count": 1
+          }
+        ],
+        "exclusions": [
+          "unsupported_shortcode:code_sample",
+          "unsupported_shortcode:include"
+        ],
+        "changes_notice": null
+      },
+      "raw_flag_occurrences": 0,
+      "raw_distinct_flags": 0,
+      "missing_flag_occurrences": null,
+      "identifier_probes": {
+        "--max-pods": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "--anonymous-auth": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kube-apiserver": {
+          "raw_occurrences": 3,
+          "body_occurrences": 3,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kubectl": {
+          "raw_occurrences": 10,
+          "body_occurrences": 10,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "AC-2(4)": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        }
+      }
+    },
+    {
+      "path": "content/en/docs/reference/access-authn-authz/rbac.md",
+      "bytes": 47888,
+      "status": "excluded",
+      "v1_status": "excluded",
+      "v1_exclusions": [
+        "unsupported_shortcode:/caution",
+        "unsupported_shortcode:/note",
+        "unsupported_shortcode:/warning",
+        "unsupported_shortcode:caution",
+        "unsupported_shortcode:code_sample",
+        "unsupported_shortcode:glossary_tooltip",
+        "unsupported_shortcode:note",
+        "unsupported_shortcode:warning"
+      ],
+      "preparation": {
+        "preprocessor_id": "k8s-hugo-preprocess-v2",
+        "raw_sha256": "b120961b770f1cf2a5bd234a415b88c3676eae5a9ee21f4d3eaa62687fd7e88d",
+        "doc_version": null,
+        "title": "Using RBAC Authorization",
+        "content_type": "concept",
+        "status": "excluded",
+        "shortcode_counts": [
+          {
+            "name": "/caution",
+            "count": 5
+          },
+          {
+            "name": "/note",
+            "count": 4
+          },
+          {
+            "name": "/warning",
+            "count": 2
+          },
+          {
+            "name": "caution",
+            "count": 5
+          },
+          {
+            "name": "code_sample",
+            "count": 6
+          },
+          {
+            "name": "glossary_tooltip",
+            "count": 19
+          },
+          {
+            "name": "note",
+            "count": 4
+          },
+          {
+            "name": "warning",
+            "count": 2
+          }
+        ],
+        "recognized_markers": 2,
+        "transform_counts": [
+          {
+            "name": "callout:caution",
+            "count": 5
+          },
+          {
+            "name": "callout:note",
+            "count": 4
+          },
+          {
+            "name": "callout:warning",
+            "count": 2
+          },
+          {
+            "name": "glossary_tooltip",
+            "count": 18
+          }
+        ],
+        "exclusions": [
+          "unsupported_shortcode:code_sample",
+          "unsupported_shortcode:glossary_tooltip"
+        ],
+        "changes_notice": null
+      },
+      "raw_flag_occurrences": 79,
+      "raw_distinct_flags": 24,
+      "missing_flag_occurrences": null,
+      "identifier_probes": {
+        "--max-pods": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "--anonymous-auth": {
+          "raw_occurrences": 1,
+          "body_occurrences": 1,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kube-apiserver": {
+          "raw_occurrences": 7,
+          "body_occurrences": 7,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kubectl": {
+          "raw_occurrences": 40,
+          "body_occurrences": 40,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "AC-2(4)": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        }
+      }
+    },
+    {
+      "path": "content/en/docs/concepts/workloads/pods/_index.md",
+      "bytes": 26031,
+      "status": "excluded",
+      "v1_status": "excluded",
+      "v1_exclusions": [
+        "unsupported_shortcode:/note",
+        "unsupported_shortcode:api-reference",
+        "unsupported_shortcode:code_sample",
+        "unsupported_shortcode:feature-state",
+        "unsupported_shortcode:figure",
+        "unsupported_shortcode:glossary_tooltip",
+        "unsupported_shortcode:heading",
+        "unsupported_shortcode:note",
+        "unsupported_shortcode:param",
+        "unsupported_shortcode:skew"
+      ],
+      "preparation": {
+        "preprocessor_id": "k8s-hugo-preprocess-v2",
+        "raw_sha256": "dbc592a96241fb0be96b797e704a5f8ceabc7531db7ef831539f10d132457792",
+        "doc_version": null,
+        "title": "Pods",
+        "content_type": "concept",
+        "status": "excluded",
+        "shortcode_counts": [
+          {
+            "name": "/note",
+            "count": 4
+          },
+          {
+            "name": "api-reference",
+            "count": 1
+          },
+          {
+            "name": "code_sample",
+            "count": 1
+          },
+          {
+            "name": "feature-state",
+            "count": 4
+          },
+          {
+            "name": "figure",
+            "count": 1
+          },
+          {
+            "name": "glossary_tooltip",
+            "count": 27
+          },
+          {
+            "name": "heading",
+            "count": 1
+          },
+          {
+            "name": "note",
+            "count": 4
+          },
+          {
+            "name": "param",
+            "count": 2
+          },
+          {
+            "name": "skew",
+            "count": 1
+          }
+        ],
+        "recognized_markers": 2,
+        "transform_counts": [
+          {
+            "name": "callout:note",
+            "count": 4
+          },
+          {
+            "name": "feature-state",
+            "count": 4
+          },
+          {
+            "name": "glossary_tooltip",
+            "count": 25
+          },
+          {
+            "name": "heading:whatsnext",
+            "count": 1
+          }
+        ],
+        "exclusions": [
+          "unsupported_shortcode:api-reference",
+          "unsupported_shortcode:code_sample",
+          "unsupported_shortcode:figure",
+          "unsupported_shortcode:glossary_tooltip",
+          "unsupported_shortcode:param",
+          "unsupported_shortcode:skew"
+        ],
+        "changes_notice": null
+      },
+      "raw_flag_occurrences": 1,
+      "raw_distinct_flags": 1,
+      "missing_flag_occurrences": null,
+      "identifier_probes": {
+        "--max-pods": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "--anonymous-auth": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kube-apiserver": {
+          "raw_occurrences": 1,
+          "body_occurrences": 1,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kubectl": {
+          "raw_occurrences": 1,
+          "body_occurrences": 1,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "AC-2(4)": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        }
+      }
+    },
+    {
+      "path": "content/en/docs/concepts/architecture/nodes.md",
+      "bytes": 14892,
+      "status": "excluded",
+      "v1_status": "excluded",
+      "v1_exclusions": [
+        "unsupported_shortcode:/note",
+        "unsupported_shortcode:feature-state",
+        "unsupported_shortcode:glossary_tooltip",
+        "unsupported_shortcode:heading",
+        "unsupported_shortcode:note",
+        "unsupported_shortcode:param"
+      ],
+      "preparation": {
+        "preprocessor_id": "k8s-hugo-preprocess-v2",
+        "raw_sha256": "736cdb8a99621f803441d96b1549a10ee16b6227fe7bad974a782964b1f9f7c8",
+        "doc_version": null,
+        "title": "Nodes",
+        "content_type": "concept",
+        "status": "excluded",
+        "shortcode_counts": [
+          {
+            "name": "/note",
+            "count": 4
+          },
+          {
+            "name": "feature-state",
+            "count": 1
+          },
+          {
+            "name": "glossary_tooltip",
+            "count": 19
+          },
+          {
+            "name": "heading",
+            "count": 1
+          },
+          {
+            "name": "note",
+            "count": 4
+          },
+          {
+            "name": "param",
+            "count": 1
+          }
+        ],
+        "recognized_markers": 2,
+        "transform_counts": [
+          {
+            "name": "callout:note",
+            "count": 4
+          },
+          {
+            "name": "feature-state",
+            "count": 1
+          },
+          {
+            "name": "glossary_tooltip",
+            "count": 18
+          },
+          {
+            "name": "heading:whatsnext",
+            "count": 1
+          }
+        ],
+        "exclusions": [
+          "unsupported_shortcode:glossary_tooltip",
+          "unsupported_shortcode:param"
+        ],
+        "changes_notice": null
+      },
+      "raw_flag_occurrences": 17,
+      "raw_distinct_flags": 12,
+      "missing_flag_occurrences": null,
+      "identifier_probes": {
+        "--max-pods": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "--anonymous-auth": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kube-apiserver": {
+          "raw_occurrences": 1,
+          "body_occurrences": 1,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "kubectl": {
+          "raw_occurrences": 5,
+          "body_occurrences": 5,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        },
+        "AC-2(4)": {
+          "raw_occurrences": 0,
+          "body_occurrences": 0,
+          "frontmatter_occurrences": 0,
+          "prepared_occurrences": null
+        }
+      }
+    }
+  ],
+  "inspection_date": "2026-11-01",
+  "rights_disposition": "Pre-selection inspection only. No source admitted to a corpus or redistribution approved. Repository license CC-BY-4.0; per-source/include/third-party rights still require review.",
+  "license_url": "https://raw.githubusercontent.com/kubernetes/website/f4ec4968d939d533ecc82b7a352155caed3c932d/LICENSE",
+  "license_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+  "acquisition_summary": {
+    "new_public_requests": 9,
+    "reused_verified_pinned_sources": 1,
+    "total_source_bytes": 345194,
+    "per_file_cap": 131072,
+    "total_cap": 1048576,
+    "raw_bodies_committed": false,
+    "prepared_bodies_stored": false,
+    "canonicalization_or_labeling_performed": false
+  }
+}

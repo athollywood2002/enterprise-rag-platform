@@ -275,3 +275,12 @@ Rollback: reviewed revert of the corrections, restoring the serving literal
 arguments if the shared policy module is removed. No storage or index migration.
 G1b corpus acquisition remains a separate
 approved task with rights, size, provenance and extraction-consistency gates.
+
+For Kubernetes Hugo sources, see the proposed
+[versioned preparation contract](kubernetes-hugo-preprocessing.md) and bounded
+inspection record. The raw upstream SHA-256 and the hash of bytes actually passed
+to the canonical parser are distinct: after reviewed preprocessing, `doc_version`
+is the prepared-byte hash. Preserve the preparation sidecar/policy and source
+attribution with the corpus. Real Kubernetes canonicalization/labeling remains
+gated on review of that preparation contract; this does not change the merged
+PDF/Markdown parser or authorize includes, real labels or runtime work.
