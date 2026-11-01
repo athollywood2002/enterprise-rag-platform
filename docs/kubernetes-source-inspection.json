@@ -1,0 +1,60 @@
+{
+  "inspection_date": "2026-11-01",
+  "purpose": "Bounded source/rights inspection for preprocessing review; not a corpus or labeling input",
+  "selected_source_count": 1,
+  "accepted_source_count": 0,
+  "revision": "f4ec4968d939d533ecc82b7a352155caed3c932d",
+  "source_bytes": 26031,
+  "source_content_type": "text/plain",
+  "license_url": "https://raw.githubusercontent.com/kubernetes/website/f4ec4968d939d533ecc82b7a352155caed3c932d/LICENSE",
+  "license_bytes": 18657,
+  "license_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+  "rights_decision": "Repository license is CC-BY-4.0; no additional notice found in sampled-source text scan. Includes uninspected; source excluded, no redistribution approval or source body published.",
+  "request_count": 4,
+  "request_failure": "Initial commits/main metadata exceeded 32768-byte cap; rejected and not used. Used bounded git/ref/heads/main lookup instead.",
+  "manifest": {
+    "schema_version": "k8s-hugo-preparation-v1",
+    "source": {
+      "title": "Pods",
+      "canonical_url": "https://raw.githubusercontent.com/kubernetes/website/f4ec4968d939d533ecc82b7a352155caed3c932d/content/en/docs/concepts/workloads/pods/_index.md",
+      "revision": "f4ec4968d939d533ecc82b7a352155caed3c932d",
+      "license_id": "CC-BY-4.0",
+      "attribution": "Kubernetes documentation contributors; source and license at pinned repository revision. Inspection only; source excluded before output or canonicalization.",
+      "redistribution": "local_only"
+    },
+    "preparation": {
+      "preprocessor_id": "k8s-hugo-preprocess-v1",
+      "raw_sha256": "dbc592a96241fb0be96b797e704a5f8ceabc7531db7ef831539f10d132457792",
+      "doc_version": null,
+      "title": "Pods",
+      "content_type": "concept",
+      "status": "excluded",
+      "shortcode_counts": [
+        { "name": "/note", "count": 4 },
+        { "name": "api-reference", "count": 1 },
+        { "name": "code_sample", "count": 1 },
+        { "name": "feature-state", "count": 4 },
+        { "name": "figure", "count": 1 },
+        { "name": "glossary_tooltip", "count": 27 },
+        { "name": "heading", "count": 1 },
+        { "name": "note", "count": 4 },
+        { "name": "param", "count": 2 },
+        { "name": "skew", "count": 1 }
+      ],
+      "recognized_markers": 2,
+      "exclusions": [
+        "unsupported_shortcode:/note",
+        "unsupported_shortcode:api-reference",
+        "unsupported_shortcode:code_sample",
+        "unsupported_shortcode:feature-state",
+        "unsupported_shortcode:figure",
+        "unsupported_shortcode:glossary_tooltip",
+        "unsupported_shortcode:heading",
+        "unsupported_shortcode:note",
+        "unsupported_shortcode:param",
+        "unsupported_shortcode:skew"
+      ],
+      "changes_notice": null
+    }
+  }
+}
