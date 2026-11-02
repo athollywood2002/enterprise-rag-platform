@@ -13,6 +13,60 @@ format-character counts and mapping diagnostics, not document bodies or gold.
 
 ## Frozen shortlist and acquisition
 
+### Review #64: first shortlist does not meet pilot/M1 selection needs
+
+The review accepted this audit/rights method, not the suitability of the first
+candidate set. None is admitted. Cloud-definition documents do not supply the
+planned requirement/control-ID stratum, and 800-145 alone is too small for a
+representative timed 20-question pilot. The original inventory remains evidence
+of that inspection, not a recommendation to proceed with it unchanged.
+
+A second fixed request plan names SP 800-171 Rev. 3, SP 800-53B and SP 800-190,
+with their official landing/download URLs and the **unchanged** caps. The
+[second-shortlist preflight](nist-second-shortlist-preflight.json) records the
+plan hash, exact request metadata, landing hashes and prefix hashes. It is
+**blocked before full acquisition**, not a second canonical inventory:
+
+| Candidate | HEAD-declared PDF bytes | Header-declared physical pages |
+| --- | ---: | ---: |
+| SP 800-171 Rev. 3 | 1,593,213 | 120 |
+| SP 800-53B | 1,627,293 | 85 |
+| SP 800-190 | 666,229 | 63 |
+| Total | 3,886,735 | **268** |
+
+Byte limits fit, but **268 exceeds the existing 180-page batch cap by 88**. The
+two ID-rich documents alone declare 205 pages. No caps were raised, documents
+trimmed, candidates substituted or batches silently split. Stop and request an
+owner decision: revise the shortlist (e.g. 53B + 190 declares 148 pages), or
+explicitly authorize a higher cap for screening all three. These are options,
+not owner selection/admission or proof either pair meets rights/quality gates.
+
+Preflight used nine unauthenticated requests: three bounded landing GETs, three
+PDF HEADs and three `Range: bytes=0-16383` GETs. Required HTTP 206 and matching
+Content-Range, refused redirects, and consumed exactly **49,152 PDF-prefix bytes**.
+Page counts come from `/N` in each first linearization dictionary, **not** a full
+parser run; full acquisition must verify them. Prefix SHA-256 values are explicitly
+**not full-document SHA-256 pins**. No complete second-batch PDF acquired or
+parsed; no Cf, canonical-page hashes, mapping, table or identifier-retention
+claims for this set. Prefix binaries and HTML bodies remain outside Git.
+
+The preflight also found a revision issue before full acquisition: the initial
+plan provisionally named 53B as October 2020, but the official landing page says
+September 2020 with December 10 updates and announces **Release 5.2.0 (August 27,
+2025)**. Exact downloaded release and full byte hash require confirmation before
+proceeding; do not silently treat the current URL as the original release.
+171r3's final date is May 14, 2024; its June planning note describes HTML
+availability, not a verified PDF erratum. 190's final date is September 25, 2017;
+its outside coauthors are a rights-review flag, not a completed rights finding.
+
+**#65 follow-up:** SP 800-53 Rev. 5 is not this SP 800-53B candidate and was not
+requested. It needs its own owner-approved resource preflight if wanted later;
+do not silently excerpt it or infer permission to expand current caps. G1(c)
+synthetic metrics remains a separate pending unit; this blocked preflight does
+not change normalization or authorize labels, holdout operations or runtime work.
+
+### Original first-batch evidence
+
 Selected these three cloud-infrastructure publications **before** downloading;
 did not substitute other publications after seeing results. Acquired 2026-11-02
 UTC from official CSRC/NVL URLs. Release dates are not byte pins: future use must
