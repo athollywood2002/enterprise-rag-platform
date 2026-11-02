@@ -1,7 +1,8 @@
 # Development pilot protocol — proposed, not executed
 
 **Current authorization:** offline preparation, including 20 real draft questions
-for independent review and a private canonical manifest; no annotation/execution.
+for independent review and a private canonical manifest, plus #73–#74 ODP revisions
+and owner-authorship exercise preparation; no annotation/execution or publication.
 The owner admitted the exact
 vetted **NIST SP 800-171r3** PDF for development-pilot corpus use, conditionally
 permitted compliant excerpt/label publication, and **deferred SP 800-190**. This
@@ -20,14 +21,18 @@ supersedes them **only for this named development-pilot use**, not other candida
 final evaluation, publication or operational use. The admission record is not a
 `canonical-corpus-v2` manifest and cannot be used as CLI input.
 
-1. **Authorized preparation:** revise #69–#72, create real drafts for review and
-   build the private hash-checked corpus manifest. Drafting is authorized; gold,
-   annotation and timed execution are not. Agent-prepared drafts are not human
-   verification; owner review effort must still be budgeted.
-2. **Independent check:** Claude Code Review assesses all 20 drafts for actual
-   answerability/category correctness, genuine negatives, source diversity, rights
-   flags and canonical support, plus protocol and manifest verification evidence.
-   Do not fabricate passages to fill a quota; revise or block unsupported items.
+1. **Authorized preparation:** #69–#72 manifest/drafts completed; independent review
+   supported the original 12 answerable and eight negative drafts. Owner then approved
+   #73–#74 preparation: replace D14/D16 with numerical ODP near-misses and prepare
+   six owner paraphrases plus two required/one optional scratch-written substitutes.
+   All current wording is still agent-authored; no owner contributions are received.
+2. **Owner contributions and independent check:** request review of the preparation
+   revisions now. Once real owner contributions arrive, preserve original/revised
+   wording privately, revalidate the allocation, freeze the candidate packet hash
+   and order FOR REVIEW, and request Claude Code Review of ALL 20 final questions,
+   category validity, ODP negatives, authorship, provenance and rights. Any revision
+   requires a new hash/review. Prior review does not approve new owner wording.
+   Do not fabricate wording, writing time, quality assessments, approval or support.
 3. **Owner execution decision:** after that check, owner explicitly authorizes
    actual annotation/timed execution and confirms the reviewed question version,
    corpus identity, rights and recording method. No further question-writing gate
@@ -145,6 +150,38 @@ Slot ranges are ordering placeholders, not query IDs or real question records.
 
 ## 4. Annotation instructions — only after execution approval
 
+### Preparation changes #73–#74 (not annotation)
+
+**ODP negatives:** D14 and D16 remain semantic near-misses. They now request a
+NIST-fixed number of days between event-type reviews and facility-access-list
+reviews, respectively. The requirement contexts (physical pages 31 and 60),
+discussions (31–32 and 60–61), full-corpus phrase contexts and Appendix D entries
+`03.03.01.b` (116) / `03.10.01.c` (117) delegate frequency to the organization;
+retained canonical and pypdf text were cross-checked. No fixed numerical day value
+was identified. This is not absence of the topic: the missing fact is the requested
+NIST numerical value. Do not invent annual/90-day defaults or import outside policy.
+The intended abstention disposition is **not specified; organization-defined**,
+not a gold label or measured score. The existing abstention-evaluation allowlist
+is UNCHANGED; any metrics addition needs separate review before a baseline.
+
+**Owner exercise:** paraphrase D01–D06 (six answerable semantic slots); scratch-write
+substitutes for D07 and D09 (answerable dotted-ID slots), optionally D12 (answerable
+unpadded-ID slot). Use the private worksheet's physical-page pointers. These are
+replacements, not additional slots. Read the context, put it aside, then write in
+the owner's own words; do not copy source clauses or supply excerpts/answers/spans.
+Record prior draft exposure honestly; no blind-authorship or lexical-leakage-removal
+claim. Preserve D05's initial-training scope and independently check any changed
+fact/form. If a supported substitute is not feasible, flag the slot for review.
+
+Private provenance retains original agent wording, current agent revisions and
+separate owner wording/timestamps/notes. Actual `author` is one of `agent`, `owner`,
+`owner-paraphrased`; ALL 20 currently remain `agent`. Owner fields and quality/
+approval judgments are null, not placeholders claiming completed owner work.
+Working-revision hashing is NOT the final candidate freeze. Source/page hashes,
+conditional publication, development-only use and all execution gates are unchanged.
+
+### Later authorized annotation
+
 Use the merged PDF-only helper as documented in [labeling-cli.md](labeling-cli.md).
 It displays wrapped canonical page text, writes uniquely matched normalized spans
 and saves **development drafts**, not human-review claims. Do not run `add` now.
@@ -193,7 +230,7 @@ Use only this **header-only template** after execution approval (#70); no real
 timing records exist now:
 
 ```csv
-slot,dev_id,start,saved,checked,retries,blocked,note
+slot,dev_id,author,start,saved,checked,retries,blocked,note
 ```
 
 - `start`: begin reading/reviewing the approved question; `saved`: save confirmed;
@@ -202,6 +239,8 @@ slot,dev_id,start,saved,checked,retries,blocked,note
   a claim that the item passed validation).
   Use one clock/time zone and ISO timestamps including seconds. Leave an
   unobserved timestamp empty; never invent a save time for a blocked/cancelled item.
+- `author`: actual wording provenance, `agent`, `owner` (scratch-written substitute)
+  or `owner-paraphrased`; requested work does not change current authorship.
 - `retries`: total rejected input/excerpt attempts for the item, including duplicate
   IDs. `blocked`: `y` or `n`. Use `note` for cancellation, pauses, unusual match
   counts, repeated source IDs, multi-span difficulty, rights flags or interruption.
@@ -218,6 +257,18 @@ slot,dev_id,start,saved,checked,retries,blocked,note
 - CLI diagnostics already show ambiguity and match counts. Any later diagnostic
   capture must stay private and be owner-approved, since it may contain canonical
   text. Do not add automatic transcript capture or a `--timing-log` feature here.
+
+Keep the authorized owner-writing exercise in a separate private drafting record:
+
+```csv
+slot,author,start,finished,note
+```
+
+Start before reading the context for that task; finish when replacement wording is
+ready. Use one clock/time zone and ISO timestamps including seconds; note pauses,
+restarts, prior exposure and uncertainty. Leave unobserved times unrecorded, not
+estimated. Preserve actual owner wording separately, and measure later draft-review
+effort separately. No owner writing time or human difficulty is measured yet.
 
 ## 6. Owner debrief, limits and next decision
 
@@ -248,8 +299,9 @@ cluster-bootstrap requirements. No holdout files, paths, keys or commitments are
 created, inspected or requested. Later blind self-relabel audit and final evaluation
 need separate owner-controlled workflows; no secrecy claim from same-account paths.
 
-**Next gate:** independent Code Review of protocol, private-manifest verification
-and all 20 draft questions, then owner decision on annotation/timed execution.
+**Next gates:** independent review of #73–#74 preparation and real owner contributions;
+then candidate hash/order freeze and independent review of ALL 20 final questions;
+then a separate owner decision on annotation/timed execution/publication.
 No live API/model/GPU/Docker/Qdrant actions,
-downloads, merges or retained-artifact changes. Rollback: reviewed revert of this
+downloads, merges or changes to retained source/manifest evidence. Rollback: reviewed revert of this
 preparation metadata/docs; historical screening and runtime behavior stay unchanged.

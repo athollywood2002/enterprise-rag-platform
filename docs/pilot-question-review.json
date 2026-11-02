@@ -1,8 +1,37 @@
 {
   "schema": "pilot-question-review-metadata-v1",
-  "status": "20 real drafts prepared privately; independent review and owner execution decision pending",
-  "private_review_packet_sha256": "e157cfe7d1fa229b75e2f240c764275059ea5796eb3af2fc2fc8a73b322a7976",
-  "private_review_packet_bytes": 10468,
+  "status": "#73-#74 preparation ready for review; owner contributions pending; no final packet freeze or execution",
+  "private_review_packet_sha256": "893be24bc0b6c482821fd5adc93ee4015756ba60d4f9e2da105f0108995451e2",
+  "private_review_packet_bytes": 12521,
+  "packet_identity_scope": "working agent revision 2, NOT final candidate freeze",
+  "original_private_review_packet_sha256": "e157cfe7d1fa229b75e2f240c764275059ea5796eb3af2fc2fc8a73b322a7976",
+  "original_private_review_packet_bytes": 10468,
+  "original_packet_preserved_privately": true,
+  "prior_independent_review": "Original manifest and all 20 original drafts reviewed; 12 answerable supported and eight negatives category-correct; #73 authorship and #74 negative-diversity changes requested",
+  "changed_question_wording_refs": ["D14", "D16"],
+  "odp_revision": {
+    "D14": {"proposed_category": "near_miss", "query_type": "semantic", "context_physical_pages": [31, 32, 116], "parameter": "03.03.01.b"},
+    "D16": {"proposed_category": "near_miss", "query_type": "semantic", "context_physical_pages": [60, 61, 117], "parameter": "03.10.01.c"},
+    "source_check": "Canonical and retained pypdf requirement/discussion and Appendix D contexts checked; full-corpus phrase contexts checked; review frequency is organization-defined, no NIST-fixed numerical day value identified",
+    "intended_abstention_disposition": "not specified; organization-defined (protocol intent, not gold or a scored result)",
+    "abstention_evaluation_allowlist_changed": false
+  },
+  "owner_exercise": {
+    "private_worksheet_sha256": "f379f67d04748ff99553be6dda5b3dda1c6072ee8f0b009b25a93efc423744d9",
+    "private_provenance_template_sha256": "b1c91ad345a66bed6ae25c82c4f45009a6dacc628e26b5e7970da36d034d8763",
+    "paraphrase_refs": ["D01", "D02", "D03", "D04", "D05", "D06"],
+    "scratch_required_refs": ["D07", "D09"],
+    "scratch_optional_third_ref": "D12",
+    "replacements_within_existing_slots_only": true,
+    "allowed_author_values": ["agent", "owner", "owner-paraphrased"],
+    "current_author_counts": {"agent": 20, "owner": 0, "owner-paraphrased": 0},
+    "owner_contributions_received": 0,
+    "owner_wording_times_notes_quality_and_approval_fields": "null; no fabricated owner contributions or judgments",
+    "original_current_and_owner_wording_preserved_privately": true,
+    "drafting_header": ["slot", "author", "start", "finished", "note"]
+  },
+  "final_packet_frozen": false,
+  "next_gate": "Review preparation; receive real owner contributions; preserve provenance and revalidate allocation; freeze candidate packet hash/order FOR REVIEW; independent review of ALL 20 final questions then separate owner execution/publication decision",
   "draft_question_count": 20,
   "draft_question_texts_in_git": false,
   "drafts_agent_assisted_not_human_verified": true,
@@ -118,6 +147,7 @@
   "timing_header": [
     "slot",
     "dev_id",
+    "author",
     "start",
     "saved",
     "checked",
@@ -126,6 +156,8 @@
     "note"
   ],
   "review_flags": [
+    "D14/D16 request missing NIST numerical ODP values, not the identity of who defines frequency; no invented defaults or allowlist change",
+    "All current wording remains agent-authored; six paraphrases and two required/one optional scratch substitutes are requests, not completed owner work",
     "Verify genuine corpus-wide negatives, not literal-token absence alone",
     "Verify D10-D12/D18 source-control correspondence in prose; no flattened-row inference",
     "D03/D11, D04/D09, D01/D16, D10/D18 and other related-topic pointers reuse pages/families; do not claim independent comparisons",
