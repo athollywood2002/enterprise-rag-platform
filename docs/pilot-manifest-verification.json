@@ -1,0 +1,24 @@
+{
+  "schema": "private-development-manifest-verification-v1",
+  "source_sha256": "3e4631df8b5d61f40a6e542b52779ef30ddbbfff31e09214fa94ad6e6f5e6d08",
+  "canonical_corpus_sha256": "88c41c768d39674f125540e272d2b7b3ef32b261f9c2bb94f8239935a7ec364d",
+  "serialized_file_sha256": "5ad201e584696c26561a27db282c467ddc09815168cdfa1bbd3c971ec5757816",
+  "serialized_file_bytes": 276924,
+  "physical_pages": 120,
+  "page_hashes_matched": 120,
+  "page_hash_discrepancies": 0,
+  "parser_identity_matches_vetted_inventory": true,
+  "mapping_counts": {
+    "mapped": 498
+  },
+  "private_manifest_mode": "0600",
+  "manifest_published": false,
+  "source_redistribution": "local_only",
+  "publication_boundary": "conditional owner permission and applicable rights/attribution; no automatic publication",
+  "labels_created": false,
+  "pilot_executed": false,
+  "network_during_preparation": "socket connection and DNS denied",
+  "read_only_label_cli_show_returncode": 0,
+  "canonical_display_captured_privately_not_published": true,
+  "label_cli_add_invoked": false
+}

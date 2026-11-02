@@ -1,0 +1,135 @@
+{
+  "schema": "pilot-question-review-metadata-v1",
+  "status": "20 real drafts prepared privately; independent review and owner execution decision pending",
+  "private_review_packet_sha256": "e157cfe7d1fa229b75e2f240c764275059ea5796eb3af2fc2fc8a73b322a7976",
+  "private_review_packet_bytes": 10468,
+  "draft_question_count": 20,
+  "draft_question_texts_in_git": false,
+  "drafts_agent_assisted_not_human_verified": true,
+  "source_sha256": "3e4631df8b5d61f40a6e542b52779ef30ddbbfff31e09214fa94ad6e6f5e6d08",
+  "canonical_corpus_sha256": "88c41c768d39674f125540e272d2b7b3ef32b261f9c2bb94f8239935a7ec364d",
+  "proposed_allocation": [
+    {
+      "draft_refs": [
+        "D01",
+        "D02",
+        "D03",
+        "D04",
+        "D05",
+        "D06"
+      ],
+      "proposed_category": "answerable",
+      "query_type": "semantic",
+      "id_form": null
+    },
+    {
+      "draft_refs": [
+        "D07",
+        "D08",
+        "D09"
+      ],
+      "proposed_category": "answerable",
+      "query_type": "identifier",
+      "id_form": "id-dotted"
+    },
+    {
+      "draft_refs": [
+        "D10"
+      ],
+      "proposed_category": "answerable",
+      "query_type": "identifier",
+      "id_form": "id-padded"
+    },
+    {
+      "draft_refs": [
+        "D11",
+        "D12"
+      ],
+      "proposed_category": "answerable",
+      "query_type": "identifier",
+      "id_form": "id-unpadded"
+    },
+    {
+      "draft_refs": [
+        "D13",
+        "D14",
+        "D15",
+        "D16"
+      ],
+      "proposed_category": "near_miss",
+      "query_type": "semantic",
+      "id_form": null
+    },
+    {
+      "draft_refs": [
+        "D17"
+      ],
+      "proposed_category": "near_miss",
+      "query_type": "identifier",
+      "id_form": "id-dotted"
+    },
+    {
+      "draft_refs": [
+        "D18"
+      ],
+      "proposed_category": "near_miss",
+      "query_type": "identifier",
+      "id_form": "id-unpadded"
+    },
+    {
+      "draft_refs": [
+        "D19",
+        "D20"
+      ],
+      "proposed_category": "off_topic",
+      "query_type": "semantic",
+      "id_form": null
+    }
+  ],
+  "proposed_interleaved_order": [
+    "D01",
+    "D07",
+    "D13",
+    "D10",
+    "D02",
+    "D17",
+    "D11",
+    "D03",
+    "D19",
+    "D08",
+    "D14",
+    "D04",
+    "D12",
+    "D18",
+    "D05",
+    "D09",
+    "D15",
+    "D06",
+    "D20",
+    "D16"
+  ],
+  "all_categories_and_publication_decisions_pending_review": true,
+  "difficulty": "owner to assess; no fabricated values",
+  "reading_pointers_are_not_gold": true,
+  "gold_excerpts_or_offsets_in_packet": false,
+  "labels_created": false,
+  "pilot_executed": false,
+  "independent_review_completed": false,
+  "timing_header": [
+    "slot",
+    "dev_id",
+    "start",
+    "saved",
+    "checked",
+    "retries",
+    "blocked",
+    "note"
+  ],
+  "review_flags": [
+    "Verify genuine corpus-wide negatives, not literal-token absence alone",
+    "Verify D10-D12/D18 source-control correspondence in prose; no flattened-row inference",
+    "D03/D11, D04/D09, D01/D16, D10/D18 and other related-topic pointers reuse pages/families; do not claim independent comparisons",
+    "Only admitted 171r3, no outside documents or SP 800-190",
+    "Agent-assisted question drafts are not human gold or a completed pilot"
+  ]
+}

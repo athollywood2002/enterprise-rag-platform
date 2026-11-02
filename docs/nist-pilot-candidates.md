@@ -13,8 +13,11 @@ preflight remains blocked for that original list; no general cap increase applie
 **Subsequent owner decision:** [limited admission record](pilot-admission.json)
 approves only the vetted SP 800-171r3 for development-pilot use and defers SP 800-190.
 Historical `admission=false` inspection fields above are retained, not rewritten.
-The [proposed pilot protocol](development-pilot-protocol.md) awaits independent
-review and owner authorization before any real-question writing or annotation.
+The owner subsequently approved #69–#72: the [revised pilot protocol](development-pilot-protocol.md),
+20 private real draft questions for review, and private canonical-manifest preparation.
+See [manifest verification](pilot-manifest-verification.json) and
+[draft review metadata](pilot-question-review.json). Independent review and a later
+owner execution decision are still required; no gold labels or pilot run.
 
 This report supports an owner decision; it does not make it. All three sources
 remain `local_only` in inspection metadata. Raw PDFs, downloaded HTML and extracted

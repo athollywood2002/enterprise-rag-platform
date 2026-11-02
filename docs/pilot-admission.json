@@ -2,7 +2,8 @@
   "schema": "development-pilot-admission-record-v1",
   "record_date": "2026-11-02",
   "authority": "Explicit owner decision following independent Option A screening review",
-  "scope": "development-pilot-preparation-only; question writing, annotation and timed execution require further owner authorization",
+  "scope": "development-pilot preparation including authorized real question drafts for review and private canonical manifest; annotation/timed execution still require owner authorization",
+  "preparation_update": "Owner approved findings #69-#72 on 2026-11-02; independent review of revised protocol, manifest verification and 20 draft questions required before execution decision",
   "historical_inspection_records_unchanged": true,
   "documents": [
     {
@@ -44,5 +45,5 @@
     }
   ],
   "not_a_canonical_corpus_or_label_file": true,
-  "not_authorized": ["actual question writing", "real excerpts or gold creation", "annotation", "timed pilot execution", "holdout creation or access", "real retrieval or generation baseline", "PR merges", "live model/API inference", "Docker or GPU or Qdrant actions", "unrelated downloads", "deletions or Phase 1 asset changes"]
+  "not_authorized": ["gold excerpts or labels creation", "annotation", "timed pilot execution", "holdout creation or access", "real retrieval or generation baseline", "PR merges", "live model/API inference", "Docker or GPU or Qdrant actions", "unrelated downloads", "deletions or Phase 1 asset changes"]
 }

@@ -1,11 +1,15 @@
 # Development pilot protocol — proposed, not executed
 
-**Current authorization:** offline preparation only. The owner admitted the exact
+**Current authorization:** offline preparation, including 20 real draft questions
+for independent review and a private canonical manifest; no annotation/execution.
+The owner admitted the exact
 vetted **NIST SP 800-171r3** PDF for development-pilot corpus use, conditionally
 permitted compliant excerpt/label publication, and **deferred SP 800-190**. This
-protocol contains allocation slots and blank recording fields, **no real questions,
-gold excerpts or labels**. PR #12 remains draft/unmerged. No timer, annotation or
+protocol links [draft-question review metadata](pilot-question-review.json) and blank recording
+fields, **no gold excerpts or labels**. PR #12 remains draft/unmerged. No timer, annotation or
 helper `add` session has been run for this pilot.
+The 20 question texts and review pointers are in a private review packet, not Git;
+the owner/independent reviewer receives that packet through the private relay.
 
 ## 1. Decisions and approval gates
 
@@ -16,22 +20,19 @@ supersedes them **only for this named development-pilot use**, not other candida
 final evaluation, publication or operational use. The admission record is not a
 `canonical-corpus-v2` manifest and cannot be used as CLI input.
 
-1. **Now:** independent Code Review assesses this protocol, admission/publishing
-   boundaries and feasibility of the proposed mix. Owner reviews the precise
-   protocol and decides whether to authorize real-question writing. No agents
-   generate actual questions, excerpts or labels in this preparation.
-2. **After separate writing permission:** owner drafts a proposed 20-question
-   allocation using admitted source material, without running the timed pilot or
-   treating the draft as verified gold. Submit the actual proposed questions and
-   any requested deviations for owner approval before annotation. Do not fabricate
-   supporting passages to fill a quota. Record drafting effort separately, so a
-   later prewritten-question entry session does not hide writing costs. Agent
-   participation requires explicit scope.
-3. **Before execution:** owner explicitly authorizes actual annotation and timed
-   execution, confirms the reviewed question-writing plan, corpus identity, rights
-   and recording method. Admission and protocol approval alone are not execution
-   permission. This delivery supplies no runnable canonical corpus or label file.
-4. **After execution:** owner reviews results, failures and effort forecast and
+1. **Authorized preparation:** revise #69–#72, create real drafts for review and
+   build the private hash-checked corpus manifest. Drafting is authorized; gold,
+   annotation and timed execution are not. Agent-prepared drafts are not human
+   verification; owner review effort must still be budgeted.
+2. **Independent check:** Claude Code Review assesses all 20 drafts for actual
+   answerability/category correctness, genuine negatives, source diversity, rights
+   flags and canonical support, plus protocol and manifest verification evidence.
+   Do not fabricate passages to fill a quota; revise or block unsupported items.
+3. **Owner execution decision:** after that check, owner explicitly authorizes
+   actual annotation/timed execution and confirms the reviewed question version,
+   corpus identity, rights and recording method. No further question-writing gate
+   is required for these authorized drafts, but review is NOT execution permission.
+4. **After a separately authorized run:** owner reviews failures and effort forecast and
    decides go/revise/stop before bulk annotation. No automatic scale-up, baseline,
    holdout freeze or final evaluation follows.
 
@@ -57,6 +58,14 @@ hashes with the vetted inventory under its recorded runtime before future annota
 Stop on drift; no silent re-extraction repair, source replacement or offset migration.
 The existing vetted runtime found raw-partition Cf and canonical Cf/Cc = zero (#62).
 That finding is file/runtime-specific, not permission to skip future validation.
+
+**#72 prerequisite completed privately:** the existing offline extractor produced
+a one-document `canonical-corpus-v2` manifest from the retained exact PDF; all 120
+page hashes and parser identity match the vetted inventory, zero discrepancies,
+498 mapped chunks. Strict corpus reload and read-only CLI display were validated.
+See [manifest verification metadata](pilot-manifest-verification.json). The actual
+manifest contains canonical text, is private/uncommitted and is not a holdout or
+label file. File mode 0600 is an accidental-access measure, not same-account secrecy.
 
 Citation to retain with any approved exported excerpts/labels:
 
@@ -90,22 +99,24 @@ Slot ranges are ordering placeholders, not query IDs or real question records.
 | Slots | Category | Query type | Question identifier form | Count |
 | --- | --- | --- | --- | ---: |
 | 01–06 | answerable | semantic | none required | 6 |
-| 07–09 | answerable | identifier | padded | 3 |
-| 10–12 | answerable | identifier | unpadded | 3 |
+| 07–09 | answerable | identifier | dotted | 3 |
+| 10 | answerable | identifier | padded | 1 |
+| 11–12 | answerable | identifier | unpadded | 2 |
 | 13–16 | near_miss | semantic | none required | 4 |
-| 17 | near_miss | identifier | padded | 1 |
+| 17 | near_miss | identifier | dotted | 1 |
 | 18 | near_miss | identifier | unpadded | 1 |
 | 19–20 | off_topic | semantic | none required | 2 |
-| Total | 12 answerable / 6 near-miss / 2 off-topic | 8 identifier / 12 semantic | 4 padded / 4 unpadded | **20** |
+| Total | 12 answerable / 6 near-miss / 2 off-topic | 8 identifier / 12 semantic | 4 dotted / 1 padded / 3 unpadded | **20** |
 
 - Required fields remain explicit: category, query type, owner-assessed difficulty
   (`easy|medium|hard`) and tags. No invented difficulty or automatic defaults to
   make the mix look balanced; record actual judgments and explain any missing levels.
-- Tag **the form in the question**, not the gold/source form: `id-padded` or
-  `id-unpadded`, exclusively for these eight slots. Examples of notation only:
-  `AC-02(04)` versus `AC-2(4)`. Dotted requirement notation such as `03.01.01`
-  is distinct; do not mislabel it padded/unpadded. If dotted-only or mixed-form
-  slots are wanted, propose a revised allocation/tag rule for owner approval first.
+- Tag **the form in the question**, not the gold/source form: `id-dotted`,
+  `id-padded` or `id-unpadded`, exclusively for these eight slots. Examples:
+  `03.01.01`, `AC-02(04)` versus `AC-2(4)`. Native dotted IDs are not padding
+  variants. Mixed-form questions or a changed allocation require review.
+  At one to three items per category/form cell, this is workflow coverage,
+  not a statistically meaningful comparison of identifier forms (#69).
 - Do not rewrite canonical source, excerpts or questions through an automatic ID
   normalizer. Correspondence between forms must be checked by the owner, not
   inferred from string stripping. Query-time normalization is a later P2-B variant.
@@ -128,7 +139,7 @@ Slot ranges are ordering placeholders, not query IDs or real question records.
 - Freeze the approved slot order before execution, interleaving categories/forms
   rather than completing easy items first. Record the chosen permutation and any
   departure. No post-hoc replacements or order changes to improve timing results.
-  The proposed run uses **owner-prewritten, owner-approved questions**, with their
+  The proposed run uses **prewritten, independently checked, owner-approved questions**, with their
   draft version/hash recorded separately. No unreviewed rewrite during the run;
   mark an invalid item blocked and request review.
 
@@ -152,7 +163,7 @@ For each authorized question:
    safely; identifiers must not be manually repaired. Select minimal sufficient
    supporting text, not a whole-page excerpt to avoid ambiguity.
 4. An ambiguous/missing/empty match retries only the current span. Record reported
-   match count, retry count, why a longer excerpt was needed and time spent. Earlier
+   retries in the minimal log and summarize unusual ambiguity in `note`. Earlier
    fields/spans are retained. Do not pick the first repeated ID arbitrarily; verify
    the actual prose location. Multiple disjoint spans are allowed where genuinely
    necessary; overlapping/duplicate spans are rejected. Record multi-span friction.
@@ -178,38 +189,41 @@ replacing or misclassifying it. No real retrieval/inference is needed to time th
 
 ## 5. Timing and friction record template
 
-Record manually with a stopwatch/clock and a private text sidecar; no new service,
-background timer or browser/model tool. This blank field list is **not** a label
-file and contains no populated question or span. Define one clock source/time zone
-and units (seconds), and preserve wall time and interruption time separately.
+Use only this **header-only template** after execution approval (#70); no real
+timing records exist now:
 
-| Field | Record after authorization |
-| --- | --- |
-| Session | date, code commit, parser/normalization/runtime, corpus SHA-256, source SHA-256, approved order, tool/output setup |
-| Slot/reference | approved slot, owner-assigned development ID, category/type/difficulty, form tags, source-family/page reuse flags |
-| Preparation time | session setup/synthetic familiarization and earlier authorized question drafting separately |
-| t0 | begin reading/reviewing the prewritten, approved question |
-| t1 | question/category/type/difficulty finalized for entry |
-| t2 | first canonical page opened or negative-corpus verification begun |
-| t3 | save confirmed (or cancellation/blocker recorded) |
-| t4 | post-save schema/source and human support/absence check completed |
-| Pauses | interruption seconds/reason; keep gross wall time as well as net active time |
-| Friction | choice/number retries, duplicate-ID rejection, excerpt match counts/retries, repeated source IDs, page navigation, multi-span attempts, lock/save/interruption errors |
-| Outcome | saved-draft / cancelled / blocked; sidecar publication eligibility and rights reason; owner semantic-check status, not automatic human-review promotion |
+```csv
+slot,dev_id,start,saved,checked,retries,blocked,note
+```
 
-Use `t4-t0` gross end-to-end time, minus explicitly recorded external interruption
-seconds for active time. Report `t1-t0` question review, `t3-t1` verification/entry/
-save and `t4-t3` post-save check, plus separate session overhead. If drafts were
-prepared outside the timed entry session, include that drafting time separately in the effort
-forecast; do not compare a prewritten-question entry time with a full writing and
-labeling budget. No zero/blank timing value should be invented when a stage is not
-observed. Record terminal work within entry time; a session or item blocked before
-save still consumes effort.
+- `start`: begin reading/reviewing the approved question; `saved`: save confirmed;
+  `checked`: post-save schema/source and human support/absence check completed, or
+  the blocked/cancelled attempt closed (state that disposition in `note`, not
+  a claim that the item passed validation).
+  Use one clock/time zone and ISO timestamps including seconds. Leave an
+  unobserved timestamp empty; never invent a save time for a blocked/cancelled item.
+- `retries`: total rejected input/excerpt attempts for the item, including duplicate
+  IDs. `blocked`: `y` or `n`. Use `note` for cancellation, pauses, unusual match
+  counts, repeated source IDs, multi-span difficulty, rights flags or interruption.
+  No extra mandatory per-item friction form or five-timestamp transcription.
+- Session metadata once: code/runtime/parser/normalization, source/corpus hashes,
+  approved draft version/order, clock/time zone, setup and familiarization effort.
+  Keep question drafting and owner draft-review effort **separate** from entry
+  timing; no drafting time has been measured by this preparation. Agent-assisted
+  drafts do not imply zero human writing/review cost for a future dataset.
+- Report `checked-start` end-to-end and `saved-start` entry/save time where observed.
+  Log external interruptions in `note`; show gross time and any explicitly justified
+  pause-adjusted total, not invented fine-grained phase durations. Include blocked/
+  cancelled effort. Logging overhead itself is part of measured session effort.
+- CLI diagnostics already show ambiguity and match counts. Any later diagnostic
+  capture must stay private and be owner-approved, since it may contain canonical
+  text. Do not add automatic transcript capture or a `--timing-log` feature here.
 
 ## 6. Owner debrief, limits and next decision
 
 After a separately authorized run, report planned/attempted/saved/blocked/cancelled
-counts, observed mix, wall/active totals, median and range by category/form where
+counts, observed mix, gross totals and pause-adjusted totals only where pauses were
+actually recorded, median and range by category/form where
 sample size permits, retry/ambiguity and validation failures, repeated-fact effects
 and rights-withheld items. All durations and counts remain **not measured** now.
 Twenty convenience items from one source are a usability/effort pilot, not a
@@ -234,7 +248,8 @@ cluster-bootstrap requirements. No holdout files, paths, keys or commitments are
 created, inspected or requested. Later blind self-relabel audit and final evaluation
 need separate owner-controlled workflows; no secrecy claim from same-account paths.
 
-**Next gate:** independent Code Review plus owner decision on this protocol and
-permission for actual question writing. No source/API/model/GPU/Docker/Qdrant actions,
+**Next gate:** independent Code Review of protocol, private-manifest verification
+and all 20 draft questions, then owner decision on annotation/timed execution.
+No live API/model/GPU/Docker/Qdrant actions,
 downloads, merges or retained-artifact changes. Rollback: reviewed revert of this
 preparation metadata/docs; historical screening and runtime behavior stay unchanged.
