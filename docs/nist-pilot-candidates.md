@@ -5,6 +5,11 @@
 of three candidates. **Not authorized/performed:** corpus admission, real labels,
 timed pilot, embeddings, retrieval baseline or holdout setup.
 
+**Latest authorized follow-up:** the owner approved screening exactly SP 800-171r3
+and SP 800-190 under a one-time 200-page cap. See [Option A inspection](nist-option-a-inspection.md):
+183 actual pages inspected, still no admission. The earlier 268-page three-document
+preflight remains blocked for that original list; no general cap increase applies.
+
 This report supports an owner decision; it does not make it. All three sources
 remain `local_only` in inspection metadata. Raw PDFs, downloaded HTML and extracted
 text stay outside Git. The [inventory](nist-pilot-inventory.json) contains source
