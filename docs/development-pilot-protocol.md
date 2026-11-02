@@ -2,7 +2,9 @@
 
 **Current authorization:** offline preparation, including 20 real draft questions
 for independent review and a private canonical manifest, plus #73–#74 ODP revisions
-and owner-authorship exercise preparation; no annotation/execution or publication.
+and owner-authorship exercise preparation. The owner has selected eight exact
+AI-assisted wordings; the 20-question candidate and order are frozen FOR REVIEW.
+No annotation/execution or publication is authorized.
 The owner admitted the exact
 vetted **NIST SP 800-171r3** PDF for development-pilot corpus use, conditionally
 permitted compliant excerpt/label publication, and **deferred SP 800-190**. This
@@ -26,18 +28,18 @@ final evaluation, publication or operational use. The admission record is not a
    #73–#74 preparation: replace D14/D16 with numerical ODP near-misses and prepare
    six owner paraphrases plus two required/one optional scratch-written substitutes.
    Eight owner submissions are now received (D01–D07 and D09), with original and
-   AI-edited candidates preserved privately. None is selected/adopted into the
-   working packet; all 20 active working questions remain agent-authored. Following
-   independent review, the owner approved source-grounded AI-assisted proposals for
-   these eight slots and D07 retargeting to 03.03.03. Proposals await owner selection.
-2. **Owner contributions and independent check:** present the proposals for owner
-   selection, then request independent review. Resolve wording selection and authorship
-   before finalization; do not count AI-assisted proposals as independent owner
-   writing or assume past timing exists. Preserve
-   original/revised wording privately, revalidate the allocation, freeze the candidate packet hash
-   and order FOR REVIEW, and request Claude Code Review of ALL 20 final questions,
-   category validity, ODP negatives, authorship, provenance and rights. Any revision
-   requires a new hash/review. Prior review does not approve new owner wording.
+   AI-edited candidates preserved privately. The owner explicitly selected the eight
+   exact source-grounded AI-assisted proposals (including D07 retargeting to
+   03.03.03). They are adopted with owner-derived/AI-assisted provenance, not
+   independently human-written authorship. Original submissions/edits remain separate.
+2. **Independent check pending:** the final candidate hash and interleaved order
+   are frozen FOR REVIEW; see [freeze metadata](pilot-question-review.json).
+   Request Claude Code Review of ALL 20 final-candidate questions, category validity,
+   #76/#77 conventions, authorship, provenance and rights. Prior proposal reviews
+   are not this final independent review. Any revision requires a new version/hash
+   and review; do not silently edit the frozen artifact or carry approval forward.
+   Difficulty is unassessed and past drafting time unrecorded; neither is invented
+   by owner selection. A review freeze is not an execution or holdout freeze.
    Do not fabricate wording, writing time, quality assessments, approval or support.
 3. **Owner execution decision:** after that check, owner explicitly authorizes
    actual annotation/timed execution and confirms the reviewed question version,
@@ -180,7 +182,7 @@ The intended abstention disposition is **not specified; organization-defined**,
 not a gold label or measured score. The existing abstention-evaluation allowlist
 is UNCHANGED; any metrics addition needs separate review before a baseline.
 
-**Owner exercise:** paraphrase D01–D06 (six answerable semantic slots); scratch-write
+**Owner exercise (pre-selection history):** paraphrase D01–D06 (six answerable semantic slots); scratch-write
 substitutes for D07 and D09 (answerable dotted-ID slots), optionally D12 (answerable
 unpadded-ID slot). Use the private worksheet's physical-page pointers. These are
 replacements, not additional slots. Read the context, put it aside, then write in
@@ -195,11 +197,15 @@ variants. Owner originals have owner origin; task validity is not assumed. AI ed
 are agent wording derived from owner input, not exclusively human-written. Record
 prior exposure/editorial coaching and mixed-editing derivation separately; the
 `agent|owner|owner-paraphrased` enum alone is insufficient for that history.
-All 20 current working-packet questions remain `agent`; accepted owner replacements
-are zero pending selection/support review. D12 was not attempted. Owner start/finish
+Eight selected owner-derived/AI-assisted replacements use the coarse author tag
+`owner-paraphrased`; twelve unchanged questions remain `agent`, zero `owner`.
+None is independently owner-written; the tag must be read with the AI-assistance
+and derivation fields, never as proof of a genuine human-only paraphrase or scratch
+sample. D12 was not attempted and is unchanged. Owner start/finish
 timestamps are null and writing time is **NOT RECORDED**, never backfilled from the
-relay timestamp or estimated. Owner approvals remain unset; implementer triage is
-not an owner quality assessment or independent review.
+relay timestamp or estimated. Exact wording selections are recorded from the owner;
+owner quality/difficulty assessments and final independent-review results remain
+unset. Proposal-plan approval and wording acceptance are not execution permission.
 
 **Owner-approved follow-up plan:** preserve the earlier implementer matrix as
 history, but supersede its requirement to rewrite D07 around 03.03.02. Independent
@@ -208,18 +214,32 @@ physical page 33**. Retarget D07 there, still answerable / identifier / `id-dott
 without inventing a fixed retention duration or auditing actual configurations.
 D04's authorized-media-access intent is supported by 03.08.02 on page 55; propose
 that scope instead of forcing cryptography-only wording. D09's proposed question
-keeps 03.08.03, without DoD/vendor obligations. D01–D06 receive source-grounded
-candidate wording; D05 stays limited to initial training. All eight proposals are
-AI-assisted and owner-derived, not independently owner-written. Present exact
-wording and physical-page pointers privately for owner selection or edits.
+keeps 03.08.03, without DoD/vendor obligations. D01–D06 have selected source-grounded
+candidate wording; D05 stays limited to initial training. The eight accepted texts
+match the owner selections exactly. Physical-page pointers remain review context,
+not excerpts, offsets or selected gold spans.
+
+**#77 labeling-consistency rule (owner-approved, pilot duration/frequency items):**
+- **Explicit delegation in requirement text → answerable:** D07/03.03.03.b supplies
+  the substantive records-retention-policy rule. That explicit delegation can be
+  supporting text in a later authorized labeling session; no span is selected now.
+- **Unfilled ODP assignment placeholder → near-miss pilot convention:** D14/D16
+  request review frequency for which the requirement uses an organization-defined
+  assignment. Keep `near_miss`, intended numeric value not specified / organization-
+  defined, with no gold spans. The frequency clause is present; this is the approved
+  convention rather than a claim of total semantic absence.
+- A fabricated concrete NIST-prescribed duration is unsupported in **all three**.
+  Do not treat delegation as a numerical answer or invent a policy's value. Preserve
+  this distinction for later labelers and G1(c); scorer/allowlist code is unchanged
+  and any implementation requires separate metrics review before baseline.
 
 Retain all eight practitioner originals and their earlier AI edits separately in a
 private **potential near-miss reserve** for later development only. They are not
 verified negatives, labels, holdout material, automatically admitted bulk data or
 extra pilot slots. The standard/practitioner implementation gap is a source-scope
 finding, not a writing failure. No reserve publication or corporate data access.
-Owner choices/edits remain unset; no proposal is silently adopted or frozen.
-Working-revision hashing is NOT the final candidate freeze. Source/page hashes,
+The owner-selected final candidate, provenance and order have a review-only freeze
+receipt. Earlier working/proposal snapshots remain unchanged. Source/page hashes,
 conditional publication, development-only use and all execution gates are unchanged.
 
 ### Later authorized annotation
@@ -281,8 +301,9 @@ slot,dev_id,author,start,saved,checked,retries,blocked,note
   a claim that the item passed validation).
   Use one clock/time zone and ISO timestamps including seconds. Leave an
   unobserved timestamp empty; never invent a save time for a blocked/cancelled item.
-- `author`: actual wording provenance, `agent`, `owner` (scratch-written substitute)
-  or `owner-paraphrased`; requested work does not change current authorship.
+- `author`: actual wording provenance, `agent`, `owner` (independent scratch wording)
+  or `owner-paraphrased`; the eight selected owner-derived AI edits use the latter
+  with explicit AI-assisted derivation, not an independent human-authorship claim.
 - `retries`: total rejected input/excerpt attempts for the item, including duplicate
   IDs. `blocked`: `y` or `n`. Use `note` for cancellation, pauses, unusual match
   counts, repeated source IDs, multi-span difficulty, rights flags or interruption.
@@ -342,11 +363,10 @@ cluster-bootstrap requirements. No holdout files, paths, keys or commitments are
 created, inspected or requested. Later blind self-relabel audit and final evaluation
 need separate owner-controlled workflows; no secrecy claim from same-account paths.
 
-**Next gates:** owner selects or edits the eight AI-assisted proposals (D07 now
-03.03.03); preserve actual choice, wording derivation and any prospectively observed
-new writing times, never backfilling first-attempt times;
-then candidate hash/order freeze and independent review of ALL 20 final questions;
-then a separate owner decision on annotation/timed execution/publication.
+**Next gates:** independent review of ALL 20 frozen final-candidate questions,
+including #77, category validity, ODP conventions, authorship/provenance and rights;
+then a separate owner decision on annotation/timed execution/publication. The owner
+selection gate is complete; final independent review and execution permission are not.
 No live API/model/GPU/Docker/Qdrant actions,
 downloads, merges or changes to retained source/manifest evidence. Rollback: reviewed revert of this
 preparation metadata/docs; historical screening and runtime behavior stay unchanged.
