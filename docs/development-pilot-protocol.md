@@ -27,10 +27,13 @@ final evaluation, publication or operational use. The admission record is not a
    six owner paraphrases plus two required/one optional scratch-written substitutes.
    Eight owner submissions are now received (D01–D07 and D09), with original and
    AI-edited candidates preserved privately. None is selected/adopted into the
-   working packet; all 20 active working questions remain agent-authored.
-2. **Owner contributions and independent check:** request review of the preparation
-   revisions and all eight owner submissions now. Resolve semantic drift, missing
-   identifiers, wording selection and authorship before finalization. Preserve
+   working packet; all 20 active working questions remain agent-authored. Following
+   independent review, the owner approved source-grounded AI-assisted proposals for
+   these eight slots and D07 retargeting to 03.03.03. Proposals await owner selection.
+2. **Owner contributions and independent check:** present the proposals for owner
+   selection, then request independent review. Resolve wording selection and authorship
+   before finalization; do not count AI-assisted proposals as independent owner
+   writing or assume past timing exists. Preserve
    original/revised wording privately, revalidate the allocation, freeze the candidate packet hash
    and order FOR REVIEW, and request Claude Code Review of ALL 20 final questions,
    category validity, ODP negatives, authorship, provenance and rights. Any revision
@@ -163,9 +166,15 @@ discussions (31–32 and 60–61), full-corpus phrase contexts and Appendix D en
 `03.03.01.b` (116) / `03.10.01.c` (117) delegate frequency to the organization;
 retained canonical and pypdf text were cross-checked. No fixed numerical day value
 was identified. This is not absence of the topic: the missing fact is the requested
-NIST numerical value under the original rationale. The new neutral wording may
-permit a supported organization-defined response; explicitly request independent
-category review of that ambiguity, without silently reclassifying the slots.
+NIST numerical value under the original rationale. Independent review confirmed
+that neutral wording permits a supported organization-defined response. The owner
+approved retaining D14/D16 as `near_miss` under this explicit **pilot convention**:
+the intended response states that the numeric interval is not specified / is
+organization-defined; a concrete NIST-prescribed interval is unsupported. No gold
+spans are created for these two items. This does not claim their source topic or
+frequency clause is absent, and is not a general semantic reclassification rule.
+Revisit the convention in G1(c) before baseline scoring; do not apply it silently
+to D07's answerable policy-linked retention question.
 Do not invent annual/90-day defaults or import outside policy.
 The intended abstention disposition is **not specified; organization-defined**,
 not a gold label or measured score. The existing abstention-evaluation allowlist
@@ -192,12 +201,24 @@ timestamps are null and writing time is **NOT RECORDED**, never backfilled from 
 relay timestamp or estimated. Owner approvals remain unset; implementer triage is
 not an owner quality assessment or independent review.
 
-The private revision-needed matrix flags scope/assumption drift in D01/D02/D04–D06,
-an AI-assisted generic option for D03 requiring owner choice, and new genuine
-scratch questions needed for D07/D09. The latter omit required dotted identifiers
-and introduce unsupported retention/configuration or DoD/vendor obligations.
-D04 has related authorized-media-access support, but cannot audit actual AD groups.
-Do not auto-reclassify, auto-adopt AI edits, or append IDs to unsupported questions.
+**Owner-approved follow-up plan:** preserve the earlier implementer matrix as
+history, but supersede its requirement to rewrite D07 around 03.03.02. Independent
+review found the owner's retention-policy intent supported by **03.03.03.b on
+physical page 33**. Retarget D07 there, still answerable / identifier / `id-dotted`,
+without inventing a fixed retention duration or auditing actual configurations.
+D04's authorized-media-access intent is supported by 03.08.02 on page 55; propose
+that scope instead of forcing cryptography-only wording. D09's proposed question
+keeps 03.08.03, without DoD/vendor obligations. D01–D06 receive source-grounded
+candidate wording; D05 stays limited to initial training. All eight proposals are
+AI-assisted and owner-derived, not independently owner-written. Present exact
+wording and physical-page pointers privately for owner selection or edits.
+
+Retain all eight practitioner originals and their earlier AI edits separately in a
+private **potential near-miss reserve** for later development only. They are not
+verified negatives, labels, holdout material, automatically admitted bulk data or
+extra pilot slots. The standard/practitioner implementation gap is a source-scope
+finding, not a writing failure. No reserve publication or corporate data access.
+Owner choices/edits remain unset; no proposal is silently adopted or frozen.
 Working-revision hashing is NOT the final candidate freeze. Source/page hashes,
 conditional publication, development-only use and all execution gates are unchanged.
 
@@ -321,8 +342,9 @@ cluster-bootstrap requirements. No holdout files, paths, keys or commitments are
 created, inspected or requested. Later blind self-relabel audit and final evaluation
 need separate owner-controlled workflows; no secrecy claim from same-account paths.
 
-**Next gates:** independent review of #76 and the eight owner submissions, then
-owner resolution of semantic/slot/authorship issues;
+**Next gates:** owner selects or edits the eight AI-assisted proposals (D07 now
+03.03.03); preserve actual choice, wording derivation and any prospectively observed
+new writing times, never backfilling first-attempt times;
 then candidate hash/order freeze and independent review of ALL 20 final questions;
 then a separate owner decision on annotation/timed execution/publication.
 No live API/model/GPU/Docker/Qdrant actions,
