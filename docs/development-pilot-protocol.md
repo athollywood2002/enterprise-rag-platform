@@ -25,10 +25,13 @@ final evaluation, publication or operational use. The admission record is not a
    supported the original 12 answerable and eight negative drafts. Owner then approved
    #73–#74 preparation: replace D14/D16 with numerical ODP near-misses and prepare
    six owner paraphrases plus two required/one optional scratch-written substitutes.
-   All current wording is still agent-authored; no owner contributions are received.
+   Eight owner submissions are now received (D01–D07 and D09), with original and
+   AI-edited candidates preserved privately. None is selected/adopted into the
+   working packet; all 20 active working questions remain agent-authored.
 2. **Owner contributions and independent check:** request review of the preparation
-   revisions now. Once real owner contributions arrive, preserve original/revised
-   wording privately, revalidate the allocation, freeze the candidate packet hash
+   revisions and all eight owner submissions now. Resolve semantic drift, missing
+   identifiers, wording selection and authorship before finalization. Preserve
+   original/revised wording privately, revalidate the allocation, freeze the candidate packet hash
    and order FOR REVIEW, and request Claude Code Review of ALL 20 final questions,
    category validity, ODP negatives, authorship, provenance and rights. Any revision
    requires a new hash/review. Prior review does not approve new owner wording.
@@ -152,14 +155,18 @@ Slot ranges are ordering placeholders, not query IDs or real question records.
 
 ### Preparation changes #73–#74 (not annotation)
 
-**ODP negatives:** D14 and D16 remain semantic near-misses. They now request a
-NIST-fixed number of days between event-type reviews and facility-access-list
-reviews, respectively. The requirement contexts (physical pages 31 and 60),
+**ODP negatives:** D14 and D16 retain their proposed semantic near-miss categories.
+Following #76, neutral questions about event-type and facility-access-list review
+frequency replace the leading fixed-number wording. These are agent edits, not
+owner contributions. The requirement contexts (physical pages 31 and 60),
 discussions (31–32 and 60–61), full-corpus phrase contexts and Appendix D entries
 `03.03.01.b` (116) / `03.10.01.c` (117) delegate frequency to the organization;
 retained canonical and pypdf text were cross-checked. No fixed numerical day value
 was identified. This is not absence of the topic: the missing fact is the requested
-NIST numerical value. Do not invent annual/90-day defaults or import outside policy.
+NIST numerical value under the original rationale. The new neutral wording may
+permit a supported organization-defined response; explicitly request independent
+category review of that ambiguity, without silently reclassifying the slots.
+Do not invent annual/90-day defaults or import outside policy.
 The intended abstention disposition is **not specified; organization-defined**,
 not a gold label or measured score. The existing abstention-evaluation allowlist
 is UNCHANGED; any metrics addition needs separate review before a baseline.
@@ -173,10 +180,24 @@ Record prior draft exposure honestly; no blind-authorship or lexical-leakage-rem
 claim. Preserve D05's initial-training scope and independently check any changed
 fact/form. If a supported substitute is not feasible, flag the slot for review.
 
-Private provenance retains original agent wording, current agent revisions and
-separate owner wording/timestamps/notes. Actual `author` is one of `agent`, `owner`,
-`owner-paraphrased`; ALL 20 currently remain `agent`. Owner fields and quality/
-approval judgments are null, not placeholders claiming completed owner work.
+Private provenance retains original agent wording, prior/current agent revisions,
+eight verbatim owner submissions (including clarification) and nine AI-edited
+variants. Owner originals have owner origin; task validity is not assumed. AI edits
+are agent wording derived from owner input, not exclusively human-written. Record
+prior exposure/editorial coaching and mixed-editing derivation separately; the
+`agent|owner|owner-paraphrased` enum alone is insufficient for that history.
+All 20 current working-packet questions remain `agent`; accepted owner replacements
+are zero pending selection/support review. D12 was not attempted. Owner start/finish
+timestamps are null and writing time is **NOT RECORDED**, never backfilled from the
+relay timestamp or estimated. Owner approvals remain unset; implementer triage is
+not an owner quality assessment or independent review.
+
+The private revision-needed matrix flags scope/assumption drift in D01/D02/D04–D06,
+an AI-assisted generic option for D03 requiring owner choice, and new genuine
+scratch questions needed for D07/D09. The latter omit required dotted identifiers
+and introduce unsupported retention/configuration or DoD/vendor obligations.
+D04 has related authorized-media-access support, but cannot audit actual AD groups.
+Do not auto-reclassify, auto-adopt AI edits, or append IDs to unsupported questions.
 Working-revision hashing is NOT the final candidate freeze. Source/page hashes,
 conditional publication, development-only use and all execution gates are unchanged.
 
@@ -268,7 +289,8 @@ Start before reading the context for that task; finish when replacement wording 
 ready. Use one clock/time zone and ISO timestamps including seconds; note pauses,
 restarts, prior exposure and uncertainty. Leave unobserved times unrecorded, not
 estimated. Preserve actual owner wording separately, and measure later draft-review
-effort separately. No owner writing time or human difficulty is measured yet.
+effort separately. The eight received submissions have no observed writing times;
+do not retroactively fill this log. Human difficulty remains unassessed.
 
 ## 6. Owner debrief, limits and next decision
 
@@ -299,7 +321,8 @@ cluster-bootstrap requirements. No holdout files, paths, keys or commitments are
 created, inspected or requested. Later blind self-relabel audit and final evaluation
 need separate owner-controlled workflows; no secrecy claim from same-account paths.
 
-**Next gates:** independent review of #73–#74 preparation and real owner contributions;
+**Next gates:** independent review of #76 and the eight owner submissions, then
+owner resolution of semantic/slot/authorship issues;
 then candidate hash/order freeze and independent review of ALL 20 final questions;
 then a separate owner decision on annotation/timed execution/publication.
 No live API/model/GPU/Docker/Qdrant actions,
