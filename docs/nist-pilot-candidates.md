@@ -5,10 +5,16 @@
 of three candidates. **Not authorized/performed:** corpus admission, real labels,
 timed pilot, embeddings, retrieval baseline or holdout setup.
 
-**Latest authorized follow-up:** the owner approved screening exactly SP 800-171r3
+**Screening follow-up (before admission):** the owner approved screening exactly SP 800-171r3
 and SP 800-190 under a one-time 200-page cap. See [Option A inspection](nist-option-a-inspection.md):
-183 actual pages inspected, still no admission. The earlier 268-page three-document
+183 actual pages inspected, with no admission at inspection time. The earlier 268-page three-document
 preflight remains blocked for that original list; no general cap increase applies.
+
+**Subsequent owner decision:** [limited admission record](pilot-admission.json)
+approves only the vetted SP 800-171r3 for development-pilot use and defers SP 800-190.
+Historical `admission=false` inspection fields above are retained, not rewritten.
+The [proposed pilot protocol](development-pilot-protocol.md) awaits independent
+review and owner authorization before any real-question writing or annotation.
 
 This report supports an owner decision; it does not make it. All three sources
 remain `local_only` in inspection metadata. Raw PDFs, downloaded HTML and extracted
