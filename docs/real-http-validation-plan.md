@@ -59,13 +59,20 @@ Do not install packages, download parser resources, pull models, or modify a
 shared environment as an implicit repair.
 
 ```bash
-test "$(git rev-parse HEAD)" = "6000ccd0202acfaa2cfba814e6c9e5a83abc03a1"
-test -z "$(git status --porcelain)"
-test ! -e .env
-python -m pip check
+bash <<'PREFLIGHT'
+checkout_commit=$(git rev-parse HEAD) || exit 1
+test "$checkout_commit" = "6000ccd0202acfaa2cfba814e6c9e5a83abc03a1" || exit 1
+checkout_status=$(git status --porcelain) || exit 1
+test -z "$checkout_status" || exit 1
+test ! -e .env || exit 1
+test ! -L .env || exit 1
+python -m pip check || exit 1
+PREFLIGHT
 ```
 
-Create one new ignored run directory, fixture and offline parser receipt:
+Stop if the standalone preflight exits nonzero; do not run subsequent blocks.
+Then validate imported-code provenance before reserving output or parsing, and
+create one new ignored run directory, fixture and offline parser receipt:
 
 ```python
 import hashlib
@@ -75,6 +82,7 @@ from evaluation.run import new_output, provenance
 from evaluation.smoke import FACTS, SOURCE, fixture_identity, fixture_pdf
 from rag.documents import parse_document
 
+code = provenance()
 out = new_output(Path("evaluation-runs/real-http-001"))
 data = fixture_pdf()
 chunks = parse_document(data, SOURCE)
@@ -87,7 +95,7 @@ receipt = {
     "status": "parser-preflight-only",
     "fixture": fixture_identity(),
     "document_sha256": hashlib.sha256(data).hexdigest(),
-    "provenance": provenance(),
+    "provenance": code,
     "chunks": 3,
     "pages": [1, 2, 3],
 }
@@ -127,18 +135,38 @@ no other clients or alias administration during the run.
 The following client template uses a fresh in-memory key shared with the owned
 API process by the approved launcher. `RAG_EVAL_API_KEY` is not an API setting;
 the launcher must pass the same value to the server as `API_KEY`.
-Run under the approved supervisor. Each response is preserved before checking
+Before creating any client, verify the stored PDF and parser receipt against the
+authored fixture identity and bytes. Missing, malformed or changed evidence stops
+the client without HTTP. Run under the approved supervisor.
+Each response is preserved before checking
 its status. Any exception/nonexpected result ends the sequence without retry.
 
 ```python
+import hashlib
 import json
 import os
 from pathlib import Path
 import httpx
-from evaluation.smoke import QUESTIONS, SOURCE
+from evaluation.smoke import QUESTIONS, SOURCE, fixture_identity, fixture_pdf
 
 out = Path("evaluation-runs/real-http-001")
-document = (out / SOURCE).read_bytes()
+try:
+    document = (out / SOURCE).read_bytes()
+    receipt = json.loads((out / "parser-preflight.json").read_text())
+except (OSError, ValueError) as error:
+    raise RuntimeError("STOP: missing or malformed fixture evidence") from error
+expected_fixture = fixture_identity()
+expected_digest = hashlib.sha256(fixture_pdf()).hexdigest()
+if (
+    not isinstance(receipt, dict)
+    or receipt.get("status") != "parser-preflight-only"
+    or receipt.get("fixture") != expected_fixture
+    or receipt.get("document_sha256") != expected_digest
+    or hashlib.sha256(document).hexdigest() != expected_digest
+    or receipt.get("chunks") != 3
+    or receipt.get("pages") != [1, 2, 3]
+):
+    raise RuntimeError("STOP: fixture evidence differs from the authored fixture")
 key = os.environ["RAG_EVAL_API_KEY"]
 if not key:
     raise RuntimeError("STOP: missing test key")
