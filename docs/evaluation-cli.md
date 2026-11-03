@@ -27,11 +27,14 @@ real Qdrant-client construction guards are active before engine construction.
 Patches restore on exit; no existing API dependency cache or collection is used.
 
 Checks cover authentication, multipart ingestion, source/page propagation, fixed
-stub rank selection, empty retrieval and stable IDs on exact reingestion. There
-are two uploads and three questions; expected counts are nine **stub** embeddings,
+stub rank selection, the no-sources code path and stable IDs on exact reingestion.
+There are two uploads and three questions; expected counts are nine **stub** embeddings,
 two **stub** chats, two parser passes, three searches and three in-memory points.
-The third question deliberately receives empty retrieval. This checks a code
-branch, not semantic abstention. The answers are scripted, not quality evidence.
+The `empty_retrieval_branch` check covers the no-sources code path: for the third
+question, the stub returns no points because its vector is zero. A non-empty real
+Qdrant collection normally returns top-k candidates instead; real negative
+questions therefore need generation and semantic review. This stub check is not
+retrieval-based abstention coverage. The answers are scripted, not quality evidence.
 
 The fixture is a valid PDF, but parsing it is stubbed here. An optional isolated
 real-parser preflight is available in the tests; it is not live-service testing:
@@ -48,9 +51,12 @@ Schema `rag-synthetic-evaluation-v1` records mode/status, fixture and question
 hashes, relevant code hashes, Git commit/dirty flag, Python/package versions,
 explicit zero real network/model/database operations, scope limits and results.
 Timestamps, durations, credentials and absolute filesystem paths are omitted.
-In the same code/environment state, offline manifests are byte-identical. This
-does not make real inference deterministic. Exit codes: 0 passed/planned, 1 smoke
-failed, 2 invalid arguments/configuration/output. A smoke failure retains a
+Offline replay demonstrated byte-identical manifests **within the same environment**,
+with matching code, Git state, Python and package versions. Versions and provenance
+intentionally vary across environments, so cross-environment hashes are not
+expected to match. This does not make real inference deterministic.
+Exit codes: 0 passed/planned, 1 smoke failed, 2 invalid
+arguments/configuration/output. A smoke failure retains a
 sanitized failed manifest without raw exception text; interrupts and output-write
 failures can leave an incomplete directory, which must be preserved and inspected.
 
