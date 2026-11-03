@@ -14,6 +14,15 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 from rag.chunking import TITLE_CHUNKING
+from rag.requirement_chunking import (
+    NIST_REQUIREMENT_POLICY,
+    NIST_REQUIREMENT_STRATEGY,
+    ChunkingStrategy,
+    RequirementState,
+    requirement_page_fragments,
+    validate_chunking_strategy,
+    validate_requirement_identity,
+)
 
 if TYPE_CHECKING:
     from evaluation.corpus import CanonicalDocument, SourceRecord
@@ -71,10 +80,15 @@ class CanonicalExtraction:
     chunks: tuple[ChunkLocation, ...]
     chunking_policy: str = TITLE_CHUNKING.policy_id
     empty_skipped: int = 0
+    layout_skipped: tuple[ChunkLocation, ...] = ()
 
     @classmethod
     def from_mappings(
-        cls, document: CanonicalDocument, mappings: tuple[ChunkLocation, ...]
+        cls,
+        document: CanonicalDocument,
+        mappings: tuple[ChunkLocation, ...],
+        *,
+        chunking_policy: str = TITLE_CHUNKING.policy_id,
     ) -> CanonicalExtraction:
         """Separate non-retrievable empty diagnostics from candidate locations."""
         skipped = tuple(c for c in mappings if c.status == "empty_skipped")
@@ -91,6 +105,7 @@ class CanonicalExtraction:
             document=document,
             chunks=tuple(c for c in mappings if c.status != "empty_skipped"),
             empty_skipped=len(skipped),
+            chunking_policy=chunking_policy,
         )
 
     @property
@@ -98,10 +113,18 @@ class CanonicalExtraction:
         counts = Counter(chunk.status for chunk in self.chunks)
         if self.empty_skipped:
             counts["empty_skipped"] = self.empty_skipped
+        if self.layout_skipped:
+            counts["layout_skipped"] = len(self.layout_skipped)
         return dict(counts)
 
 
-def extract_pdf(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalExtraction:
+def extract_pdf(
+    data: bytes,
+    *,
+    doc_id: str,
+    source: SourceRecord,
+    chunking_strategy: ChunkingStrategy = "title",
+) -> CanonicalExtraction:
     """One pinned Unstructured pass supplies both canonical pages and real chunks.
 
     Local embedded-text PDFs only. No downloads, OCR, model/database calls or
@@ -110,6 +133,8 @@ def extract_pdf(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalE
     """
     from evaluation.corpus import CanonicalDocument, CanonicalPage, Package, ParserIdentity
     from evaluation.spans import map_chunks
+
+    validate_chunking_strategy(chunking_strategy)
 
     if any(
         os.environ.get(name) != expected
@@ -162,15 +187,40 @@ def extract_pdf(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalE
         pages=tuple(pages),
     )
     located = []
+    layout_skipped = []
+    state = RequirementState()
     for number, page_elements in grouped.items():
         if not page_elements:
             continue
-        chunks = chunk_by_title(
-            page_elements,
-            **asdict(TITLE_CHUNKING),
-        )
-        located.extend(map_chunks(document, number, tuple(str(chunk) for chunk in chunks)))
-    return CanonicalExtraction.from_mappings(document, tuple(located))
+        if chunking_strategy == NIST_REQUIREMENT_STRATEGY:
+            fragments = requirement_page_fragments(page_elements, state)
+            # Map ALL source text before removing any layout from retrieval.
+            # Otherwise strict ordered-prefix mapping would shift/fail offsets.
+            mappings = map_chunks(document, number, tuple(f.text for f in fragments))
+            if len(mappings) != len(fragments) or any(c.status != "mapped" for c in mappings):
+                raise ValueError("Requirement fragments must all map before layout exclusion")
+            for fragment, mapping in zip(fragments, mappings, strict=True):
+                (located if fragment.indexable else layout_skipped).append(mapping)
+            continue
+        else:
+            chunks = chunk_by_title(page_elements, **asdict(TITLE_CHUNKING))
+            texts = tuple(str(chunk) for chunk in chunks)
+        located.extend(map_chunks(document, number, texts))
+    if chunking_strategy == NIST_REQUIREMENT_STRATEGY:
+        validate_requirement_identity(state, document.doc_version)
+    policy = (
+        NIST_REQUIREMENT_POLICY
+        if chunking_strategy == NIST_REQUIREMENT_STRATEGY
+        else TITLE_CHUNKING.policy_id
+    )
+    extraction = CanonicalExtraction.from_mappings(document, tuple(located), chunking_policy=policy)
+    return CanonicalExtraction(
+        document=extraction.document,
+        chunks=extraction.chunks,
+        chunking_policy=extraction.chunking_policy,
+        empty_skipped=extraction.empty_skipped,
+        layout_skipped=tuple(layout_skipped),
+    )
 
 
 def extract_markdown(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalExtraction:

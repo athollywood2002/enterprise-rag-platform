@@ -74,6 +74,11 @@ allowlisted is not evidence of full format validation. Real automated parsing
 coverage focuses on text PDFs and TXT. See [parser verification](docs/parser-verification.md),
 [HTTP contract](docs/document-http-contract.md) and [migration notes](docs/aiminirig-migration.md).
 
+An experimental [requirement/page strategy](docs/requirement-aware-chunking.md)
+is available through an explicit Python keyword for NIST-style PDFs. It does not
+change default or HTTP ingestion, and needs separate offline/context-budget review
+before any model evaluation.
+
 ## Tests and observed scope
 
 Base tests run with `python -m pytest -q` (or `pytest -q`). For optional real
