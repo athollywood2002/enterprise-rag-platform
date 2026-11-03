@@ -150,33 +150,44 @@ with httpx.Client(
     follow_redirects=False,
     timeout=httpx.Timeout(600.0, connect=5.0),
 ) as client:
+
     def request(name, path, expected, **kwargs):
         response = client.post(path, **kwargs)
         with (out / (name + ".json")).open("x") as f:
-            json.dump({
-                "status_code": response.status_code,
-                "body": response.text,
-            }, f, indent=2)
+            json.dump(
+                {
+                    "status_code": response.status_code,
+                    "body": response.text,
+                },
+                f,
+                indent=2,
+            )
         if response.status_code != expected:
             raise RuntimeError("STOP: unexpected HTTP status")
         return response.json()
 
     def upload(name, authenticated=True):
         return request(
-            name, "/ingest/document", 200 if authenticated else 401,
+            name,
+            "/ingest/document",
+            200 if authenticated else 401,
             headers=headers if authenticated else {},
             files={"file": (SOURCE, document, "application/pdf")},
         )
 
     upload("01-unauthorized-upload", authenticated=False)
-    request("02-unauthorized-ask", "/ask", 401,
-            json={"question": QUESTIONS[0], "top_k": 2})
+    request("02-unauthorized-ask", "/ask", 401, json={"question": QUESTIONS[0], "top_k": 2})
     first = upload("03-upload")
     if first != {"source": SOURCE, "chunks_indexed": 3}:
         raise RuntimeError("STOP: unexpected ingestion result")
     for i, question in enumerate(QUESTIONS, 1):
-        request(f"04-question-{i}", "/ask", 200, headers=headers,
-                json={"question": question, "top_k": 2})
+        request(
+            f"04-question-{i}",
+            "/ask",
+            200,
+            headers=headers,
+            json={"question": question, "top_k": 2},
+        )
     second = upload("05-reingestion")
     if second != first:
         raise RuntimeError("STOP: reingestion result differs")
