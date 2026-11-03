@@ -14,6 +14,14 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 from rag.chunking import TITLE_CHUNKING
+from rag.requirement_chunking import (
+    NIST_REQUIREMENT_POLICY,
+    NIST_REQUIREMENT_STRATEGY,
+    ChunkingStrategy,
+    RequirementState,
+    requirement_page_fragments,
+    validate_chunking_strategy,
+)
 
 if TYPE_CHECKING:
     from evaluation.corpus import CanonicalDocument, SourceRecord
@@ -74,7 +82,11 @@ class CanonicalExtraction:
 
     @classmethod
     def from_mappings(
-        cls, document: CanonicalDocument, mappings: tuple[ChunkLocation, ...]
+        cls,
+        document: CanonicalDocument,
+        mappings: tuple[ChunkLocation, ...],
+        *,
+        chunking_policy: str = TITLE_CHUNKING.policy_id,
     ) -> CanonicalExtraction:
         """Separate non-retrievable empty diagnostics from candidate locations."""
         skipped = tuple(c for c in mappings if c.status == "empty_skipped")
@@ -91,6 +103,7 @@ class CanonicalExtraction:
             document=document,
             chunks=tuple(c for c in mappings if c.status != "empty_skipped"),
             empty_skipped=len(skipped),
+            chunking_policy=chunking_policy,
         )
 
     @property
@@ -101,7 +114,13 @@ class CanonicalExtraction:
         return dict(counts)
 
 
-def extract_pdf(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalExtraction:
+def extract_pdf(
+    data: bytes,
+    *,
+    doc_id: str,
+    source: SourceRecord,
+    chunking_strategy: ChunkingStrategy = "title",
+) -> CanonicalExtraction:
     """One pinned Unstructured pass supplies both canonical pages and real chunks.
 
     Local embedded-text PDFs only. No downloads, OCR, model/database calls or
@@ -110,6 +129,8 @@ def extract_pdf(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalE
     """
     from evaluation.corpus import CanonicalDocument, CanonicalPage, Package, ParserIdentity
     from evaluation.spans import map_chunks
+
+    validate_chunking_strategy(chunking_strategy)
 
     if any(
         os.environ.get(name) != expected
@@ -162,15 +183,24 @@ def extract_pdf(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalE
         pages=tuple(pages),
     )
     located = []
+    state = RequirementState()
     for number, page_elements in grouped.items():
         if not page_elements:
             continue
-        chunks = chunk_by_title(
-            page_elements,
-            **asdict(TITLE_CHUNKING),
-        )
-        located.extend(map_chunks(document, number, tuple(str(chunk) for chunk in chunks)))
-    return CanonicalExtraction.from_mappings(document, tuple(located))
+        if chunking_strategy == NIST_REQUIREMENT_STRATEGY:
+            texts = tuple(f.text for f in requirement_page_fragments(page_elements, state))
+        else:
+            chunks = chunk_by_title(page_elements, **asdict(TITLE_CHUNKING))
+            texts = tuple(str(chunk) for chunk in chunks)
+        located.extend(map_chunks(document, number, texts))
+    if chunking_strategy == NIST_REQUIREMENT_STRATEGY and not state.seen:
+        raise ValueError("No supported requirement headings; use the default title strategy")
+    policy = (
+        NIST_REQUIREMENT_POLICY
+        if chunking_strategy == NIST_REQUIREMENT_STRATEGY
+        else TITLE_CHUNKING.policy_id
+    )
+    return CanonicalExtraction.from_mappings(document, tuple(located), chunking_policy=policy)
 
 
 def extract_markdown(data: bytes, *, doc_id: str, source: SourceRecord) -> CanonicalExtraction:

@@ -12,6 +12,13 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 from rag.chunking import TITLE_CHUNKING
+from rag.requirement_chunking import (
+    NIST_REQUIREMENT_STRATEGY,
+    ChunkingStrategy,
+    RequirementState,
+    requirement_page_fragments,
+    validate_chunking_strategy,
+)
 
 if TYPE_CHECKING:
     from unstructured.documents.elements import Element
@@ -37,9 +44,12 @@ class DocumentChunk:
     source: str
     number: int
     page_number: int | None = None
+    requirement_id: str | None = None
 
 
-def parse_document(data: bytes, filename: str) -> list[DocumentChunk]:
+def parse_document(
+    data: bytes, filename: str, *, chunking_strategy: ChunkingStrategy = "title"
+) -> list[DocumentChunk]:
     """Parse local uploads into page-local, title-aware chunks.
 
     Optional imports follow input validation. PDF extraction is text-only (fast),
@@ -47,6 +57,9 @@ def parse_document(data: bytes, filename: str) -> list[DocumentChunk]:
     """
     safe_name = sanitize_document_filename(filename)
     suffix = Path(safe_name).suffix.lower()
+    validate_chunking_strategy(chunking_strategy)
+    if chunking_strategy == NIST_REQUIREMENT_STRATEGY and suffix != ".pdf":
+        raise ValueError("The opt-in requirement strategy supports PDF only")
     if suffix not in SUPPORTED_EXTENSIONS:
         raise ValueError(f"Unsupported extension: {suffix}")
     if not data:
@@ -59,6 +72,28 @@ def parse_document(data: bytes, filename: str) -> list[DocumentChunk]:
 
     if not elements:
         raise ValueError("Document contains no extractable text")
+
+    if chunking_strategy == NIST_REQUIREMENT_STRATEGY:
+        results = []
+        state = RequirementState()
+        previous_page = 0
+        for page, page_elements in groupby(elements, key=_page_number):
+            if page is None or page <= previous_page:
+                raise ValueError("Requirement strategy needs known, increasing physical pages")
+            previous_page = page
+            for fragment in requirement_page_fragments(page_elements, state):
+                results.append(
+                    DocumentChunk(
+                        text=fragment.text,
+                        source=safe_name,
+                        number=len(results),
+                        page_number=page,
+                        requirement_id=fragment.requirement_id,
+                    )
+                )
+        if not state.seen:
+            raise ValueError("No supported requirement headings; use the default title strategy")
+        return results
 
     from unstructured.chunking.title import chunk_by_title
 
