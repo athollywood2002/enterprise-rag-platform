@@ -4,6 +4,9 @@
 
 > **Status: v0.1 prototype.** For local lab use only; not yet production hardened. No employer or customer data.
 
+See [current status](docs/CURRENT_STATUS.md) for the distinction between `main`,
+draft candidates and the private provisional pilot.
+
 ## Architecture
 
 See [architecture notes and roadmap](docs/architecture.md).
@@ -91,6 +94,14 @@ Tests block live database/inference access. CI runs base-only and parser-enabled
 jobs; neither is a live RAG test. [Offline abstention regression](docs/abstention-regression.md)
 recognizes limited wordings and sends unsupported phrasing to manual review; it
 does not establish semantic grounding.
+
+### Synthetic evaluation smoke
+
+From the repository root, run
+`python -m evaluation.run --output evaluation-runs/offline-001`.
+See the [evaluation CLI guide](docs/evaluation-cli.md) for scope, manifests and
+plan-only local gates. This uses real HTTP routes/core with stub services, not
+live inference or a quality benchmark.
 
 ### Offline development labeling
 
