@@ -21,6 +21,36 @@ class Chunk:
     page_number: int | None = None
 
 
+def generation_evidence(data: dict, answer: str, cap: int | None) -> dict:
+    """Protocol completion evidence only; never copy the model's thinking trace."""
+    done = data.get("done") if type(data.get("done")) is bool else None
+    reason = data.get("done_reason") if isinstance(data.get("done_reason"), str) else None
+    count = data.get("eval_count")
+    if type(count) is not int or count < 0:
+        count = None
+    empty = not answer.strip()
+    if reason == "length":
+        status = "limit"
+    elif cap is not None and count is not None and count >= cap:
+        # Even a simultaneous natural stop at the cap needs review; not proof
+        # of truncation, nor evidence of unused output budget.
+        status = "budget_reached"
+    elif empty:
+        status = "empty"
+    elif done is True and reason == "stop":
+        status = "complete"
+    else:
+        status = "unknown"
+    return {
+        "status": status,
+        "done": done,
+        "done_reason": reason,
+        "eval_count": count,
+        "num_predict": cap,
+        "visible_empty": empty,
+    }
+
+
 def chunk_text(text: str, source: str, size: int = 900, overlap: int = 150) -> list[Chunk]:
     if size <= 0 or not 0 <= overlap < size:
         raise ValueError("Require size > 0 and 0 <= overlap < size")
@@ -132,6 +162,9 @@ class RagEngine:
         return len(points)
 
     def ask(self, question: str, top_k: int = 5) -> dict:
+        # Recheck at dispatch too: unvalidated model_copy/model_construct must
+        # not forward a boolean, negative sentinel or overflowing integer.
+        cap = Settings.validate_generation_cap(self.config.ollama_num_predict)
         vector = self.embed(question)
         if not self.db.collection_exists(self.config.qdrant_collection):
             return {"answer": "I don't know based on the available documents.", "sources": []}
@@ -162,15 +195,25 @@ class RagEngine:
             "If insufficient, say you don't know. Cite excerpt numbers like [1].\n\n"
             f"Excerpts:\n{context}\n\nQuestion: {question}"
         )
+        payload = {
+            "model": self.config.ollama_chat_model,
+            "stream": False,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if cap is not None:
+            payload["options"] = {"num_predict": cap}
         with httpx.Client(timeout=180) as client:
             response = client.post(
                 f"{self.config.ollama_url.rstrip('/')}/api/chat",
-                json={
-                    "model": self.config.ollama_chat_model,
-                    "stream": False,
-                    "messages": [{"role": "user", "content": prompt}],
-                },
+                json=payload,
             )
             response.raise_for_status()
-            answer = response.json()["message"]["content"]
-        return {"answer": answer, "sources": sources}
+            data = response.json()
+            answer = data["message"]["content"]
+            if not isinstance(answer, str):
+                raise TypeError("Ollama returned non-text answer content")
+        return {
+            "answer": answer,
+            "sources": sources,
+            "generation": generation_evidence(data, answer, cap),
+        }

@@ -145,6 +145,9 @@ production-readiness claims.
   [collection safety policy](docs/collection-safety.md) before ingestion.
 - Local inference is not guaranteed deterministic: model temperature/seed are not
   pinned, and reasoning behavior has not been exhaustively tested.
+- [Optional generation token budget](docs/generation-budget.md): unset by default;
+  termination evidence distinguishes limited, empty and unknown chat results.
+  This is not a wall-time limit or cancellation mechanism.
 
 ## License
 
