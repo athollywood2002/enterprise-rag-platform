@@ -45,6 +45,11 @@ python -m pytest -q tests/test_evaluation_run.py
 python -m pytest -q tests/test_evaluation_run.py --run-document-tests
 ```
 
+Chat results must pass the [generation completion gate](generation-budget.md)
+before semantic review. The stub supplies explicit natural-stop metadata;
+limited, empty or unknown completion must not be graded as a completed answer.
+This does not turn the scripted smoke into quality evidence.
+
 ## Manifest and replay
 
 Schema `rag-synthetic-evaluation-v1` records mode/status, fixture and question

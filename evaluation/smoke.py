@@ -9,6 +9,7 @@ from unittest.mock import patch
 import httpx
 from fastapi.testclient import TestClient
 
+from evaluation.generation import is_completed_generation
 from rag import api, core
 from rag.config import Settings
 from rag.documents import DocumentChunk
@@ -153,6 +154,7 @@ def offline_http_smoke() -> dict:
         ollama_url="http://ollama.invalid:11434",
         ollama_embed_model="synthetic-embed-stub",
         ollama_chat_model="synthetic-chat-stub",
+        ollama_num_predict=None,
     )
     database = MemoryStub()
     engine = core.RagEngine(config, qdrant=database)
@@ -177,7 +179,10 @@ def offline_http_smoke() -> dict:
         prompt = body["messages"][0]["content"]
         answer = FACTS[0] if QUESTIONS[0] in prompt else FACTS[1]
         check(answer in prompt)
-        return httpx.Response(200, json={"message": {"content": answer + " [1]"}})
+        return httpx.Response(
+            200,
+            json={"message": {"content": answer + " [1]"}, "done": True, "done_reason": "stop"},
+        )
 
     def client(**kwargs):
         return httpx.Client(transport=httpx.MockTransport(service), trust_env=False)
@@ -205,6 +210,7 @@ def offline_http_smoke() -> dict:
             check(response.status_code == 200)
             result = response.json()
             if i < 2:
+                check(is_completed_generation(result))
                 check(result["answer"] == FACTS[i] + " [1]")
                 check(result["sources"][0]["source"] == SOURCE)
                 check(result["sources"][0]["page_number"] == i + 1)

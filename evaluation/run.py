@@ -84,6 +84,7 @@ def provenance() -> dict:
     files = [
         "evaluation/run.py",
         "evaluation/smoke.py",
+        "evaluation/generation.py",
         "src/rag/api.py",
         "src/rag/core.py",
         "src/rag/chunking.py",
