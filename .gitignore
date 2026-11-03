@@ -8,3 +8,4 @@ __pycache__/
 *.pdf
 !sample_docs/*.pdf
 /.local/evaluation/
+/evaluation-runs/
