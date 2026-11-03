@@ -20,10 +20,15 @@ from evaluation.corpus import (
 from evaluation.spans import map_chunks
 from rag.documents import parse_document
 from rag.requirement_chunking import (
+    MAX_CHARACTERS,
     NIST_REQUIREMENT_POLICY,
     NIST_REQUIREMENT_STRATEGY,
+    PINNED_NIST_SHA256,
+    PINNED_REQUIREMENT_IDS,
     RequirementState,
     requirement_page_fragments,
+    sentence_units,
+    validate_requirement_identity,
 )
 
 
@@ -118,11 +123,84 @@ def test_table_inline_and_standalone_ids_do_not_create_boundaries():
     assert fragments([Element("  ")]) == []
 
 
-def test_size_never_introduces_sentence_or_requirement_split():
+def test_oversized_indivisible_unit_fails_closed():
     text = "An indivisible synthetic sentence with no sentence terminator " * 80 + "."
-    result = fragments([title("03.01.01 Synthetic Heading"), Element(text)])
-    assert len(result) == 1 and len(result[0].text) > 1200
-    assert text in result[0].text  # No truncation, overlap, prefix or fabricated text.
+    with pytest.raises(ValueError, match="Indivisible"):
+        fragments([title("03.01.01 Synthetic Heading"), Element(text)])
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "See e.g. SP 800-53 and i.e. the example. Next sentence.",
+        "Use examples (e.g. a synthetic policy) and keep records. Next sentence.",
+        "Read Rev. 5, Vol. 2 and the 3rd ed. before proceeding. Next sentence.",
+        "Read 03.06.01 and 3.1 in full. Next sentence.",
+        "Dr. Ada tests U.S. systems. Next sentence.",
+        "a. Keep the policy; never discard it. b. Record the result.",
+        "First sentence! Second question? Final sentence.",
+    ],
+)
+def test_conservative_sentence_abbreviations_and_identifiers(text):
+    units = sentence_units(text)
+    assert normalize(" ".join(units)) == normalize(text)
+    assert len(units) == (3 if "!" in text else 2)
+    assert not any(unit.endswith(("e.g.", "i.e.", "Dr.", "U.S.", "a.", "b.")) for unit in units)
+
+
+def test_bounded_packing_keeps_sentences_and_reference_tail_owned():
+    sentence = "A synthetic complete sentence with repeated explanatory words " * 5 + "."
+    reference = "REFERENCES\n\nSource Controls (synthetic): IR-04\n\nSupporting Publications: None"
+    original = [
+        title("03.06.01 Synthetic Heading"),
+        Element(" ".join([sentence] * 10)),
+        title("REFERENCES"),
+        Element(reference.split("\n\n", 1)[1]),
+        title("03.06.02 Next Synthetic Heading"),
+        Element("Other rule."),
+    ]
+    result = fragments(original)
+    owning = [f for f in result if f.requirement_id == "03.06.01"]
+    assert len(owning) > 1
+    assert all(len(f.text) <= MAX_CHARACTERS for f in result)
+    assert sum(f.text.count(sentence) for f in owning) == 10
+    assert any(reference in f.text for f in owning)
+    assert not any("IR-04" in f.text for f in result if f.requirement_id == "03.06.02")
+    assert normalize(" ".join(f.text for f in result)) == normalize(" ".join(map(str, original)))
+
+
+def test_target_exception_is_bounded_not_truncated():
+    text = "Unpunctuated synthetic material " * 50
+    result = fragments([Element(text)])
+    assert len(result) == 1 and 1200 < len(result[0].text) <= MAX_CHARACTERS
+    assert result[0].text == text.strip()
+
+
+def test_reference_tail_over_hard_limit_fails_without_splitting():
+    with pytest.raises(ValueError, match="Indivisible"):
+        fragments(
+            [
+                title("03.06.01 Synthetic"),
+                Element("Rule."),
+                title("REFERENCES"),
+                Element("Reference. " * 300),
+            ]
+        )
+
+
+@pytest.mark.parametrize("mutation", ["missing", "extra", "same-count-wrong-id", "title-drift"])
+def test_pinned_heading_guard_rejects_silent_parser_drift(mutation):
+    state = RequirementState(seen=set(PINNED_REQUIREMENT_IDS), headings=["Synthetic"] * 130)
+    if mutation == "missing":
+        state.seen.remove("03.06.01")
+    elif mutation == "extra":
+        state.seen.add("03.99.01")
+    elif mutation == "same-count-wrong-id":
+        state.seen.remove("03.06.01")
+        state.seen.add("03.99.01")
+    with pytest.raises(ValueError, match="heading identity drift"):
+        validate_requirement_identity(state, PINNED_NIST_SHA256)
+    validate_requirement_identity(state, "synthetic-other-source")
 
 
 def test_layout_separate_and_only_attribution_crosses_pages(monkeypatch):
@@ -145,7 +223,7 @@ def test_layout_separate_and_only_attribution_crosses_pages(monkeypatch):
     reference = next(c for c in chunks if "IR-04" in c.text)
     assert reference.page_number == 2 and reference.requirement_id == "03.06.01"
     assert "First physical page" not in reference.text
-    assert all(c.requirement_id is None for c in chunks if "Synthetic header" in c.text)
+    assert not any("Synthetic header" in c.text or c.text == "1" for c in chunks)
     assert [c.number for c in chunks] == list(range(len(chunks)))
     assert {c.page_number for c in chunks} == {1, 2}
 
@@ -275,9 +353,12 @@ def test_page_local_canonical_offsets_and_full_coverage(monkeypatch):
     serving = parse_document(
         b"synthetic stub", "fixture.pdf", chunking_strategy=NIST_REQUIREMENT_STRATEGY
     )
-    locations = map_chunks(document, 1, tuple(c.text for c in serving))
+    all_fragments = requirement_page_fragments(elements, RequirementState())
+    all_locations = map_chunks(document, 1, tuple(f.text for f in all_fragments))
+    locations = tuple(c for c, f in zip(all_locations, all_fragments) if f.indexable)
+    assert [normalize(c.text) for c in serving] == [c.text for c in locations]
     assert all(c.status == "mapped" and c.page == 1 for c in locations)
-    assert normalize(" ".join(c.text for c in locations)) == text
+    assert normalize(" ".join(c.text for c in all_locations)) == text
     for c in locations:
         assert text[c.start : c.end] == c.text and c.page_sha256 == document.pages[0].sha256
     assert locations[0].end < locations[1].start
@@ -315,6 +396,12 @@ def test_real_synthetic_pdf_variant_serving_and_canonical_parity():
     assert variant.document == default.document
     assert variant.chunking_policy == NIST_REQUIREMENT_POLICY
     assert all(c.status == "mapped" for c in variant.chunks)
+    assert variant.layout_skipped
+    assert variant.mapping_counts["layout_skipped"] == len(variant.layout_skipped)
+    for diagnostic in variant.layout_skipped:
+        page = variant.document.pages[diagnostic.page - 1]
+        assert page.text[diagnostic.start : diagnostic.end] == diagnostic.text
+        assert diagnostic.status == "mapped"
     assert [(c.page, c.text) for c in variant.chunks] == [
         (c.page_number, normalize(c.text)) for c in serving
     ]

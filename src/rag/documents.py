@@ -5,6 +5,7 @@ No hardcoded filesystem paths or Qdrant collection names. Do not send sensitive 
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import asdict, dataclass
 from itertools import groupby
 from pathlib import Path
@@ -18,6 +19,7 @@ from rag.requirement_chunking import (
     RequirementState,
     requirement_page_fragments,
     validate_chunking_strategy,
+    validate_requirement_identity,
 )
 
 if TYPE_CHECKING:
@@ -82,6 +84,8 @@ def parse_document(
                 raise ValueError("Requirement strategy needs known, increasing physical pages")
             previous_page = page
             for fragment in requirement_page_fragments(page_elements, state):
+                if not fragment.indexable:
+                    continue
                 results.append(
                     DocumentChunk(
                         text=fragment.text,
@@ -91,8 +95,7 @@ def parse_document(
                         requirement_id=fragment.requirement_id,
                     )
                 )
-        if not state.seen:
-            raise ValueError("No supported requirement headings; use the default title strategy")
+        validate_requirement_identity(state, hashlib.sha256(data).hexdigest())
         return results
 
     from unstructured.chunking.title import chunk_by_title

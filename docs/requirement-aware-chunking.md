@@ -1,9 +1,11 @@
-# Opt-in requirement/page chunking (P2-B development variant)
+# Opt-in bounded requirement/page chunking (P2-B v2 draft)
 
-This experimental strategy depends on the canonical parser/mapping work in draft
-PR #12. It is a separate, stacked change, not a change to that PR or an enabled
-deployment. No retrieval or generation improvement is established by unit tests
-or offline text inspection.
+This experimental strategy is a separate draft, not an enabled deployment. PR #13
+remains stacked on draft PR #12 for now; the parser/mapping code it needs is already
+on main. PR #12 also has unrelated audit code/tests and pilot documentation: no
+technical dependency on those files was found. Retargeting/rebasing needs separate
+approval; neither PR is merged or altered by the dependency recommendation.
+No retrieval or generation improvement is established by offline inspection.
 
 ## Opt in explicitly
 
@@ -13,11 +15,13 @@ from rag.documents import parse_document
 chunks = parse_document(
     pdf_bytes,
     "sample.pdf",
-    chunking_strategy="nist-requirement-page-v1",
+    chunking_strategy="nist-requirement-page-v2",
 )
 ```
 
 The default remains `chunking_strategy="title"`, including for non-NIST documents.
+The earlier unbounded v1 draft is superseded, not retained as an indexing option;
+its commit and private receipts remain historical evidence, not v2 results.
 Existing HTTP ingestion still uses the default; no endpoint, environment setting
 or automatic filename/content detection enables this variant. The opt-in rejects
 non-PDF input, unknown/backtracking pages and documents without supported headings.
@@ -33,12 +37,20 @@ all mappings and serving/canonical parity for an admitted source before indexing
 - Requirement scope starts at a `Title` element matching a `3.x.` family heading.
   Within that scope, a `Title` beginning `03.xx.xx` followed by an English name
   starts a requirement. An introductory ID-shaped example is not a requirement.
-- Keep the complete requirement **page fragment** together, including DISCUSSION,
-  REFERENCES, Source Controls and Supporting Publications until the next genuine
-  requirement heading. A sentence fragment misclassified as a title is not a split.
-- Headers/footers and family headings are separate, unattributed fragments. The
+- Within each requirement/page, greedily pack conservative sentence units toward
+  1,200 raw characters, with a hard 2,400-character cap. Never cut inside a unit.
+  DISCUSSION and arbitrary parser titles do not force cuts. Protect dotted IDs,
+  decimals, initials, list labels and common abbreviations. Paragraph breaks and
+  semicolons do not by themselves identify sentence boundaries. This deliberately
+  narrow grammar is not a general English sentence-segmentation guarantee.
+- Keep each REFERENCES/Source Controls/Supporting Publications tail indivisible
+  with its owning requirement ID; it can be its own same-owner subchunk, never
+  attached to the next requirement. No invented heading prefixes or overlap.
+- Headers/footers and family/end-section titles are **diagnostic-only**. The
   main `References` or an `Appendix A.`-style title ends requirement attribution;
-  uppercase `REFERENCES` within a requirement does not. No text is dropped.
+  uppercase `REFERENCES` within a requirement does not. No source text is discarded
+  from canonical accounting. Other unassigned front/back matter remains indexable;
+  lack of an ID alone is not grounds for excluding substantive text.
 - Carry the owning `requirement_id` across pages, never the text. A continuation
   and its references remain attributed to their owner without mixing in the next
   requirement. Every chunk has exactly one physical page. Duplicate body headings
@@ -48,6 +60,19 @@ all mappings and serving/canonical parity for an admitted source before indexing
   existing engine payload and prompt are unchanged; this PR does **not** add
   control-ID extraction, hybrid search, larger k or MMR.
 
+Canonical extraction maps **all** fragments in source order before excluding
+layout. `CanonicalExtraction.chunks` contains only indexable mappings;
+`layout_skipped` retains the excluded mapped records (text, physical page, offsets,
+page hash and match count). `mapping_counts` reports both. Serving parsing returns
+only indexable chunks with contiguous numbers. Use canonical diagnostics, not a
+second attempt to map the filtered serving texts, to inspect source accounting.
+
+For the pinned admitted SP 800-171r3 source SHA-256, both paths require the exact
+set of 130 IDs (including withdrawn headings) **and** the SHA-256 of all ordered,
+whitespace-collapsed heading texts joined by newlines. A missing/demoted heading,
+extra ID, title change or reordering fails closed. This source-specific guard is
+not a claim of universal coverage or independently verified gold labels.
+
 This grammar targets the admitted English SP 800-171r3 fast-parser layout. It is
 not a universal NIST parser, table reconstruction or corpus-admission mechanism.
 Parser misclassification or an unexpected heading convention requires inspection,
@@ -55,11 +80,12 @@ not a silent fallback. Default title parsing remains available for other formats
 
 ## Size and page trade-offs
 
-There is deliberately **no character-based cut within a page fragment**. Otherwise
-an unfortunate size boundary could recreate the sentence/reference problem this
-variant tests. Chunks may exceed the default 1,200-character bound, including in
-unattributed front matter and appendices. Character counts are not token budgets.
-This strategy adds no parser resource sandbox or model-context guarantee.
+1,200 is a target, not an absolute bound. An indivisible sentence, table or reference
+tail may exceed it up to 2,400 raw characters. Above 2,400, reject the document with
+an explicit error: never split the unit, truncate it, omit it or fall back silently.
+Diagnostic-only layout is not embedded and is excluded from the indexing cap.
+Character counts are not token budgets. This strategy adds no parser sandbox or
+model-context guarantee. Physical page boundaries can still interrupt sentences.
 
 Before any separately authorized model run, inspect maximum sizes and resolve
 embedding/context budgets using the exact installed models. Never silently
