@@ -4,12 +4,14 @@ As of 2026-11-03. This is a local-lab prototype, not a production service.
 
 ## Main and draft work
 
-`main` at `82bd344` includes authenticated text/document ingestion, page-local
+The pre-PR #14 baseline, `82bd344`, includes authenticated text/document ingestion, page-local
 document chunks, citation-bearing answers, collection write guards, and offline
 canonicalization/labeling tools. The default serving behavior has not changed in
 this reproducibility work.
 
-This change adds a [synthetic evaluation CLI](evaluation-cli.md): deterministic
+[PR #14](https://github.com/athollywood2002/enterprise-rag-platform/pull/14)
+merged as `6000ccd0202acfaa2cfba814e6c9e5a83abc03a1` on 2026-11-03.
+That merge added a [synthetic evaluation CLI](evaluation-cli.md): deterministic
 offline HTTP smoke and a local approval-plan manifest. It does not add live test
 execution, model evaluation, or a new ingestion default.
 
@@ -21,10 +23,10 @@ The following remain separate, draft and unmerged:
   `c2caab33cda009ad34d64922412beb640d354df4`: B,
   `nist-requirement-page-v2`, a requirement-aware opt-in candidate.
 
-Neither draft is rebased, merged or edited by this change. B is the owner's
+Both drafts remain separate from the merged evaluation CLI. B is the owner's
 preferred opt-in candidate, not the default.
 
-## Private provisional MacBook pilot
+## Private provisional development pilot
 
 The completed A/B pilot used one exposed development set: 12 answerable and eight
 negative questions. Evidence and labels were AI-proposed development drafts;
@@ -59,4 +61,6 @@ Supporting records remain private; this audit does not validate model quality.
 
 No new real-service validation is claimed. The synthetic CLI covers offline code
 paths with stub services. A real-service test remains separately approval-gated;
-see the [evaluation CLI guide](evaluation-cli.md).
+see the [evaluation CLI guide](evaluation-cli.md) and
+[draft real-service test plan](real-http-validation-plan.md). The latter is a
+command proposal, not an executable approval or a completed validation.
