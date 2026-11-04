@@ -5,7 +5,7 @@
 > **Status: v0.1 prototype.** For local lab use only; not yet production hardened. No employer or customer data.
 
 See [current status](docs/CURRENT_STATUS.md) for the distinction between `main`,
-draft candidates and the private provisional pilot.
+draft candidates, the accepted live text HTTP smoke and the private provisional pilot.
 
 ## Architecture
 
@@ -23,7 +23,8 @@ Question -> Ollama embedding -> top-k retrieval -> Ollama chat -> Answer + sourc
 - Ollama and a dedicated Qdrant test instance, accessed through localhost or private transport
 - Ollama models: `ollama pull nomic-embed-text` and `ollama pull qwen3:8b` (or set your actual installed model tag)
 
-The synthetic live tests used **Qdrant server 1.17.0 with qdrant-client 1.17.0**.
+Earlier synthetic live tests used **Qdrant server 1.17.0 with qdrant-client 1.17.0**.
+The accepted 2026-11-04 text HTTP smoke used **server 1.17.0 with client 1.17.1**.
 The client dependency is restricted to `>=1.17,<1.18` to stay within that minor
 version while allowing patch updates. Other client/server pairings have not been
 live-tested here; check compatibility before using a different server version.
@@ -95,6 +96,17 @@ jobs; neither is a live RAG test. [Offline abstention regression](docs/abstentio
 recognizes limited wordings and sends unsupported phrasing to manual review; it
 does not establish semantic grounding.
 
+### Accepted live text HTTP smoke
+
+On 2026-11-04, one separately approved lab run at `4051ca5` passed the real
+API → budget proxy → dedicated Ollama/Qdrant text path: unauthorized requests
+returned 401, identical reingestion retained one point, and a cited answer
+completed within exactly three embedding calls and one chat call. Resource,
+finalization and owned-process/GPU shutdown checks passed. See
+[current status](docs/CURRENT_STATUS.md) for evidence scope and remaining work.
+The launcher and raw receipts remain private; this is not a new public CLI mode,
+a document/PDF test or a retrieval-quality benchmark.
+
 ### Synthetic evaluation smoke
 
 From the repository root, run
@@ -149,8 +161,9 @@ production-readiness claims.
   termination evidence distinguishes limited, empty and unknown chat results.
   This is not a wall-time limit or cancellation mechanism.
 - [Opt-in evaluation supervisor](docs/evaluation-supervisor.md): bounded model
-  dispatch and fresh child-process ownership, tested offline only; not enabled
-  by normal API startup or a substitute for reviewed deployment isolation.
+  dispatch and fresh child-process ownership, with offline tests and one scoped
+  live text HTTP smoke; not enabled by normal API startup or a substitute for
+  reviewed deployment isolation.
 
 ## License
 

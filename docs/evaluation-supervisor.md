@@ -5,6 +5,11 @@ not a live command or a new `evaluation.run` mode. It is not enabled by normal A
 startup. Tests use synthetic Python children, a real API child, mock transports
 and fake loopback HTTP peers, never actual model/database services.
 
+A separately approved private launcher completed one real text HTTP smoke on
+2026-11-04 using the optional proxy; see [current status](CURRENT_STATUS.md).
+That run verified its own resource controls and shutdown observations. It does
+not establish a general deployment-isolation or in-flight cancellation guarantee.
+
 ## Required configuration
 
 Supply every required deployment field explicitly (only `proxy_port` is optional):
@@ -226,6 +231,7 @@ Before any real run, independently review actual executable/model/runtime pins,
 paths, service arguments, unused ports, fresh isolated storage, read-only model
 access, service readiness/port ownership, foreground process topology, call-path
 wiring, resource limits and observed shutdown behavior. The configured loopback
-URL is **not proof** it belongs to a spawned child. This PR neither inspects nor
-launches a real deployment and selects no live cap or machine limits. Live
-execution remains blocked pending a complete private packet and owner approval.
+URL is **not proof** it belongs to a spawned child. The library neither inspects nor
+launches a deployment automatically and selects no live cap or machine limits.
+The completed text smoke is historical evidence for its reviewed configuration;
+future live execution still requires a complete private packet and owner approval.

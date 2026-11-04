@@ -1,6 +1,9 @@
-# Draft: isolated real HTTP validation
+# Isolated real HTTP validation
 
-Status: **proposed; no live execution is authorized by this guide**. The earlier
+Status: **the scoped text HTTP smoke passed on 2026-11-04**; see
+[current status](CURRENT_STATUS.md) for the observed results and limitations.
+The completed run used a separately approved private packet. This guide does not
+authorize a rerun or provide an executable launcher. The earlier
 direct-model startup templates, old code pin, port map and PDF request script are
 retired. Do not copy commands from their historical versions into a live packet.
 Operational paths, artifact/model pins, credentials and receipts stay private.
@@ -46,11 +49,11 @@ the upstream. The loopback proxy is unauthenticated. The packet must state wheth
 this trusted-application boundary is acceptable or require real OS/network
 containment. Do not claim host-wide accounting from these application controls.
 
-## Proposed first smoke: plain text, not PDF
+## Validated smoke contract: plain text, not PDF
 
-The current first-run proposal is deliberately smaller than the retired document
-workflow. It requires a separately reviewed private setup-and-smoke packet and
-explicit owner approval of its execution scope.
+The completed text smoke followed the smaller contract below. Any future run
+requires its own reviewed private setup-and-smoke packet and explicit owner
+approval of its execution scope.
 
 1. Start only fresh foreground test services through the reviewed owner. Verify
    executable/model identities, dedicated storage, listener PID ownership,
@@ -109,6 +112,16 @@ process groups and any separately approved fresh control unit; never signal
 discovered PIDs or shared daemons. Verify owned worker identities/listeners are
 gone and the test control group is empty/absent. Record unrelated GPU changes
 without treating ordinary shared activity as proof of a test failure or success.
+
+The accepted private launcher observed only previously captured PID/start-time
+identities after supervisor stop, using one 15-second monotonic deadline including
+the first sample, queries and sleeps. Samples recorded elapsed time, state, thread
+count and GPU visibility. Matching zombies remained present; ambiguous, failed or
+late observations could not pass. Acceptance required every captured owned
+identity and its GPU entry to disappear, plus the existing shared-service,
+listener, finalization and outer-cgroup checks. A later successful observation
+could not erase an earlier failure. This observation logic belongs to the private
+launcher, not the public supervisor API.
 
 Stop owned work before bounded evidence draining. Require preserved terminal
 events and finalization status; an immutable incomplete marker is not a pass.
