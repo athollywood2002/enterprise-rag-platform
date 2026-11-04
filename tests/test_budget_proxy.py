@@ -543,7 +543,9 @@ def test_connection_ceiling_stops_without_forwarding(config, monkeypatch):
                     socket.create_connection(("127.0.0.1", config.proxy_port), timeout=2)
                 )
                 with run._evidence:
-                    assert run._evidence.wait_for(lambda n=number: run._active_attempts == n, timeout=2)
+                    assert run._evidence.wait_for(
+                        lambda n=number: run._active_attempts == n, timeout=2
+                    )
             connections.append(
                 socket.create_connection(("127.0.0.1", config.proxy_port), timeout=2)
             )
