@@ -2,12 +2,12 @@
 
 `evaluation.supervisor` is a POSIX library for a separately approved test launcher,
 not a live command or a new `evaluation.run` mode. It is not enabled by normal API
-startup. This change has been tested only with synthetic Python children and
-mock HTTP transports, never model/database services.
+startup. Tests use synthetic Python children, a real API child, mock transports
+and fake loopback HTTP peers, never actual model/database services.
 
 ## Required configuration
 
-`RunConfig` has no deployment defaults. Supply every field explicitly:
+Supply every required deployment field explicitly (only `proxy_port` is optional):
 
 - `output`: new absolute private run/storage directory; exclusive creation,
   no resume/overwrite. The supervisor never deletes it.
@@ -63,8 +63,8 @@ For in-process integration, `RagEngine` accepts an optional `model_client` facto
 taking a timeout. Set it to `run.model_client` in an explicitly reviewed launcher;
 both embedding and chat then use the same allowances. Omit it and existing client
 construction/timeouts remain unchanged. Normal FastAPI startup does **not** inject
-this factory, so it is outside this supervision boundary. A separate API process
-needs reviewed wiring; merely starting it as a child does not instrument its calls.
+this factory. A separate API process needs the explicit proxy wiring described
+below; merely starting it as a child does not instrument its calls.
 
 This is a trusted-caller boundary, **not a host/network sandbox**. Direct external
 HTTP clients, a different engine factory, unreviewed retrying custom transports
@@ -118,6 +118,55 @@ inconsistent; retained files alone are not a validated post-stop database view.
 asked or answers passed semantic review.
 These process-control events are run-specific telemetry, not the deterministic
 offline smoke manifest. Stop-request time is not proof of when a real model stopped.
+
+### Optional separate-API budget bridge
+
+`RunConfig.proxy_port` defaults to `None` (no listener). When explicitly enabled,
+the supervisor binds only `127.0.0.1` at that port before launching children. The
+port must differ from the pinned `model_url` upstream. At least one child's
+explicit `OLLAMA_URL` must be the exact proxy URL; conflicting case variants and
+child forwarding-proxy environment variables are refused. Configure that child's
+model tags and `OLLAMA_NUM_PREDICT` to match the run. Normal `rag.api` startup and
+defaults are unchanged. This bridge has no live-run CLI or automatic launcher.
+
+Inbound Host is checked against the proxy, never used to choose the upstream.
+Only origin-form `POST /api/embed` and `POST /api/chat`, HTTP/1.1 with unique
+headers, JSON content type and a positive bounded Content-Length are supported.
+Transfer-Encoding, Expect, content encoding, upgrades, duplicate headers and
+alternate paths/targets are refused. Each connection handles exactly one request
+and closes; no keep-alive/pipeline reuse or redirect following is supported.
+Malformed requests stop the run, rather than offering a fallback route.
+
+Limits are 16 KiB headers, 1 MiB request body, 4 MiB upstream response, and 12
+concurrent connections. Inbound framing/body reads share an absolute
+`request_seconds` deadline, capped at the run deadline; response sends have a
+bounded timeout. Upstream uses no environment proxy, retries or connection reuse;
+compressed/non-JSON representations are refused. Response streams are size- and
+elapsed-checked between reads, with bounded per-operation socket timeouts. These
+checks are not OS real-time cancellation: a read already in progress can last
+until its timeout and Python workers can outlive the evidence grace.
+
+Every accepted connection is an active evidence producer through framing,
+dispatch and response publication. `_BudgetTransport` performs the **same**
+protocol validation, durable reservation, charged failure and stop-ordered
+admission as in-process clients; there is no proxy counter or second reservation.
+Connections still reading headers can appear in the conservative cutoff count
+without having spent a model reservation. On stop, owned process groups are
+signalled/reaped first, then the listener closes and accepted downstream sockets
+are shut down without joining workers. Upstream operations settle within their
+timeouts or remain explicitly outstanding at evidence cutoff. An idle accept
+thread may take its short polling interval to return; it cannot admit after stop.
+
+This is routing for a **trusted application**, not network containment. Validating
+the supplied environment does not prove an arbitrary child honors it. The
+loopback listener has no authentication; other local callers can consume its
+allowance or stop the run. Withholding
+the upstream port from API configuration does not make that port unreachable.
+Same-host code can discover or directly connect to it. Offline tests establish
+the reviewed API's configured route using a real child and fake HTTP peers, not
+direct-connect impossibility. A live packet needing that guarantee must supply
+separately reviewed OS/network isolation. Never attach to shared daemons or use
+this bridge as a general HTTP proxy.
 
 ### Bounded evidence finalization
 

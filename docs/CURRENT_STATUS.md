@@ -1,6 +1,6 @@
 # Current status
 
-Status after PR #16 (merged 2026-11-03 UTC). This is a local-lab prototype,
+Status after PR #17 (merged 2026-11-04 UTC). This is a local-lab prototype,
 not a production service.
 
 ## Main and draft work
@@ -22,6 +22,13 @@ default-off [generation token cap](generation-budget.md). Actual chat responses
 now add a `generation` object even when uncapped; exact-two-key clients must
 adapt. No-sources fallbacks retain their prior shape. Completion metadata is not
 answer-quality evidence, a wall-time bound or cancellation.
+
+[PR #17](https://github.com/athollywood2002/enterprise-rag-platform/pull/17)
+merged as `ee040890c7d6042c16001cc9853078f76750b95d`. It adds an opt-in,
+offline-tested [process supervisor](evaluation-supervisor.md), not a normal API
+startup change. Its in-process factory alone does not count a separate API
+process's model calls; explicit proxy wiring is required. Offline proxy work does
+not establish live runtime isolation or authorize execution.
 
 The following remain separate, draft and unmerged:
 
