@@ -59,6 +59,10 @@ not a safe general budget. This implementation neither disables thinking nor
 returns the separate thinking trace. Limited and empty results must be reviewed,
 not silently counted as successful answers.
 
+This assumes the runtime separates thinking from content. Inline `<think>…</think>`
+returned by another runtime/model would be treated as nonempty content; this gate
+does not strip or detect it, and no-thinking-disclosure claims do not cover it.
+
 Official references reviewed:
 
 - [Ollama chat API](https://docs.ollama.com/api/chat): `options.num_predict` is the

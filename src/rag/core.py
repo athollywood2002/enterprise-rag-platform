@@ -2,7 +2,7 @@
 
 import hashlib
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
 import httpx
@@ -70,14 +70,27 @@ def chunk_text(text: str, source: str, size: int = 900, overlap: int = 150) -> l
 
 
 class RagEngine:
-    def __init__(self, config: Settings, qdrant: QdrantClient | None = None):
+    def __init__(
+        self,
+        config: Settings,
+        qdrant: QdrantClient | None = None,
+        model_client: Callable[[float], httpx.Client] | None = None,
+    ):
         # model_construct/model_copy can bypass Pydantic field validators.
         validate_writable_collection_name(config.qdrant_collection)
         self.config = config
         self.db = qdrant or QdrantClient(url=config.qdrant_url, timeout=30)
+        self._model_client = model_client
+
+    def _client(self, timeout: float) -> httpx.Client:
+        return (
+            self._model_client(timeout)
+            if self._model_client is not None
+            else httpx.Client(timeout=timeout)
+        )
 
     def embed(self, text: str) -> list[float]:
-        with httpx.Client(timeout=120) as client:
+        with self._client(120) as client:
             response = client.post(
                 f"{self.config.ollama_url.rstrip('/')}/api/embed",
                 json={"model": self.config.ollama_embed_model, "input": text},
@@ -202,7 +215,7 @@ class RagEngine:
         }
         if cap is not None:
             payload["options"] = {"num_predict": cap}
-        with httpx.Client(timeout=180) as client:
+        with self._client(180) as client:
             response = client.post(
                 f"{self.config.ollama_url.rstrip('/')}/api/chat",
                 json=payload,

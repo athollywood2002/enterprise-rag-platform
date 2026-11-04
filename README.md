@@ -148,6 +148,9 @@ production-readiness claims.
 - [Optional generation token budget](docs/generation-budget.md): unset by default;
   termination evidence distinguishes limited, empty and unknown chat results.
   This is not a wall-time limit or cancellation mechanism.
+- [Opt-in evaluation supervisor](docs/evaluation-supervisor.md): bounded model
+  dispatch and fresh child-process ownership, tested offline only; not enabled
+  by normal API startup or a substitute for reviewed deployment isolation.
 
 ## License
 
