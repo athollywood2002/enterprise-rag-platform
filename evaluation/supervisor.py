@@ -148,6 +148,8 @@ class Supervisor:
         self._pending_stop: list[subprocess.Popen] = []
         self._stop_errors: list[str] = []
         self._counts = {"embed": 0, "chat": 0}
+        self._handoffs = {"embed": 0, "chat": 0}
+        self._last_event = None
         self._state = "new"
         self._timer = None
         self._journal = None
@@ -165,6 +167,7 @@ class Supervisor:
         )
         self._journal.flush()
         os.fsync(self._journal.fileno())
+        self._last_event = event
 
     @property
     def counts(self) -> dict:
@@ -235,11 +238,10 @@ class Supervisor:
                             stderr=subprocess.STDOUT,
                             start_new_session=True,
                         )
+                        # Register before even closing the parent's log handle.
+                        # Ownership/stop-on-handoff precede all bookkeeping I/O.
+                        self._register(proc)
                     with self._lock:
-                        self._processes.append(proc)
-                        with self._ownership_lock:
-                            self._pending_stop.append(proc)
-                        # Timeout/signal during Popen still owns this new child.
                         self._event("spawn", child=i, pid=proc.pid)
                         self._check(starting=True)
                 finally:
@@ -259,7 +261,9 @@ class Supervisor:
 
     def _interrupt(self, signum, frame):
         already_stopping = self._stopped.is_set()
-        self._stop("interrupted")
+        # A handler can interrupt ownership registration. Never acquire the
+        # bookkeeping lock or perform journal I/O while unwinding that handoff.
+        self._request_stop("interrupted")
         if not already_stopping and not self._launching:
             raise KeyboardInterrupt("Owned test run interrupted")
         # Let Popen return/register before raising: never abandon an unregistered child.
@@ -269,15 +273,27 @@ class Supervisor:
             signal.signal(signum, handler)
         self._handlers.clear()
 
+    def _register(self, proc: subprocess.Popen) -> None:
+        with self._ownership_lock:
+            self._processes.append(proc)
+            self._pending_stop.append(proc)
+            if self._stopped.is_set() or time.monotonic() >= self._deadline:
+                # Reentrant ownership-only stop: a late child must not wait for
+                # a stalled spawn event OR an earlier stop's journal publisher.
+                self._request_stop("deadline")
+
     def _check(self, *, starting: bool = False) -> None:
-        if self._stopped.is_set() or (
-            self._state != "running" and not (starting and self._state == "starting")
-        ):
-            raise SupervisorStopped("Run stopped or deadline expired")
-        if time.monotonic() >= self._deadline:
+        with self._ownership_lock:
+            if self._stopped.is_set() or (
+                self._state != "running" and not (starting and self._state == "starting")
+            ):
+                raise SupervisorStopped("Run stopped or deadline expired")
+            expired = time.monotonic() >= self._deadline
+            exited = any(proc.poll() is not None for proc in self._processes)
+        if expired:
             self._stop("deadline")
             raise SupervisorStopped("Run deadline expired")
-        if any(proc.poll() is not None for proc in self._processes):
+        if exited:
             self._stop("child_exited")
             raise SupervisorStopped("Owned child exited before run completion")
 
@@ -285,6 +301,10 @@ class Supervisor:
         self._stop("aborted")
 
     def _stop(self, reason: str) -> None:
+        self._request_stop(reason)
+        self._record_stop()
+
+    def _request_stop(self, reason: str) -> None:
         # Stop signalling must not wait for a dispatch/event fsync holding _lock.
         with self._ownership_lock:
             changed = not self._stopped.is_set()
@@ -314,20 +334,47 @@ class Supervisor:
                 self._stop_reason = "stop_failed"
             if changed or pending:
                 self._stop_revision += 1
-            revision = self._stop_revision
+
+    def _record_stop(self) -> None:
         with self._lock:
+            with self._ownership_lock:
+                revision = self._stop_revision
+                reason = self._stop_reason
+                errors = self._stop_errors.copy()
+                children = [{"pid": p.pid, "returncode": p.returncode} for p in self._processes]
+                handoffs = self._handoffs.copy()
             if revision >= self._logged_revision:
-                self._state = self._stop_reason
-            if revision > self._logged_revision and self._journal and not self._journal.closed:
+                self._state = reason
+            # Late spawn/response evidence must not obscure the terminal record,
+            # even if another publisher already recorded this stop revision.
+            needs_record = revision > self._logged_revision or self._last_event != "stop"
+            if revision and needs_record and self._journal and not self._journal.closed:
                 self._event(
                     "stop",
                     reason=self._state,
                     counts=self._counts,
-                    stop_errors=self._stop_errors,
+                    stop_errors=errors,
                     stop_requested_elapsed=self._stop_elapsed,
-                    children=[{"pid": p.pid, "returncode": p.returncode} for p in self._processes],
+                    children=children,
+                    handoffs=handoffs,
                 )
                 self._logged_revision = revision
+
+    def _admit_dispatch(self, route: str) -> None:
+        # This ownership-locked admission is the logical handoff point shared
+        # with stop. Stop winning first forbids forwarding. If admission wins,
+        # the attempt is in flight and a later stop kills its owned runtime.
+        # Never hold this lock across the potentially blocking transport call.
+        with self._ownership_lock:
+            if self._stopped.is_set() or self._state != "running":
+                raise SupervisorStopped("Run stopped before transport handoff")
+            if time.monotonic() >= self._deadline:
+                self._request_stop("deadline")
+                raise SupervisorStopped("Run deadline expired before transport handoff")
+            if any(proc.poll() is not None for proc in self._processes):
+                self._request_stop("child_exited")
+                raise SupervisorStopped("Owned child exited before transport handoff")
+            self._handoffs[route] += 1
 
     def __exit__(self, kind, value, traceback):
         try:
@@ -428,6 +475,7 @@ class _BudgetTransport(httpx.BaseTransport):
                     raise SupervisorStopped("Model dispatch allowance exhausted")
                 run._counts[route] += 1  # Failed attempts still consume the reservation.
                 run._event("reserve", route=route, number=run._counts[route])
+                run._check()  # Stop may have completed while durable journaling blocked.
                 remaining = min(run.config.request_seconds, run._deadline - time.monotonic())
                 if remaining <= 0:
                     run._stop("deadline")
@@ -437,7 +485,8 @@ class _BudgetTransport(httpx.BaseTransport):
                     key: min(prior[key], remaining) if prior.get(key) is not None else remaining
                     for key in ("connect", "read", "write", "pool")
                 }
-            response = self.upstream.handle_request(request)  # Exactly one attempt, no retry.
+            run._admit_dispatch(route)
+            response = self.upstream.handle_request(request)  # One admitted attempt, no retry.
             try:
                 response.read()
                 if response.status_code != 200:

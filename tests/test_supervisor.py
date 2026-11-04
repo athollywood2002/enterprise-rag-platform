@@ -592,5 +592,181 @@ def test_explicit_abort_prevents_late_result_and_spares_sentinel(config, sentine
     ):
         embed(client)
     assert events(config)[-1]["reason"] == "aborted"
+    assert events(config)[-1]["handoffs"]["embed"] == 1
     assert run.counts["embed"] == 1
     assert run._processes[0].poll() == -9 and sentinel.poll() is None
+
+
+@pytest.mark.parametrize("reason", ["deadline", "interrupted"])
+@pytest.mark.parametrize("blocked_event", ["spawn", "stop"])
+def test_late_spawn_is_stopped_before_blocked_bookkeeping(
+    config, monkeypatch, reason, blocked_event
+):
+    config = replace(config, seconds=0.15 if reason == "deadline" else 5, request_seconds=0.05)
+    run = Supervisor(config)
+    real_popen, original_event = subprocess.Popen, run._event
+    spawned = []
+    ready, journal_entered, release = threading.Event(), threading.Event(), threading.Event()
+    observed = []
+
+    def launch(*args, **kwargs):
+        child = real_popen(*args, **kwargs)
+        spawned.append(child)
+        ready.set()
+        if reason == "interrupted":
+            signal.getsignal(signal.SIGTERM)(signal.SIGTERM, None)
+        else:
+            gate = journal_entered if blocked_event == "stop" else run._stopped
+            assert gate.wait(timeout=2)
+        return child
+
+    def event(name, **fields):
+        if name == blocked_event:
+            journal_entered.set()
+            if name == "stop":
+                assert release.wait(timeout=2)
+            else:
+                try:
+                    spawned[0].wait(timeout=0.5)
+                    observed.append(True)
+                except subprocess.TimeoutExpired:
+                    observed.append(False)
+        original_event(name, **fields)
+
+    def monitor():
+        try:
+            if ready.wait(timeout=2) and journal_entered.wait(timeout=2):
+                try:
+                    spawned[0].wait(timeout=0.5)
+                    observed.append(True)
+                except subprocess.TimeoutExpired:
+                    observed.append(False)
+        finally:
+            release.set()
+
+    monkeypatch.setattr("evaluation.supervisor.subprocess.Popen", launch)
+    monkeypatch.setattr(run, "_event", event)
+    watcher = threading.Thread(target=monitor) if blocked_event == "stop" else None
+    for thread in (watcher,):
+        if thread:
+            thread.start()
+    try:
+        with pytest.raises(SupervisorStopped), run:
+            pytest.fail("Stopped startup cannot become usable")
+    finally:
+        release.set()
+        for thread in (watcher,):
+            if thread:
+                thread.join(timeout=3)
+                assert not thread.is_alive()
+    assert observed == [True], "Child survived until blocked bookkeeping was released"
+    assert spawned[0].poll() == -9
+    ledger = events(config)
+    assert any(e["event"] == "spawn" and e["pid"] == spawned[0].pid for e in ledger)
+    assert ledger[-1]["reason"] == reason
+    assert ledger[-1]["children"][-1]["returncode"] == -9
+
+
+@pytest.mark.parametrize("trigger", ["abort", "failed_request"])
+def test_stop_during_durable_reservation_prevents_transport_handoff(config, monkeypatch, trigger):
+    run = Supervisor(config)
+    original_event = run._event
+    reserved, signalled, release = threading.Event(), threading.Event(), threading.Event()
+    inflight = threading.Event()
+    failures = []
+    charged = 2 if trigger == "failed_request" else 1
+
+    def upstream(request):
+        if trigger == "failed_request":
+            inflight.set()
+            assert reserved.wait(timeout=2)
+            raise httpx.ConnectError("synthetic failed in-flight attempt")
+        return httpx.Response(200)
+
+    service = Mock(side_effect=upstream)
+
+    def event(name, **fields):
+        if name == "reserve" and fields["number"] == charged:
+            reserved.set()
+            assert release.wait(timeout=2)
+            assert signalled.is_set()
+        original_event(name, **fields)
+
+    def stop():
+        if trigger == "abort":
+            assert reserved.wait(timeout=2)
+            run.abort()
+        else:
+            try:
+                embed(client)
+            except httpx.ConnectError:
+                failures.append("ConnectError")
+
+    def observe_stop():
+        try:
+            assert reserved.wait(timeout=2)
+            run._processes[0].wait(timeout=2)  # Stop signal has completed, not just been requested.
+            signalled.set()
+        finally:
+            release.set()
+
+    monkeypatch.setattr(run, "_event", event)
+    stopper, observer = threading.Thread(target=stop), threading.Thread(target=observe_stop)
+    try:
+        with (
+            pytest.raises(SupervisorStopped),
+            run,
+            run.model_client(transport=httpx.MockTransport(service)) as client,
+        ):
+            stopper.start()
+            observer.start()
+            if trigger == "failed_request":
+                assert inflight.wait(timeout=2)
+            embed(client)
+    finally:
+        release.set()
+        for thread in (stopper, observer):
+            if thread.ident is not None:
+                thread.join(timeout=3)
+                assert not thread.is_alive()
+    expected_handoffs = 1 if trigger == "failed_request" else 0
+    assert service.call_count == expected_handoffs  # The paused request never forwards.
+    assert failures == (["ConnectError"] if trigger == "failed_request" else [])
+    assert signalled.is_set() and run.counts["embed"] == charged
+    assert events(config)[-1]["handoffs"]["embed"] == expected_handoffs
+    assert events(config)[-1]["reason"] == ("aborted" if trigger == "abort" else "dispatch_failed")
+
+
+def test_stop_winning_final_admission_forbids_upstream_call(config, monkeypatch):
+    run = Supervisor(config)
+    original_admit = run._admit_dispatch
+    at_handoff, stopped = threading.Event(), threading.Event()
+    service = Mock(return_value=httpx.Response(200))
+
+    def admit(route):
+        at_handoff.set()  # Reservation is durable; pause before the final ownership gate.
+        assert stopped.wait(timeout=2)
+        original_admit(route)
+
+    def stop():
+        assert at_handoff.wait(timeout=2)
+        run.abort()
+        stopped.set()
+
+    monkeypatch.setattr(run, "_admit_dispatch", admit)
+    stopper = threading.Thread(target=stop)
+    try:
+        with (
+            pytest.raises(SupervisorStopped),
+            run,
+            run.model_client(transport=httpx.MockTransport(service)) as client,
+        ):
+            stopper.start()
+            embed(client)
+    finally:
+        if stopper.ident is not None:
+            stopper.join(timeout=3)
+            assert not stopper.is_alive()
+    service.assert_not_called()
+    assert run.counts["embed"] == 1
+    assert events(config)[-1]["handoffs"]["embed"] == 0

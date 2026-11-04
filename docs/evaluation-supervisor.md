@@ -45,6 +45,14 @@ An atomic lock checks state/deadline and reserves one call **before** forwarding
 The reservation is flushed/fsynced to `events.jsonl` before the one transport
 attempt. Failed attempts still spend it. Concurrent calls cannot overspend; a
 limit/protocol/transport failure stops the run and owned work, with no retry.
+After durable reservation, lifecycle is checked again. A final ownership-locked
+admission check is the logical transport handoff, ordered against stop signalling:
+if stop wins, forwarding is forbidden; if admission wins, the charged attempt is
+in flight. The ownership lock is released before network I/O. Admission is not an
+atomic remote socket send: an admitted attempt can race a subsequent stop at
+transport entry, but its owned runtime is stopped and late results are rejected.
+Terminal `handoffs` counters distinguish admitted attempts from reservations
+cancelled by stop; cancelled reservations remain spent.
 Response bytes are read within the guarded attempt; a result arriving after
 deadline/abort cannot be credited. Narrower caller timeouts are not expanded.
 
@@ -76,8 +84,11 @@ not successful completion. Previously reaped group IDs are not signalled again.
 
 Normal finish, dispatch failure, child exit, timeout and context exceptions stop
 owned children. Temporary SIGINT/SIGTERM handlers stop owned work and are restored
-on exit. A signal/timeout during `Popen` prevents use and stops the child once its
-constructor hands ownership back; no model dispatch is allowed during startup.
+on exit. A signal/timeout during `Popen` prevents use. On constructor return,
+registration and stop-on-handoff are atomic under the ownership mechanism, before
+any bookkeeping lock or journal I/O. Signal handlers request the ownership stop
+without synchronous journaling. Spawn evidence and updated terminal child/stop
+records are retained afterward; no model dispatch is allowed during startup.
 Uninterruptible OS spawn/kill operations and scheduler delays are not made
 real-time by a Python watchdog. SIGKILL of the controller itself cannot run Python
 cleanup. An external containment mechanism is needed if those failures must be
@@ -97,6 +108,9 @@ under a 0700 directory. Raw prompts, response bodies and credentials are not cop
 into events, but arbitrary child logs may contain sensitive data. Preserve output
 on failure and review it privately. Disk/log growth and parser CPU/RAM are not
 bounded by this component. It never deletes storage or stops a shared daemon.
+For a later approved real test, take point-count/ID/payload evidence while services
+are still running, before normal context exit. SIGKILL can leave database storage
+inconsistent; retained files alone are not a validated post-stop database view.
 `completed` means the context body ended in time, not that required questions were
 asked or answers passed semantic review.
 These process-control events are run-specific telemetry, not the deterministic
