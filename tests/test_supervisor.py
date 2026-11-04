@@ -667,19 +667,21 @@ def test_late_spawn_is_stopped_before_blocked_bookkeeping(
     assert ledger[-1]["children"][-1]["returncode"] == -9
 
 
-@pytest.mark.parametrize("trigger", ["abort", "failed_request"])
+@pytest.mark.parametrize("trigger", ["abort", "failed_request", "failed_http"])
 def test_stop_during_durable_reservation_prevents_transport_handoff(config, monkeypatch, trigger):
     run = Supervisor(config)
     original_event = run._event
     reserved, signalled, release = threading.Event(), threading.Event(), threading.Event()
     inflight = threading.Event()
     failures = []
-    charged = 2 if trigger == "failed_request" else 1
+    charged = 1 if trigger == "abort" else 2
 
     def upstream(request):
-        if trigger == "failed_request":
+        if trigger != "abort":
             inflight.set()
             assert reserved.wait(timeout=2)
+            if trigger == "failed_http":
+                return httpx.Response(500)
             raise httpx.ConnectError("synthetic failed in-flight attempt")
         return httpx.Response(200)
 
@@ -699,8 +701,8 @@ def test_stop_during_durable_reservation_prevents_transport_handoff(config, monk
         else:
             try:
                 embed(client)
-            except httpx.ConnectError:
-                failures.append("ConnectError")
+            except (httpx.ConnectError, SupervisorStopped) as error:
+                failures.append(type(error).__name__)
 
     def observe_stop():
         try:
@@ -720,7 +722,7 @@ def test_stop_during_durable_reservation_prevents_transport_handoff(config, monk
         ):
             stopper.start()
             observer.start()
-            if trigger == "failed_request":
+            if trigger != "abort":
                 assert inflight.wait(timeout=2)
             embed(client)
     finally:
@@ -729,12 +731,19 @@ def test_stop_during_durable_reservation_prevents_transport_handoff(config, monk
             if thread.ident is not None:
                 thread.join(timeout=3)
                 assert not thread.is_alive()
-    expected_handoffs = 1 if trigger == "failed_request" else 0
+    expected_handoffs = 0 if trigger == "abort" else 1
     assert service.call_count == expected_handoffs  # The paused request never forwards.
-    assert failures == (["ConnectError"] if trigger == "failed_request" else [])
+    assert (
+        failures
+        == {"abort": [], "failed_request": ["ConnectError"], "failed_http": ["SupervisorStopped"]}[
+            trigger
+        ]
+    )
     assert signalled.is_set() and run.counts["embed"] == charged
     assert events(config)[-1]["handoffs"]["embed"] == expected_handoffs
     assert events(config)[-1]["reason"] == ("aborted" if trigger == "abort" else "dispatch_failed")
+    if trigger == "failed_http":
+        assert any(e["event"] == "response_error" and e["status"] == 500 for e in events(config))
 
 
 def test_stop_winning_final_admission_forbids_upstream_call(config, monkeypatch):

@@ -488,12 +488,15 @@ class _BudgetTransport(httpx.BaseTransport):
             run._admit_dispatch(route)
             response = self.upstream.handle_request(request)  # One admitted attempt, no retry.
             try:
-                response.read()
                 if response.status_code != 200:
+                    # A failed in-flight request must publish its ownership stop
+                    # before any body I/O or response-error bookkeeping can block.
+                    run._request_stop("dispatch_failed")
                     with run._lock:
-                        if not run._stopped.is_set():
+                        if run._journal and not run._journal.closed:
                             run._event("response_error", route=route, status=response.status_code)
                     raise SupervisorStopped("Model request failed")
+                response.read()
                 with run._lock:
                     run._check()  # Never credit a result arriving after stop/deadline.
                     run._event("response", route=route, status=response.status_code)
