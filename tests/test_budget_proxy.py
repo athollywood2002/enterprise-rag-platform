@@ -76,7 +76,7 @@ def peer(callback):
             self.reply(payload, status)
 
         def reply(self, payload, status=200):
-            data = json.dumps(payload).encode()
+            data = payload if isinstance(payload, bytes) else json.dumps(payload).encode()
             self.send_response(status)
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Content-Type", "application/json")
@@ -608,3 +608,93 @@ def test_proxy_known_500_is_retained_when_worker_drains_during_grace(config, mon
                 thread.join(timeout=3)
                 assert not thread.is_alive()
         assert outcomes == ["failed"] and run.counts["embed"] == 1
+
+
+@pytest.mark.parametrize(
+    "proxy_port,spelling",
+    [(9110, "9110"), (9110, "09110"), (80, "80"), (80, "00080"), (9, "9"), (9, "00009")],
+)
+def test_equivalent_upstream_is_rejected_before_any_side_effect(
+    config, monkeypatch, proxy_port, spelling
+):
+    from evaluation.budget_proxy import BudgetProxy
+
+    endpoint = f"http://127.0.0.1:{proxy_port}"
+    upstream = f"http://127.0.0.1:{spelling}"
+    assert httpx.URL(upstream) == httpx.URL(endpoint)  # Actual client endpoint normalization.
+    launch = Mock()
+    output = Mock()
+    listen = Mock()
+    monkeypatch.setattr("evaluation.supervisor.subprocess.Popen", launch)
+    monkeypatch.setattr("evaluation.supervisor.new_output", output)
+    monkeypatch.setattr(BudgetProxy, "start", listen)
+    child = replace(config.children[0], env={"OLLAMA_URL": endpoint})
+    with pytest.raises(ValueError, match="differ"):
+        Supervisor(replace(config, children=(child,), proxy_port=proxy_port, model_url=upstream))
+    output.assert_not_called()
+    launch.assert_not_called()
+    listen.assert_not_called()
+    assert not config.output.exists()
+
+
+@pytest.mark.parametrize("route", ["embed", "chat"])
+@pytest.mark.parametrize(
+    "body", [b"not-json", b'{"truncated":', b'{"value":NaN}', b'{"value":Infinity}', b"\xff", b""]
+)
+def test_malformed_upstream_json_is_charged_closed_and_never_credited(
+    config, monkeypatch, route, body
+):
+    from evaluation.budget_proxy import _Upstream
+
+    calls, responses = [], []
+    original = _Upstream.handle_request
+
+    def observe(transport, request):
+        response = original(transport, request)
+        responses.append(response)
+        return response
+
+    monkeypatch.setattr(_Upstream, "handle_request", observe)
+    with peer(lambda p, b: (calls.append(p) or 200, body)) as upstream:
+        run = Supervisor(replace(config, model_url=upstream))
+        with (
+            pytest.raises(SupervisorStopped),
+            run,
+            httpx.Client(trust_env=False, timeout=3) as client,
+        ):
+            payload = (
+                {"model": config.embed_model, "input": "synthetic"}
+                if route == "embed"
+                else {
+                    "model": config.chat_model,
+                    "messages": [{"role": "user", "content": "synthetic"}],
+                    "stream": False,
+                    "options": {"num_predict": config.num_predict},
+                }
+            )
+            # Even a caller that catches the transport error cannot complete the run.
+            with pytest.raises(httpx.TransportError):
+                client.post(run._proxy.url + "/api/" + route, json=payload)
+        assert calls == ["/api/" + route]
+        assert run.counts == {"embed": int(route == "embed"), "chat": int(route == "chat")}
+        assert len(responses) == 1 and responses[0].is_closed
+        ledger = list(map(json.loads, (config.output / "events.jsonl").read_text().splitlines()))
+        assert not any(e["event"] == "response" for e in ledger)
+        assert ledger[-1]["reason"] != "completed"
+        if body:
+            assert all(body.decode(errors="replace") not in json.dumps(e) for e in ledger)
+        final = json.loads((config.output / "finalization.json").read_text())
+        assert final["reason"] != "completed" and final["inflight_evidence_unrecorded"] == 0
+
+
+@pytest.mark.parametrize("body", [b"null", b"[]", b' { "embeddings": [[1.0, 0.0]] } '])
+def test_proxy_json_check_preserves_valid_bytes_without_semantic_gate(config, body):
+    with peer(lambda p, b: (200, body)) as upstream:
+        run = Supervisor(replace(config, model_url=upstream))
+        with run:
+            response = embed(run._proxy.url)
+            assert response.status_code == 200 and response.content == body
+        assert run.counts["embed"] == 1
+        ledger = list(map(json.loads, (config.output / "events.jsonl").read_text().splitlines()))
+        assert sum(e["event"] == "response" for e in ledger) == 1
+        assert ledger[-1]["reason"] == "completed"

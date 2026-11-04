@@ -1,254 +1,124 @@
 # Draft: isolated real HTTP validation
 
-Status: **proposed, not executed or approved for execution**. Preparation was
-approved on 2026-11-03. This document is a reviewable test design and command
-template; the machine-specific service-start/stop packet is still outstanding.
+Status: **proposed; no live execution is authorized by this guide**. The earlier
+direct-model startup templates, old code pin, port map and PDF request script are
+retired. Do not copy commands from their historical versions into a live packet.
+Operational paths, artifact/model pins, credentials and receipts stay private.
 
-## Purpose and fixed scope
+## Current implementation and required code pin
 
-Validate the merged default path through a real listening FastAPI process,
-real PDF parsing, real Ollama embeddings/generation, and a real Qdrant server.
-Use serving code at `6000ccd0202acfaa2cfba814e6c9e5a83abc03a1` in a separate,
-clean checkout. PRs #12/#13 are excluded. This is an integration check, not a
-repeat of the private A/B pilot or an answer-quality benchmark.
+The merged [generation cap](generation-budget.md),
+[supervisor and optional budget proxy](evaluation-supervisor.md) provide opt-in
+controls; they do not change normal API startup or supply an approved live launcher.
+The private execution packet must name the **actual independently reviewed fixed
+commit**, its code/archive identity and the launcher hash. A base commit that
+predates the proxy corrections is not sufficient. This guide intentionally does
+not invent a future commit or pin itself to a self-referential documentation commit.
 
-Only the repository-authored three-page fixture and its three questions in
-`evaluation.smoke` are admitted. Two authorized uploads, three authorized
-questions, plus one unauthorized upload and one unauthorized question.
-Expected model calls: nine embeddings and at most three chats; zero for the
-unauthorized requests. Exactly three points after each authorized upload;
-point IDs and payloads must remain identical on reingestion.
+Use a clean, separate checkout at that packet's approved pin. Verify loaded API
+code and resolved non-secret configuration, not merely a health response. Keep
+other opt-in ingestion strategies and private A/B evidence outside this check.
 
-## Required private execution packet
+## Only the reviewed application route is counted
 
-Every field below must be verified and filled in before a run is proposed.
-Do not substitute remembered host addresses, floating model tags, placeholder
-digests, existing database storage, or the synthetic local-plan example pins.
-
-| Item | Proposed constraint / outstanding evidence |
-| --- | --- |
-| Machine | Owner-named lab host; identity and current capacity unverified |
-| Checkout / Python | Separate clean checkout at the full commit above; absolute interpreter path, package lock/versions and offline parser resources verified |
-| API | Proposed `http://127.0.0.1:18772`; unused port; one dedicated process, one worker, no reload |
-| Qdrant | Separate disposable server/storage, proposed `http://127.0.0.1:16339`; exact version/image digest; no existing volumes or mounts |
-| Ollama | Dedicated approved test instance, proposed `http://127.0.0.1:11435`; exact version, verified installed embedding/chat tags and artifact digests; no pulls |
-| Collection | `rag_eval_http_synthetic_001`, only if absent and not an alias on the isolated server; otherwise STOP |
-| Credentials | Fresh in-memory API key; never in Git, plan JSON, command arguments, logs or receipts |
-| Resource limits | Proposed 15-minute total window; one request at a time; CPU/RAM/VRAM limits selected for the verified models and host |
-| Ownership | Exact service-start commands, process/container IDs, storage paths and stop commands for only these test services |
-| Review | Independent command review followed by owner approval of the completed packet |
-
-Ports and names are proposals, not evidence of availability. Do not connect to,
-inspect, modify, or delete existing collections, including `hdd_knowledge`.
-Keep operational identities, actual model pins, credentials and receipts private.
-
-**Blocking implementation detail:** the current `/ask` route accepts only
-`question` and `top_k`. It sends no generation-token cap and has no global call
-budget. Model HTTP timeouts are 120 seconds for embedding and 180 seconds for
-chat; they are not a hard total-time or token budget. A caller timeout does not
-cancel server work or unload a model. Before execution, provide and independently
-review a supervisor and/or isolated model-service configuration that enforces
-the approved resource/time/call limits and stops only owned test processes.
-Do not invent unsupported request fields or treat limits in a manifest as enforced.
-
-## Preparation commands (run only in the approved separate checkout)
-
-These command templates are for the future execution packet, not commands run
-while drafting this document. Use the verified interpreter as `python`.
-Do not install packages, download parser resources, pull models, or modify a
-shared environment as an implicit repair.
-
-```bash
-bash <<'PREFLIGHT'
-checkout_commit=$(git rev-parse HEAD) || exit 1
-test "$checkout_commit" = "6000ccd0202acfaa2cfba814e6c9e5a83abc03a1" || exit 1
-checkout_status=$(git status --porcelain) || exit 1
-test -z "$checkout_status" || exit 1
-test ! -e .env || exit 1
-test ! -L .env || exit 1
-python -m pip check || exit 1
-PREFLIGHT
+```text
+authenticated HTTP caller -> fresh API child -> loopback budget proxy
+                                               -> dedicated owned model service
+                         -> dedicated owned native database
 ```
 
-Stop if the standalone preflight exits nonzero; do not run subsequent blocks.
-Then validate imported-code provenance before reserving output or parsing, and
-create one new ignored run directory, fixture and offline parser receipt:
+The API child must explicitly use the proxy model endpoint, matching both model
+tags and the generation cap. The proxy has one pinned upstream independent of
+incoming Host/URL fields. **No direct-model fallback**, alternate client, retries,
+streaming or extra protocol options are allowed. Just launching a separate API
+child does not inject the supervisor's in-process factory.
 
-```python
-import hashlib
-import json
-from pathlib import Path
-from evaluation.run import new_output, provenance
-from evaluation.smoke import FACTS, SOURCE, fixture_identity, fixture_pdf
-from rag.documents import parse_document
+Proxy and in-process calls share one supervisor allowance: durable reservation
+before forwarding, failed attempts charged, and admission ordered against stop.
+Configuration rejects equivalent upstream/proxy endpoints by numeric identity,
+including zero-padded port spellings. The proxy bounds upstream bodies and checks
+JSON syntax before recording a successful response or publishing downstream 200.
+Syntax/protocol acceptance is not an embedding-schema or answer-quality judgment.
 
-code = provenance()
-out = new_output(Path("evaluation-runs/real-http-001"))
-data = fixture_pdf()
-chunks = parse_document(data, SOURCE)
-if [(c.text, c.source, c.number, c.page_number) for c in chunks] != [
-    (fact, SOURCE, i, i + 1) for i, fact in enumerate(FACTS)
-]:
-    raise RuntimeError("STOP: real parser fixture differs from the approved shape")
-(out / SOURCE).write_bytes(data)
-receipt = {
-    "status": "parser-preflight-only",
-    "fixture": fixture_identity(),
-    "document_sha256": hashlib.sha256(data).hexdigest(),
-    "provenance": code,
-    "chunks": 3,
-    "pages": [1, 2, 3],
-}
-with (out / "parser-preflight.json").open("x") as f:
-    json.dump(receipt, f, indent=2)
-```
+The allowance counts only requests through the reviewed route. Port secrecy is
+not network isolation; same-host code can connect directly if it knows/discovers
+the upstream. The loopback proxy is unauthenticated. The packet must state whether
+this trusted-application boundary is acceptable or require real OS/network
+containment. Do not claim host-wide accounting from these application controls.
 
-Use a private umask of 077 for the preparation and subsequent packet. Preserve a
-partially created directory on failure; never overwrite, resume or auto-retry.
-Freeze the parser receipt and full package inventory before live requests.
+## Proposed first smoke: plain text, not PDF
 
-## Service startup and verification
+The current first-run proposal is deliberately smaller than the retired document
+workflow. It requires a separately reviewed private setup-and-smoke packet and
+explicit owner approval of its execution scope.
 
-The exact bootstrap/stop commands depend on the verified host, service versions,
-model artifacts and supervisor; **they are not supplied or authorized here**.
-Start new isolated services only through that separately reviewed packet.
-No live `evaluation.run` mode exists; `local-plan` cannot launch this test.
+1. Start only fresh foreground test services through the reviewed owner. Verify
+   executable/model identities, dedicated storage, listener PID ownership,
+   readiness and an empty database without making uncounted model calls.
+2. Unauthorized plain-text ingestion and question requests must return 401 and
+   spend no model allowance.
+3. Ingest one tiny synthetic fact through `/ingest`; reingest the identical text;
+   ask one authenticated question through `/ask`.
+4. Expected attempts: **three embeddings and one chat**, all through the shared
+   budget. Record each response before checking it. Set the same explicit cap in
+   run configuration and API environment; select its value in the reviewed
+   private packet, not by assuming a visible-answer token count. Thinking may
+   consume the generation budget. A length stop or timeout is a retained failure,
+   not permission to tune or retry.
+5. While the database is still running, save exact counts, IDs and payloads after
+   ingestion/reingestion. Require one stable point, only the approved new
+   collection and no aliases. Inspect the answer, citation and generation metadata;
+   HTTP 200 alone is not semantic success.
 
-The dedicated API process must receive these settings explicitly:
-`API_KEY`, `QDRANT_URL=http://127.0.0.1:16339`,
-`QDRANT_COLLECTION=rag_eval_http_synthetic_001`,
-`OLLAMA_URL=http://127.0.0.1:11435`,
-and the verified `OLLAMA_EMBED_MODEL` / `OLLAMA_CHAT_MODEL`.
-Do not inherit proxy or unrelated RAG environment settings. Launch the pinned
-checkout's `rag.api:app` on loopback port 18772, one worker, without reload.
+This tests plain-text HTTP integration and idempotent text ingestion only. It
+does **not** validate `/ingest/document`, PDF parsing, page attribution, parser
+resources, the earlier three-page/nine-embedding workflow or private pilot quality.
+Those require a later separately reviewed document/parser packet. No broader
+corpus, private development-set replay, A/B rerun or benchmark claim is included.
 
-Before requests, save evidence from the actual API process showing its loaded
-code path/hash and resolved non-secret settings; a health response alone cannot
-prove collection isolation. Record owned process/container identities.
-Verify service versions and installed model digests with read-only requests,
-and verify collection absence and alias safety only on the dedicated Qdrant.
-Require an otherwise empty test server. Freeze model/service configuration;
-no other clients or alias administration during the run.
+## Private packet gates and scope separation
 
-## Exact HTTP request sequence after all gates pass
+Supply exact reviewed commands and hashes for read-only preflight, isolated
+preparation, then service/smoke execution. The owner can approve preparation only;
+that does not authorize service startup or inference. No later stage may run if
+an earlier gate fails. Never silently patch an old pinned checkout.
 
-The following client template uses a fresh in-memory key shared with the owned
-API process by the approved launcher. `RAG_EVAL_API_KEY` is not an API setting;
-the launcher must pass the same value to the server as `API_KEY`.
-Before creating any client, verify the stored PDF and parser receipt against the
-authored fixture identity and bytes. Missing, malformed or changed evidence stops
-the client without HTTP. Run under the approved supervisor.
-Each response is preserved before checking
-its status. Any exception/nonexpected result ends the sequence without retry.
+- Use a compatible pinned application runtime/dependency set and a pinned native
+  foreground database. Do not substitute a Docker client for process ownership.
+- Exclusively create a new private root with separate runtime, database, evidence
+  and test-model paths. Preserve partial output; no resume, overwrite or cleanup.
+- Verify a separate test store containing only selected manifests and every
+  referenced blob, with no writable aliases into the shared store. A startup
+  no-prune flag or top-level permission observation is not read-only protection.
+- Use one explicit private port map for API/proxy/model/database, bound to
+  numeric loopback and verified against the fresh owned process identities.
+- Verify usable user-manager/controller delegation and actual resource values
+  before model-service startup. State which CPU, memory, task/thread, file and
+  time limits are enforced. GPU observations are not an enforceable VRAM cap.
+- Generate a fresh in-memory API key; never place it in command arguments, public
+  Git, manifests, receipts or logs. Clear inherited proxy/RAG configuration.
+- Stop on missing capability, pin/configuration drift, preexisting storage,
+  unexpected alias/collection, HTTP/protocol error, timeout or exhausted budget.
+  No repair, fallback, download of missing models or automatic retry is implied.
 
-```python
-import hashlib
-import json
-import os
-from pathlib import Path
-import httpx
-from evaluation.smoke import QUESTIONS, SOURCE, fixture_identity, fixture_pdf
+## Shutdown evidence is a separate gate
 
-out = Path("evaluation-runs/real-http-001")
-try:
-    document = (out / SOURCE).read_bytes()
-    receipt = json.loads((out / "parser-preflight.json").read_text())
-except (OSError, ValueError) as error:
-    raise RuntimeError("STOP: missing or malformed fixture evidence") from error
-expected_fixture = fixture_identity()
-expected_digest = hashlib.sha256(fixture_pdf()).hexdigest()
-if (
-    not isinstance(receipt, dict)
-    or receipt.get("status") != "parser-preflight-only"
-    or receipt.get("fixture") != expected_fixture
-    or receipt.get("document_sha256") != expected_digest
-    or hashlib.sha256(document).hexdigest() != expected_digest
-    or receipt.get("chunks") != 3
-    or receipt.get("pages") != [1, 2, 3]
-):
-    raise RuntimeError("STOP: fixture evidence differs from the authored fixture")
-key = os.environ["RAG_EVAL_API_KEY"]
-if not key:
-    raise RuntimeError("STOP: missing test key")
-headers = {"x-api-key": key}
+Collect database evidence **before** the supervisor's SIGKILL stop. Retained files
+from a killed database are not a validated database view. Stop only fresh owned
+process groups and any separately approved fresh control unit; never signal
+discovered PIDs or shared daemons. Verify owned worker identities/listeners are
+gone and the test control group is empty/absent. Record unrelated GPU changes
+without treating ordinary shared activity as proof of a test failure or success.
 
-with httpx.Client(
-    base_url="http://127.0.0.1:18772",
-    trust_env=False,
-    follow_redirects=False,
-    timeout=httpx.Timeout(600.0, connect=5.0),
-) as client:
+Stop owned work before bounded evidence draining. Require preserved terminal
+events and finalization status; an immutable incomplete marker is not a pass.
+`complete` describes settled evidence, not successful integration or answers.
+Generation caps, socket timeouts and the watchdog are not proof of deployed
+inference cancellation. Python workers, escaped/offloaded work, controller
+SIGKILL, filesystem stalls and uninterruptible OS operations retain the limits
+described in the supervisor guide. Actual runtime shutdown/isolation must be
+observed for the approved deployment; offline tests do not establish it.
 
-    def request(name, path, expected, **kwargs):
-        response = client.post(path, **kwargs)
-        with (out / (name + ".json")).open("x") as f:
-            json.dump(
-                {
-                    "status_code": response.status_code,
-                    "body": response.text,
-                },
-                f,
-                indent=2,
-            )
-        if response.status_code != expected:
-            raise RuntimeError("STOP: unexpected HTTP status")
-        return response.json()
-
-    def upload(name, authenticated=True):
-        return request(
-            name,
-            "/ingest/document",
-            200 if authenticated else 401,
-            headers=headers if authenticated else {},
-            files={"file": (SOURCE, document, "application/pdf")},
-        )
-
-    upload("01-unauthorized-upload", authenticated=False)
-    request("02-unauthorized-ask", "/ask", 401, json={"question": QUESTIONS[0], "top_k": 2})
-    first = upload("03-upload")
-    if first != {"source": SOURCE, "chunks_indexed": 3}:
-        raise RuntimeError("STOP: unexpected ingestion result")
-    for i, question in enumerate(QUESTIONS, 1):
-        request(
-            f"04-question-{i}",
-            "/ask",
-            200,
-            headers=headers,
-            json={"question": question, "top_k": 2},
-        )
-    second = upload("05-reingestion")
-    if second != first:
-        raise RuntimeError("STOP: reingestion result differs")
-```
-
-The 600-second read timeout accommodates sequential per-chunk embedding calls;
-it is an inactivity timeout, not the approved supervisor's hard wall-clock bound.
-No reconnect/retry loop, embeddings probe or extra question is permitted.
-Read-only database inspection checkpoints and model-call accounting belong in
-the reviewed supervisor packet: after unauthorized requests, after first upload,
-and after reingestion. Save exact point counts, IDs and source/page/text payloads;
-do not infer idempotency solely from `chunks_indexed`.
-
-## Pass, fail and stop criteria
-
-- Unauthorized calls return 401 and cause zero parser/model/database work.
-- Real parser preflight yields exactly the authored facts on pages 1, 2 and 3.
-- First upload creates only the approved collection and exactly three points.
-- Inspect both answerable responses: facts must be correct, their supporting
-  excerpts retrieved, and citations must resolve to the correct source/page.
-  A missing fact or citation is a failure to report, not permission to rerun.
-- The lunar-railway negative must acknowledge insufficient evidence without
-  inventing an answer. Real Qdrant may return sources for this negative.
-  Do not require an empty source list or count a 200 response as semantic success.
-- Reingestion preserves all three point IDs and payloads and adds no points.
-- Observed call counts remain within nine embeddings and three chats, with no
-  unapproved requests, retries, models, files, collections or service changes.
-- Stop on configuration/hash drift, preexisting collection/alias, missing model,
-  parser mismatch, HTTP error, timeout or resource/call-limit breach. Preserve
-  partial responses and sanitized failure evidence. No automatic recovery.
-
-On completion or abort, the supervisor stops only owned test processes, including
-in-flight generation as supported and verified for the chosen runtime. Preserve
-storage and receipts; no collection/volume deletion, model removal, restart of
-shared services or cleanup is included. Report integration checks and semantic
-judgments separately. Do not report a benchmark score or general accuracy gain.
+Report checks, failures and semantic judgments separately. Keep evidence on any
+failure, do not stop shared services or inspect protected collections, and obtain
+explicit owner approval of the exact private live packet before execution.
