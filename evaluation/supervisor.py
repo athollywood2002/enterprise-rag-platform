@@ -55,8 +55,23 @@ class RunConfig:
     evidence_seconds: float
     embeddings: int
     chats: int
+    proxy_port: int | None = None
 
     def validate(self) -> None:
+        if self.proxy_port is not None:
+            if type(self.proxy_port) is not int or not 1 <= self.proxy_port <= 65535:
+                raise ValueError("Explicit proxy port required")
+            endpoint = f"http://127.0.0.1:{self.proxy_port}"
+            if endpoint == self.model_url:
+                raise ValueError("Proxy and upstream must differ")
+            if not any(c.env.get("OLLAMA_URL") == endpoint for c in self.children):
+                raise ValueError("A child must explicitly use the proxy OLLAMA_URL")
+            for child in self.children:
+                for key, value in child.env.items():
+                    if key.upper() == "OLLAMA_URL" and value != endpoint:
+                        raise ValueError("Child model endpoint must be the proxy")
+                    if key.upper() in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY") and value:
+                        raise ValueError("Child forwarding proxies are forbidden")
         if os.name != "posix":
             raise ValueError("Test process-group ownership requires POSIX")
         if not self.output.is_absolute() or self.output.exists():
@@ -170,6 +185,7 @@ class Supervisor:
         self._handlers = {}
         self._launching = False
         self.output = None
+        self._proxy = None
 
     def _event(self, event: str, **fields) -> bool:
         # The same lock serializes check/write/close. After a bounded cutoff,
@@ -245,6 +261,11 @@ class Supervisor:
                         for c in self.config.children
                     ],
                 )
+            if self.config.proxy_port is not None:
+                from evaluation.budget_proxy import BudgetProxy
+
+                self._proxy = BudgetProxy(self)
+                self._proxy.start()
             for i, child in enumerate(self.config.children):
                 with self._lock:
                     self._check(starting=True)
@@ -360,6 +381,8 @@ class Supervisor:
                 self._stop_reason = "stop_failed"
             if changed or pending:
                 self._stop_revision += 1
+        if self._proxy is not None:
+            self._proxy.stop()
 
     def _record_stop(self, **final) -> None:
         with self._lock:
@@ -403,6 +426,7 @@ class Supervisor:
                 raise SupervisorStopped("Run stopped before dispatch/evidence registration")
             with self._evidence:
                 self._active_attempts += 1
+                self._evidence.notify_all()
 
     def _finish_attempt(self) -> None:
         with self._evidence:
@@ -557,10 +581,14 @@ class Supervisor:
 
 
 class _BudgetTransport(httpx.BaseTransport):
-    def __init__(self, run: Supervisor, upstream: httpx.BaseTransport):
+    def __init__(self, run: Supervisor, upstream: httpx.BaseTransport, *, track_attempt=True):
         self.run, self.upstream = run, upstream
+        self.track_attempt = track_attempt
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
+        if not self.track_attempt:
+            # Proxy owns the attempt from socket acceptance through response publication.
+            return self._handle_request(request)
         self.run._begin_attempt()
         try:
             return self._handle_request(request)
