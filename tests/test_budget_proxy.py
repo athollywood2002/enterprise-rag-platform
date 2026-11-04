@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from unittest.mock import Mock
 
 import httpx
 import pytest
@@ -381,7 +382,16 @@ def test_one_request_per_connection_and_no_admission_after_stop(config):
                 while part := conn.recv(4096):
                     data += part
                 assert b"Connection: close" in data
+                with run._proxy._lock:
+                    listener = Mock(wraps=run._proxy._listener)
+                    run._proxy._listener = listener
                 run.abort()
+                listener.shutdown.assert_called_once_with(socket.SHUT_RDWR)
+                listener.close.assert_called_once()
+                controls = [
+                    call[0] for call in listener.method_calls if call[0] in ("shutdown", "close")
+                ]
+                assert controls == ["shutdown", "close"]
                 try:
                     conn.sendall(request)
                     assert conn.recv(4096) == b""

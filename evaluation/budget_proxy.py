@@ -89,6 +89,12 @@ class BudgetProxy:
             self._listener = None
             sockets = list(self._sockets)
         if listener is not None:
+            # Linux can keep a listening socket alive while another thread is
+            # blocked in accept/select, even after close(). Wake it explicitly.
+            try:
+                listener.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
             listener.close()
         for conn in sockets:
             try:
