@@ -1,6 +1,7 @@
 """Opt-in one-request loopback bridge; trusted application routing, not a sandbox."""
 
 import hashlib
+import json
 import socket
 import threading
 import time
@@ -16,17 +17,30 @@ MAX_RESPONSE = 4 * 1024 * 1024
 MAX_CONNECTIONS = 12
 
 
+def _reject_constant(value):
+    raise ValueError("Non-JSON numeric constant")
+
+
 class _BoundedStream(httpx.SyncByteStream):
     def __init__(self, inner, deadline):
         self.inner, self.deadline = inner, deadline
 
     def __iter__(self):
-        size = 0
+        body = bytearray()
         for part in self.inner:
-            size += len(part)
-            if size > MAX_RESPONSE or time.monotonic() >= self.deadline:
+            if len(body) + len(part) > MAX_RESPONSE or time.monotonic() >= self.deadline:
                 raise SupervisorStopped("Proxy upstream response bound exceeded")
-            yield part
+            body.extend(part)
+        try:
+            # The shared budget transport consumes this stream before crediting
+            # a response. Do not publish bytes/success until bounded JSON syntax
+            # validation completes; this does not judge answer quality/schema.
+            json.loads(body, parse_constant=_reject_constant)
+        except (ValueError, RecursionError):
+            raise SupervisorStopped("Proxy upstream JSON refused") from None
+        if time.monotonic() >= self.deadline:
+            raise SupervisorStopped("Proxy upstream response bound exceeded")
+        yield bytes(body)
 
     def close(self):
         self.inner.close()

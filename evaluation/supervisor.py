@@ -58,11 +58,20 @@ class RunConfig:
     proxy_port: int | None = None
 
     def validate(self) -> None:
+        # Validate the upstream before comparing identities. Decimal spellings
+        # such as :09110 and :9110 reach the same numeric-loopback endpoint.
+        if not isinstance(self.model_url, str) or not re.fullmatch(
+            r"http://127\.0\.0\.1:[0-9]{1,5}", self.model_url
+        ):
+            raise ValueError("Explicit numeric-loopback model URL required")
+        upstream_port = int(self.model_url.rsplit(":", 1)[1])
+        if not 1 <= upstream_port <= 65535:
+            raise ValueError("Invalid model port")
         if self.proxy_port is not None:
             if type(self.proxy_port) is not int or not 1 <= self.proxy_port <= 65535:
                 raise ValueError("Explicit proxy port required")
             endpoint = f"http://127.0.0.1:{self.proxy_port}"
-            if endpoint == self.model_url:
+            if self.proxy_port == upstream_port:
                 raise ValueError("Proxy and upstream must differ")
             if not any(c.env.get("OLLAMA_URL") == endpoint for c in self.children):
                 raise ValueError("A child must explicitly use the proxy OLLAMA_URL")
@@ -106,12 +115,6 @@ class RunConfig:
                 for k, v in child.env.items()
             ):
                 raise ValueError("Explicit child environment required")
-        if not isinstance(self.model_url, str) or not re.fullmatch(
-            r"http://127\.0\.0\.1:[0-9]{1,5}", self.model_url
-        ):
-            raise ValueError("Explicit numeric-loopback model URL required")
-        if not 1 <= int(self.model_url.rsplit(":", 1)[1]) <= 65535:
-            raise ValueError("Invalid model port")
         for tag, digest in (
             (self.embed_model, self.embed_digest),
             (self.chat_model, self.chat_digest),

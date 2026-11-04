@@ -123,9 +123,11 @@ offline smoke manifest. Stop-request time is not proof of when a real model stop
 
 `RunConfig.proxy_port` defaults to `None` (no listener). When explicitly enabled,
 the supervisor binds only `127.0.0.1` at that port before launching children. The
-port must differ from the pinned `model_url` upstream. At least one child's
-explicit `OLLAMA_URL` must be the exact proxy URL; conflicting case variants and
-child forwarding-proxy environment variables are refused. Configure that child's
+port must differ from the pinned `model_url` upstream.
+Equivalent numeric ports are rejected even if the upstream spelling has leading
+zeros; upstream URL validation and identity checks precede output or startup.
+At least one child's explicit `OLLAMA_URL` must be the exact proxy URL; conflicting
+case variants and child forwarding-proxy environment variables are refused. Configure that child's
 model tags and `OLLAMA_NUM_PREDICT` to match the run. Normal `rag.api` startup and
 defaults are unchanged. This bridge has no live-run CLI or automatic launcher.
 
@@ -141,9 +143,14 @@ Limits are 16 KiB headers, 1 MiB request body, 4 MiB upstream response, and 12
 concurrent connections. Inbound framing/body reads share an absolute
 `request_seconds` deadline, capped at the run deadline; response sends have a
 bounded timeout. Upstream uses no environment proxy, retries or connection reuse;
-compressed/non-JSON representations are refused. Response streams are size- and
-elapsed-checked between reads, with bounded per-operation socket timeouts. These
-checks are not OS real-time cancellation: a read already in progress can last
+compressed/non-JSON representations are refused. Response streams are buffered
+with size/elapsed checks between reads and bounded per-operation socket timeouts,
+then parsed as JSON before the shared transport
+records `response` success or the proxy publishes HTTP 200. Empty, malformed,
+invalid-encoding and non-JSON numeric-constant bodies fail the charged attempt,
+close the upstream response and stop the run without copying body text to events.
+This is JSON syntax validation, not a response-schema or answer-quality gate.
+These checks are not OS real-time cancellation: a read already in progress can last
 until its timeout and Python workers can outlive the evidence grace.
 
 Every accepted connection is an active evidence producer through framing,
