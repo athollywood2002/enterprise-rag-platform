@@ -48,6 +48,7 @@ def config(tmp_path):
         num_predict=32,
         seconds=5,
         request_seconds=1,
+        evidence_seconds=1,
         embeddings=9,
         chats=3,
     )
@@ -277,6 +278,9 @@ def test_success_stops_descendants_and_never_reuses_kill_targets(config):
         {"seconds": float("inf")},
         {"seconds": True},
         {"request_seconds": 6},
+        {"evidence_seconds": 0},
+        {"evidence_seconds": float("inf")},
+        {"evidence_seconds": threading.TIMEOUT_MAX * 2},
         {"embeddings": 10},
         {"chats": 4},
         {"chats": False},
@@ -515,7 +519,7 @@ def test_watchdog_stop_does_not_wait_for_event_lock(config, monkeypatch):
     def event(name, **fields):
         if name == "response":
             run._processes[0].wait(timeout=2)  # Simulate stalled evidence I/O under _lock.
-        original(name, **fields)
+        return original(name, **fields)
 
     monkeypatch.setattr(run, "_event", event)
     with (
@@ -631,7 +635,7 @@ def test_late_spawn_is_stopped_before_blocked_bookkeeping(
                     observed.append(True)
                 except subprocess.TimeoutExpired:
                     observed.append(False)
-        original_event(name, **fields)
+        return original_event(name, **fields)
 
     def monitor():
         try:
@@ -692,7 +696,7 @@ def test_stop_during_durable_reservation_prevents_transport_handoff(config, monk
             reserved.set()
             assert release.wait(timeout=2)
             assert signalled.is_set()
-        original_event(name, **fields)
+        return original_event(name, **fields)
 
     def stop():
         if trigger == "abort":
@@ -779,3 +783,143 @@ def test_stop_winning_final_admission_forbids_upstream_call(config, monkeypatch)
     service.assert_not_called()
     assert run.counts["embed"] == 1
     assert events(config)[-1]["handoffs"]["embed"] == 0
+
+
+@pytest.mark.parametrize("mode", ["drain", "cutoff", "writer", "transport"])
+def test_finalization_retains_or_explicitly_accounts_for_worker_evidence(config, monkeypatch, mode):
+    config = replace(config, evidence_seconds=1 if mode == "drain" else 0.2)
+    run = Supervisor(config)
+    ready, release, draining = threading.Event(), threading.Event(), threading.Event()
+    original_stop, original_event, original_drain = (
+        run._request_stop,
+        run._event,
+        run._drain_evidence,
+    )
+    previous = {s: signal.getsignal(s) for s in (signal.SIGINT, signal.SIGTERM)}
+    outcomes, violations = [], []
+    paused = False
+
+    class CheckedJournal:
+        def __init__(self, inner):
+            self.inner = inner
+
+        def __getattr__(self, name):
+            return getattr(self.inner, name)
+
+        def write(self, data):
+            if self.inner.closed:
+                violations.append("write_after_close")
+                raise AssertionError("Journal write after close")
+            return self.inner.write(data)
+
+        def close(self):
+            assert run._lock._is_owned()  # CPython test witness: closure holds the writer lock.
+            return self.inner.close()
+
+    def stop(reason):
+        nonlocal paused
+        original_stop(reason)
+        if mode in ("drain", "cutoff") and reason == "dispatch_failed" and not paused:
+            paused = True
+            ready.set()  # Real ownership stop completed, before response-error publication.
+            assert release.wait(timeout=3)
+
+    def event(name, **fields):
+        if mode == "writer" and name == "response_error":
+            ready.set()  # Caller holds the journal lock; finalization must not wait forever.
+            assert release.wait(timeout=3)
+        return original_event(name, **fields)
+
+    def drain(deadline):
+        draining.set()
+        return original_drain(deadline)
+
+    def service(request):
+        if mode == "transport":
+            ready.set()
+            assert release.wait(timeout=3)  # Outstanding attempt cannot finish before cutoff.
+        return httpx.Response(500)
+
+    def worker():
+        try:
+            embed(client)
+        except BaseException as error:  # noqa: BLE001 - return all thread failures to assertions.
+            outcomes.append(error)
+
+    def release_during_grace():
+        assert draining.wait(timeout=2)
+        release.set()
+
+    monkeypatch.setattr(run, "_request_stop", stop)
+    monkeypatch.setattr(run, "_event", event)
+    monkeypatch.setattr(run, "_drain_evidence", drain)
+    thread = threading.Thread(target=worker)
+    releaser = threading.Thread(target=release_during_grace) if mode == "drain" else None
+    client = None
+    try:
+        with pytest.raises(SupervisorStopped), run:
+            run._journal = CheckedJournal(run._journal)
+            client = run.model_client(transport=httpx.MockTransport(service))
+            thread.start()
+            assert ready.wait(timeout=2)
+            if releaser:
+                releaser.start()
+            exit_started = time.monotonic()
+        elapsed = time.monotonic() - exit_started
+        assert elapsed < 1.5
+        assert run._processes[0].poll() == -9
+        assert all(signal.getsignal(s) == h for s, h in previous.items())
+        assert draining.is_set()
+        summary_bytes = (config.output / "finalization.json").read_bytes()
+        summary = json.loads(summary_bytes)
+        expected = 0 if mode == "drain" else 1
+        assert summary["inflight_evidence_unrecorded"] == expected
+        assert summary["status"] == ("complete" if mode == "drain" else "incomplete")
+        assert summary["journal_writer_unavailable"] is (mode == "writer")
+        assert summary["journal_closed"] is (mode != "writer")
+        if mode == "drain":
+            assert any(
+                e["event"] == "response_error" and e["status"] == 500 for e in events(config)
+            )
+        else:
+            assert not any(e["event"] == "response_error" for e in events(config))
+            if mode != "writer":
+                assert events(config)[-1]["inflight_evidence_unrecorded"] == 1
+    finally:
+        release.set()
+        for item in (thread, releaser):
+            if item and item.ident is not None:
+                item.join(timeout=3)
+                assert not item.is_alive()
+        if client:
+            client.close()
+    assert len(outcomes) == 1 and isinstance(outcomes[0], SupervisorStopped)
+    assert violations == [] and run._journal.closed
+    assert run._active_attempts == 0
+    assert (config.output / "finalization.json").read_bytes() == summary_bytes
+    assert (config.output / "finalization.json").stat().st_mode & 0o777 == 0o600
+
+
+def test_journal_write_failure_is_not_labelled_complete_evidence(config, monkeypatch):
+    run = Supervisor(config)
+    with pytest.raises(SupervisorStopped), run:
+        original_write = run._journal.write
+
+        def write(data):
+            if '"event": "response_error"' in data:
+                raise OSError("synthetic evidence failure")
+            return original_write(data)
+
+        monkeypatch.setattr(run._journal, "write", write)
+        with (
+            run.model_client(
+                transport=httpx.MockTransport(lambda _: httpx.Response(500))
+            ) as client,
+            pytest.raises(OSError),
+        ):
+            embed(client)
+    summary = json.loads((config.output / "finalization.json").read_text())
+    assert summary["status"] == "incomplete"
+    assert summary["inflight_evidence_unrecorded"] == 0
+    assert summary["journal_errors"] == ["OSError"]
+    assert run._journal.closed and run._processes[0].poll() == -9

@@ -52,6 +52,7 @@ class RunConfig:
     num_predict: int
     seconds: float
     request_seconds: float
+    evidence_seconds: float
     embeddings: int
     chats: int
 
@@ -115,9 +116,13 @@ class RunConfig:
             or Settings.validate_generation_cap(self.num_predict) is None
         ):
             raise ValueError("Explicit generation cap required")
-        for value in (self.seconds, self.request_seconds):
-            if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
-                raise ValueError("Explicit positive finite time limits required")
+        for value in (self.seconds, self.request_seconds, self.evidence_seconds):
+            if (
+                type(value) not in (int, float)
+                or not math.isfinite(value)
+                or not 0 < value <= threading.TIMEOUT_MAX
+            ):
+                raise ValueError("Explicit positive finite platform-supported time limits required")
         if self.request_seconds > self.seconds:
             raise ValueError("Request limit exceeds run deadline")
         for value, ceiling in ((self.embeddings, 9), (self.chats, 3)):
@@ -140,6 +145,12 @@ class Supervisor:
         self.config = config
         self._lock = threading.RLock()
         self._ownership_lock = threading.RLock()
+        self._evidence = threading.Condition()
+        self._active_attempts = 0
+        self._journal_errors: list[str] = []
+        self._sealed = threading.Event()
+        self._finalized = False
+        self._evidence_incomplete = False
         self._stopped = threading.Event()
         self._stop_reason = None
         self._stop_revision = 0
@@ -160,14 +171,27 @@ class Supervisor:
         self._launching = False
         self.output = None
 
-    def _event(self, event: str, **fields) -> None:
-        self._journal.write(
-            json.dumps({"event": event, "elapsed": time.monotonic() - self._started, **fields})
-            + "\n"
-        )
-        self._journal.flush()
-        os.fsync(self._journal.fileno())
-        self._last_event = event
+    def _event(self, event: str, **fields) -> bool:
+        # The same lock serializes check/write/close. After a bounded cutoff,
+        # outstanding outcomes are explicitly accounted for, never written late.
+        with self._lock:
+            if self._sealed.is_set() or self._journal is None or self._journal.closed:
+                return False
+            try:
+                self._journal.write(
+                    json.dumps(
+                        {"event": event, "elapsed": time.monotonic() - self._started, **fields}
+                    )
+                    + "\n"
+                )
+                self._journal.flush()
+                os.fsync(self._journal.fileno())
+            except OSError as error:
+                with self._evidence:
+                    self._journal_errors.append(type(error).__name__)
+                raise
+            self._last_event = event
+            return True
 
     @property
     def counts(self) -> dict:
@@ -203,6 +227,7 @@ class Supervisor:
                     supervisor_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                     seconds=self.config.seconds,
                     request_seconds=self.config.request_seconds,
+                    evidence_seconds=self.config.evidence_seconds,
                     embeddings=self.config.embeddings,
                     chats=self.config.chats,
                     num_predict=self.config.num_predict,
@@ -252,11 +277,12 @@ class Supervisor:
             return self
         except BaseException:  # Cleanup even on KeyboardInterrupt; never swallow it.
             try:
-                self._stop("startup_failed")
+                self._request_stop("startup_failed")
             finally:
-                if self._journal:
-                    self._journal.close()
-                self._restore_signals()
+                try:
+                    self._finalize()
+                finally:
+                    self._restore_signals()
             raise
 
     def _interrupt(self, signum, frame):
@@ -335,7 +361,7 @@ class Supervisor:
             if changed or pending:
                 self._stop_revision += 1
 
-    def _record_stop(self) -> None:
+    def _record_stop(self, **final) -> None:
         with self._lock:
             with self._ownership_lock:
                 revision = self._stop_revision
@@ -347,9 +373,17 @@ class Supervisor:
                 self._state = reason
             # Late spawn/response evidence must not obscure the terminal record,
             # even if another publisher already recorded this stop revision.
-            needs_record = revision > self._logged_revision or self._last_event != "stop"
-            if revision and needs_record and self._journal and not self._journal.closed:
-                self._event(
+            needs_record = (
+                bool(final) or revision > self._logged_revision or self._last_event != "stop"
+            )
+            if (
+                revision
+                and needs_record
+                and not self._sealed.is_set()
+                and self._journal
+                and not self._journal.closed
+            ):
+                written = self._event(
                     "stop",
                     reason=self._state,
                     counts=self._counts,
@@ -357,8 +391,104 @@ class Supervisor:
                     stop_requested_elapsed=self._stop_elapsed,
                     children=children,
                     handoffs=handoffs,
+                    **final,
                 )
-                self._logged_revision = revision
+                if written:
+                    self._logged_revision = revision
+        self._try_close_journal()
+
+    def _begin_attempt(self) -> None:
+        with self._ownership_lock:
+            if self._stopped.is_set() or self._state != "running":
+                raise SupervisorStopped("Run stopped before dispatch/evidence registration")
+            with self._evidence:
+                self._active_attempts += 1
+
+    def _finish_attempt(self) -> None:
+        with self._evidence:
+            self._active_attempts -= 1
+            self._evidence.notify_all()
+        self._try_close_journal()
+
+    def _drain_evidence(self, deadline: float) -> int:
+        with self._evidence:
+            while self._active_attempts:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                self._evidence.wait(timeout=remaining)
+            return self._active_attempts
+
+    def _try_close_journal(self) -> None:
+        if self._sealed.is_set() and self._lock.acquire(blocking=False):
+            try:
+                if self._journal and not self._journal.closed:
+                    self._journal.close()
+            finally:
+                self._lock.release()
+
+    def _finalize(self) -> None:
+        if self._finalized or self.output is None:
+            return
+        # Ownership stop is already complete. No ownership lock is held while
+        # waiting for outcomes, writer access, or filesystem operations.
+        deadline = time.monotonic() + self.config.evidence_seconds
+        outstanding = self._drain_evidence(deadline)
+        acquired = self._lock.acquire(timeout=max(0, deadline - time.monotonic()))
+        journal_error = None
+        try:
+            if acquired:
+                with self._evidence:
+                    outstanding = self._active_attempts
+                try:
+                    self._record_stop(
+                        finalization="incomplete"
+                        if outstanding or self._journal_errors
+                        else "complete",
+                        inflight_evidence_unrecorded=outstanding,
+                    )
+                except OSError as error:
+                    journal_error = type(error).__name__
+        finally:
+            self._sealed.set()
+            if acquired:
+                try:
+                    self._try_close_journal()
+                except OSError as error:
+                    journal_error = type(error).__name__
+                finally:
+                    self._lock.release()
+        with self._evidence:
+            journal_errors = sorted(set(self._journal_errors))
+        self._evidence_incomplete = bool(
+            outstanding or not acquired or journal_error or journal_errors or self._journal is None
+        )
+        with self._ownership_lock:
+            summary = {
+                "schema": "rag-owned-finalization-v1",
+                "status": "incomplete" if self._evidence_incomplete else "complete",
+                "reason": self._stop_reason,
+                "inflight_evidence_unrecorded": outstanding,
+                "journal_writer_unavailable": not acquired,
+                "journal_closed": self._journal is None or self._journal.closed,
+                "journal_error": journal_error,
+                "journal_errors": journal_errors,
+                "evidence_seconds": self.config.evidence_seconds,
+                "handoffs": self._handoffs.copy(),
+                "children": [{"pid": p.pid, "returncode": p.returncode} for p in self._processes],
+                "stop_errors": self._stop_errors.copy(),
+            }
+        fd = os.open(
+            self.output / "finalization.json",
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+            0o600,
+        )
+        with os.fdopen(fd, "w") as stream:
+            json.dump(summary, stream, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        self._finalized = True
 
     def _admit_dispatch(self, route: str) -> None:
         # This ownership-locked admission is the logical handoff point shared
@@ -379,19 +509,23 @@ class Supervisor:
     def __exit__(self, kind, value, traceback):
         try:
             if kind is None:
-                with self._lock:
-                    self._check()
-                self._stop("completed")
+                with self._ownership_lock:
+                    reason = "completed"
+                    if time.monotonic() >= self._deadline:
+                        reason = "deadline"
+                    elif any(proc.poll() is not None for proc in self._processes):
+                        reason = "child_exited"
+                    self._request_stop(reason)
             else:
-                self._stop("interrupted" if issubclass(kind, KeyboardInterrupt) else "failed")
+                self._request_stop(
+                    "interrupted" if issubclass(kind, KeyboardInterrupt) else "failed"
+                )
         finally:
-            # May have failed the success check after the timer/child exit.
             try:
-                self._stop("failed")
+                self._finalize()
             finally:
-                self._journal.close()
                 self._restore_signals()
-        if self._state != "completed" and kind is None:
+        if kind is None and (self._stop_reason != "completed" or self._evidence_incomplete):
             raise SupervisorStopped("Run did not complete")
 
     def model_client(
@@ -427,6 +561,13 @@ class _BudgetTransport(httpx.BaseTransport):
         self.run, self.upstream = run, upstream
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
+        self.run._begin_attempt()
+        try:
+            return self._handle_request(request)
+        finally:
+            self.run._finish_attempt()
+
+    def _handle_request(self, request: httpx.Request) -> httpx.Response:
         run = self.run
         try:
             path = request.url.path

@@ -26,6 +26,9 @@ mock HTTP transports, never model/database services.
 - `num_predict`: explicit positive integer in the validated signed-32-bit range.
 - `seconds`, `request_seconds`: positive finite run and request limits; request
   limit cannot exceed the run deadline.
+- `evidence_seconds`: explicit positive finite finalization grace, shared by
+  outcome draining and writer-lock acquisition **after owned work is stopped**.
+  It grants no extra model time. All time limits must fit `threading.TIMEOUT_MAX`.
 - `embeddings`, `chats`: positive per-run allowances, at most **9 and 3**.
 
 Missing/invalid configuration fails before dispatch. Executable files are hashed
@@ -116,13 +119,51 @@ asked or answers passed semantic review.
 These process-control events are run-specific telemetry, not the deterministic
 offline smoke manifest. Stop-request time is not proof of when a real model stopped.
 
+### Bounded evidence finalization
+
+Context exit stops owned work first, without waiting for journal/network work.
+It then waits up to `evidence_seconds` for active dispatch/evidence producers,
+including unadmitted attempts, to finish their outcome writes. This tracks active
+attempts through their evidence cleanup, not cumulative handoff totals. No
+ownership lock is held during draining or filesystem I/O. Journal writes and
+closure share the writer lock, so a closed check cannot race a write or close.
+
+Each run writes an exclusive private `finalization.json` (0600), separate from the
+journal. Its `status` describes **evidence finalization**, not integration success.
+`complete` means producers settled with writer access and no recorded journal I/O
+failure; a known HTTP failure can have complete evidence. Callers must still await
+their workers/results, close their clients and evaluate failures explicitly.
+
+If the grace expires, `inflight_evidence_unrecorded` counts attempts whose outcome
+evidence was not fully settled at cutoff. This is a conservative count, not an
+assertion that every such attempt reached a model or lost every response field.
+`journal_writer_unavailable` separately flags failure to obtain the writer lock;
+`journal_error` / `journal_errors` flag observed I/O failures. These conditions make
+finalization `incomplete`, and otherwise-normal context exit raises
+`SupervisorStopped`. Signal handlers are restored even at cutoff.
+
+When writer access is available, the terminal stop event also carries the cutoff
+count before sealing and closing. If a writer remains blocked, the independent
+sidecar records incomplete evidence without an unbounded join or unsafe close;
+`journal_closed: false` reports deferred closure at that snapshot. Closure is
+attempted under the writer lock when a producer/publisher returns. Late outcome
+writes are declined after sealing, never written into a closed journal. The
+sidecar is not rewritten to turn a timeout into a pass if a worker later returns.
+
+The grace bounds waiting for producers and writer access, not uninterruptible
+filesystem syscalls. An OS write/close failure may leave partial artifacts or
+propagate an error. Python worker threads are not forcibly cancelled; stalled
+producers can outlive context exit, while registered external work is already
+stopped. Preserve incomplete artifacts and do not treat them as a successful run.
+
 ## Offline evidence and remaining deployment gates
 
 Run `python -m pytest -q tests/test_supervisor.py`. Fixtures use mock transports
 and disposable, test-owned Python sleepers/heartbeat descendants. Checks cover
 allowance edges/concurrency, failed dispatch accounting, route bypass refusal,
 stalled/expired work, partial startup, interruption, process-group stop, unrelated
-sentinel survival and actual `RagEngine` factory integration. Earlier failed test
+sentinel survival, event-gated drain/cutoff/deferred-close races, no closed-journal
+writes, and actual `RagEngine` factory integration. Earlier failed test
 artifacts are not rewritten into passes.
 
 Before any real run, independently review actual executable/model/runtime pins,
