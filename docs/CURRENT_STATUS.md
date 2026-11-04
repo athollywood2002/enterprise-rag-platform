@@ -1,19 +1,27 @@
 # Current status
 
-As of 2026-11-03. This is a local-lab prototype, not a production service.
+Status after PR #16 (merged 2026-11-03 UTC). This is a local-lab prototype,
+not a production service.
 
 ## Main and draft work
 
 The pre-PR #14 baseline, `82bd344`, includes authenticated text/document ingestion, page-local
 document chunks, citation-bearing answers, collection write guards, and offline
-canonicalization/labeling tools. The default serving behavior has not changed in
-this reproducibility work.
+canonicalization/labeling tools. The default outgoing generation request remains
+unchanged; chat response metadata has changed as described below.
 
 [PR #14](https://github.com/athollywood2002/enterprise-rag-platform/pull/14)
 merged as `6000ccd0202acfaa2cfba814e6c9e5a83abc03a1` on 2026-11-03.
 That merge added a [synthetic evaluation CLI](evaluation-cli.md): deterministic
 offline HTTP smoke and a local approval-plan manifest. It does not add live test
 execution, model evaluation, or a new ingestion default.
+
+[PR #16](https://github.com/athollywood2002/enterprise-rag-platform/pull/16)
+merged as `75b98febcabe672ad47a6ff9205a1f5fc44595ea`. It adds an optional,
+default-off [generation token cap](generation-budget.md). Actual chat responses
+now add a `generation` object even when uncapped; exact-two-key clients must
+adapt. No-sources fallbacks retain their prior shape. Completion metadata is not
+answer-quality evidence, a wall-time bound or cancellation.
 
 The following remain separate, draft and unmerged:
 
