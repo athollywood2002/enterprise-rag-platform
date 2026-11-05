@@ -2,27 +2,51 @@
 
 import json
 import re
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
 class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path != "/api/tags":
+            self.send_error(404)
+            return
+        body = json.dumps(
+            {"models": [{"name": "nomic-embed-text:latest", "digest": "synthetic-ci-embedding-v1"}]}
+        ).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_POST(self):
         data = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         if self.path == "/api/embed":
+            if "SIMULATE_EMBED_FAILURE" in data["input"]:
+                self.send_error(503)
+                return
+            if "WAIT_FOR_RESTART" in data["input"]:
+                time.sleep(20)
             result = {"embeddings": [[1.0, 0.0, 0.0]]}
         elif self.path == "/api/chat":
             prompt = data["messages"][0]["content"]
-            refs = {
-                name: re.search(r"\[(\d+)\] " + re.escape(name) + r" \(page", prompt).group(1)
-                for name in ("runbook.txt", "inventory.csv")
-            }
+            excerpts = re.findall(
+                r"\[(\d+)\] ([^\n]+) \(page ([^,]+), chunk [^:]+: ([^\n]+)", prompt
+            )
+            if "How many brass telescopes" in prompt:
+                ref = next(
+                    n for n, source, page, text in excerpts if "seventeen brass telescopes" in text
+                )
+                answer = f"The cobalt observatory stores seventeen brass telescopes [{ref}]."
+            else:
+                runbook = next(n for n, source, page, text in excerpts if "ORION" in text)
+                inventory = next(n for n, source, page, text in excerpts if "NetworkOps" in text)
+                answer = f"The recovery code is ORION [{runbook}]. The owner is NetworkOps [{inventory}]."
             result = {
                 "message": {
                     "role": "assistant",
-                    "content": (
-                        f"The recovery code is ORION [{refs['runbook.txt']}]. "
-                        f"The owner is NetworkOps [{refs['inventory.csv']}]."
-                    ),
+                    "content": answer,
                 },
                 "done": True,
                 "done_reason": "stop",

@@ -1,5 +1,17 @@
 # Enterprise RAG Platform
 
+## Folder ingestion web interface
+
+Open **http://localhost:18000/** with the Docker quickstart below. Select a browser
+folder or a configured read-only server root, preview files, start ingestion,
+recover saved jobs, and ask questions with citations. The managed library supports
+UTF-8 TXT/CSV and text-based PDFs through a pinned parser in the image.
+
+See [setup, limits, identity/update semantics and API usage](docs/folder-library.md)
+and the [actual UI walkthrough](docs/ui-walkthrough.md). Jobs and staged uploads
+persist in a dedicated SQLite volume. Legacy API/n8n routes remain compatible.
+
+
 **Local-first RAG reference implementation** using Python, FastAPI, Ollama and Qdrant. A portfolio project demonstrating enterprise AI architecture fundamentals: ingestion, vector retrieval, grounded answers, source provenance and test automation.
 
 > **Status: v0.1 prototype.** For local lab use only; not yet production hardened. No employer or customer data.

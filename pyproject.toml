@@ -28,3 +28,6 @@ pythonpath = ["src", "."]
 markers = ["documents: optional real Unstructured parser/chunker tests (explicit opt-in)"]
 [tool.ruff]
 line-length = 100
+
+[tool.setuptools.package-data]
+rag = ["web/*.html", "web/*.css", "web/*.js"]

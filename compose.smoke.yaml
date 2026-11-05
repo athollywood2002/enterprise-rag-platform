@@ -3,6 +3,9 @@ services:
   api:
     environment:
       OLLAMA_URL: http://ollama-stub:11434
+      INGEST_SOURCE_ROOTS: '{"fixture-root":"/sources/fixtures"}'
+    volumes:
+      - ./demo/fixtures:/sources/fixtures:ro
     depends_on:
       - ollama-stub
   ollama-stub:

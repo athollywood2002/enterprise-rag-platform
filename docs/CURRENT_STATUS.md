@@ -1,85 +1,43 @@
 # Current status
 
-Updated 2026-11-04 UTC after PR #19 and the accepted live text HTTP smoke.
-This is a local-lab prototype, not a production service.
+Updated November 5, 2026. Local single-instance prototype, not a production service.
 
-## Latest verified milestone
+## Completed milestones
 
-The merged application at [`4051ca5`](https://github.com/athollywood2002/enterprise-rag-platform/commit/4051ca5468f20f54080366fadc61e4207db433db)
-passed one scoped synthetic text test through the real route:
-**authenticated HTTP API → budget proxy → dedicated owned Ollama and native Qdrant**.
+- PR #21 merged at `379d434`: Docker quickstart and manual n8n text/CSV demo.
+  One real two-host manual execution ingested both fixtures and returned the correct
+  ORION/NetworkOps answer with supporting citations. Shared services were preserved
+  and the isolated demo stopped. Post-merge base, document and Docker CI passed.
+- A separate bounded two-page PDF HTTP test at application `f20ac879` passed parsing,
+  page provenance, duplicate-free reingestion, two cited answers, a metered budget
+  of six embeddings/two chats and shutdown verification. The owner accepted both
+  answers and closed the smoke. Earlier failed attempts remain failed and preserved.
+  This private-packet result does not establish PDF support in the PR #21 image.
+- Earlier authenticated text HTTP and private development A/B evidence remains
+  historical. The deferred PDF follow-up is complete, not pending approval.
 
-| Check | Observed result |
-| --- | --- |
-| Authorization | Unauthorized ingestion and question requests returned 401. |
-| Idempotent ingestion | Ingesting the same text twice left one point with the same ID and payload; it remained unchanged after the question. |
-| Answer and citation | One question returned the correct synthetic fact with a matching source and citation. |
-| Model budget | Exactly three embedding calls and one chat call; generation completed with an explicit 1,536-token cap. |
-| Resource controls | The test cgroup reported a 400% CPU quota, 24 GiB memory limit, zero swap and a 512-task limit. |
-| Shutdown | All captured owned process identities and their GPU entries disappeared within the single 15-second observation window; acceptance occurred after about 0.425 seconds. |
-| Final checks | Shared model-service identity remained unchanged at the observations, test ports closed, supervisor evidence finalized without errors and the exact test cgroup was absent. |
+## Folder UI implementation (this branch)
 
-The first shutdown sample still contained a matching zombie process and its GPU
-entry. That sample did not pass; acceptance required actual disappearance in a
-later sample. An earlier run failed its shutdown checkpoint despite passing the
-HTTP sequence. That failure remains recorded, with its cause unconfirmed.
+The same-origin web interface adds browser-folder upload and bounded read-only
+server-root browsing, preview, SQLite-persisted jobs, real per-file progress,
+explicit retry/cancellation/restart recovery and citation inspection. TXT/CSV/text
+PDF parsing uses shared backend code with pinned pypdf in Docker, independent of
+optional legacy Unstructured parsing. Immutable vector revisions and a transactional
+active-revision registry preserve a usable document on replacement failure.
 
-The test used Qwen3:8b, nomic-embed-text, Qdrant server 1.17.0 and qdrant-client
-1.17.1 with frozen runtime/model/dependency pins. Review checked the private
-captures and all 24 returned receipt hashes and contents. Raw receipts,
-operational paths, credentials and deployment-specific pins remain private.
-These are saved run observations, not a current host-health claim.
+See [operating guide](folder-library.md) for the separate managed collection, limits,
+source identity semantics and n8n API integration. See [UI walkthrough](ui-walkthrough.md)
+for actual browser evidence and limitations. This is reviewable branch work; it is
+not an image release or a claim that the branch was deployed on AiMiniRig.
 
-## What is available on main
+The old API/n8n demo remains supported. The new Docker parser and UI require their
+own isolated container validation; historical PDF smoke results are not reused as
+proof for this implementation. Fixture tests do not prove broad retrieval quality,
+complex PDF layout support, production readiness or tenant isolation.
 
-- Authenticated text/document ingestion, page-local document chunks,
-  citation-bearing answers and collection write guards.
-- Offline canonicalization, development labeling and the
-  [synthetic evaluation CLI](evaluation-cli.md) from
-  [PR #14](https://github.com/athollywood2002/enterprise-rag-platform/pull/14).
-  The CLI uses stub services; it does not execute the private live test.
-- An optional, default-off [generation token cap](generation-budget.md) from
-  [PR #16](https://github.com/athollywood2002/enterprise-rag-platform/pull/16).
-  Actual chat responses include generation metadata even when uncapped;
-  no-sources fallbacks retain their prior shape.
-- An opt-in [process supervisor and separate-API budget proxy](evaluation-supervisor.md)
-  from [PR #17](https://github.com/athollywood2002/enterprise-rag-platform/pull/17)
-  and [PR #18](https://github.com/athollywood2002/enterprise-rag-platform/pull/18).
-- [PR #19](https://github.com/athollywood2002/enterprise-rag-platform/pull/19)
-  rejects equivalent proxy/upstream ports and validates upstream JSON before
-  recording success.
-
-Normal API startup does not enable the supervisor or proxy. The successful live
-test used a separately reviewed private launcher, including its shutdown
-observation window; that launcher is not a new public CLI mode or part of the
-merged supervisor library. The [validation guide](real-http-validation-plan.md)
-describes the test contract, not a ready-to-run deployment package or permission
-to repeat the run.
-
-## Scope and next work
-
-This milestone validates one tiny plain-text HTTP integration path. It does not
-validate document/PDF parsing through this supervised route, parser resource
-limits, retrieval selectivity, comparative answer quality or a general benchmark.
-It does not demonstrate host/network containment or an enforceable VRAM cap.
-The public automated tests remain offline; they do not contact live model or
-database services.
-
-Next work is a separately scoped document/PDF HTTP validation covering parsing,
-page provenance, collection isolation and cited retrieval. Reusable public live
-execution tooling remains a reproducibility gap. Neither that future test nor
-the earlier A/B pilot is executed by the synthetic evaluation CLI.
-
-The following remain separate, draft and unmerged:
-
-- [PR #12](https://github.com/athollywood2002/enterprise-rag-platform/pull/12),
-  `f6f059af7127d4de5b05b4f4e25a5befda05f497`.
-- [PR #13](https://github.com/athollywood2002/enterprise-rag-platform/pull/13),
-  `c2caab33cda009ad34d64922412beb640d354df4`: B,
-  `nist-requirement-page-v2`, a requirement-aware opt-in candidate.
-
-B remains the owner's preferred opt-in candidate, not the default. This text
-smoke neither tests B nor changes the provisional pilot conclusions below.
+PRs #12 and #13 remain separate and outside this change. No retained data, private
+receipts, model assets or failed runs were deleted. No registry publication or
+shared-service deployment is included.
 
 ## Private provisional development pilot
 

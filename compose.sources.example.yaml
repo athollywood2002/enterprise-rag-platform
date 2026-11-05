@@ -1,0 +1,8 @@
+# Copy and edit the host-side path. Read-only mounts prevent source modification.
+# Use: docker compose --env-file .env.demo -f compose.demo.yaml -f compose.sources.example.yaml up -d
+services:
+  api:
+    environment:
+      INGEST_SOURCE_ROOTS: '{"team-documents":"/sources/team"}'
+    volumes:
+      - ./demo/fixtures:/sources/team:ro
