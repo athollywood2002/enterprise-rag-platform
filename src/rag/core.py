@@ -174,7 +174,7 @@ class RagEngine:
         self.db.upsert(collection_name=name, points=points, wait=True)
         return len(points)
 
-    def ask(self, question: str, top_k: int = 5) -> dict:
+    def ask(self, question: str, top_k: int = 5, *, query_filter=None) -> dict:
         # Recheck at dispatch too: unvalidated model_copy/model_construct must
         # not forward a boolean, negative sentinel or overflowing integer.
         cap = Settings.validate_generation_cap(self.config.ollama_num_predict)
@@ -186,6 +186,7 @@ class RagEngine:
             query=vector,
             limit=top_k,
             with_payload=True,
+            **({"query_filter": query_filter} if query_filter is not None else {}),
         )
         sources = [
             {
