@@ -11,7 +11,7 @@ async function api(path, options = {}) {
   return body;
 }
 const post = (path, body) => api(path, { method: 'POST', ...(body ? { body: JSON.stringify(body) } : {}) });
-function guarded(fn) { return async event => { try { await fn(event); } catch (error) { say(error.message); } }; }
+function guarded(fn) { return async event => { try { await fn(event); } catch (error) { say(error.message); $('message').scrollIntoView({block: 'nearest'}); } }; }
 function metrics(target, entries) { target.replaceChildren(...entries.map(([value, label]) => { const e = node('div', '', 'metric'); e.append(node('strong', String(value)), node('span', label)); return e; })); }
 function badge(text) { return node('span', text.replaceAll('_', ' '), 'badge ' + text); }
 function clearPreview() { selection = null; $('preview-panel').hidden = true; $('preview-empty').hidden = false; }
@@ -56,8 +56,7 @@ async function browse() {
 $('root-select').onchange = guarded(async () => { serverPath = ''; await browse(); });
 $('browse-up').onclick = guarded(async () => { serverPath = serverPath.split('/').slice(0, -1).join('/'); await browse(); });
 $('preview-server').onclick = guarded(async () => { selection = { mode: 'server', source: $('root-select').value, folder: serverPath }; renderPreview(await post('/preview', selection)); });
-async function stageBrowser(job) {
-  const filesForJob = new Map(selectedFiles);
+async function stageBrowser(job, filesForJob = new Map(selectedFiles)) {
   for (const file of job.files.filter(f => f.status === 'pending')) {
     const local = filesForJob.get(file.path);
     if (!local || local.size !== file.size) { say(`Reselect the original folder to upload ${file.path}, then retry this job.`); return false; }
@@ -68,8 +67,9 @@ async function stageBrowser(job) {
 }
 $('start').onclick = guarded(async () => {
   if (!selection || busy) return;
+  const filesForJob = new Map(selectedFiles);
   busy = true; $('start').disabled = true;
-  try { const job = await post('/jobs', selection); currentJob = job.id; await refreshJobs(); if (job.mode === 'browser') await stageBrowser(job); say('Job created. Follow the file results below.'); await refreshJobs(); }
+  try { const job = await post('/jobs', selection); currentJob = job.id; await refreshJobs(); if (job.mode === 'browser') await stageBrowser(job, filesForJob); say('Job created. Follow the file results below.'); await refreshJobs(); }
   finally { busy = false; $('start').disabled = false; }
 });
 async function refreshJobs() {
