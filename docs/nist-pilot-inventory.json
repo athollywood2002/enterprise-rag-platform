@@ -1,0 +1,2021 @@
+{
+  "schema": "nist-pdf-candidate-inventory-v1",
+  "created_utc": "2026-11-02T00:23:48.478083+00:00",
+  "base_commit": "82bd34484d3697607f88a98117aa0930ab5310df",
+  "python": "3.12.16",
+  "platform": "Darwin arm64",
+  "network_during_parsing": "socket connect/connect_ex/create_connection/getaddrinfo denied",
+  "documents": [
+    {
+      "doc_id": "nist-sp800-145",
+      "source_sha256": "7b0c1a9fdfc67218b8ba2098f448c100c27070db91736b3c87fed63bfa21d418",
+      "source_bytes": 85781,
+      "source": {
+        "title": "The NIST Definition of Cloud Computing",
+        "canonical_url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-145.pdf",
+        "revision": "September 2011, includes errata 2012-04-27",
+        "license_id": "NIST-publication-statement-review-pending",
+        "attribution": "Peter Mell and Timothy Grance (NIST); NIST SP 800-145. Republished courtesy of the National Institute of Standards and Technology. Inspection only; no text redistributed.",
+        "redistribution": "local_only"
+      },
+      "parser": {
+        "profile": "unstructured-pdf-fast-v1",
+        "normalization": "nfc-quotes-artifacts-whitespace-v2",
+        "unicode_version": "15.0.0",
+        "packages": [
+          {
+            "name": "unstructured",
+            "version": "0.18.32"
+          },
+          {
+            "name": "unstructured-inference",
+            "version": "1.6.17"
+          },
+          {
+            "name": "pdfminer.six",
+            "version": "20260107"
+          },
+          {
+            "name": "pypdf",
+            "version": "6.21.4"
+          },
+          {
+            "name": "nltk",
+            "version": "3.10.4"
+          }
+        ]
+      },
+      "normalization": "nfc-quotes-artifacts-whitespace-v2",
+      "chunking_policy": "unstructured-title-page-local-v1:max=1200:new=1000:combine=200:multipage=false",
+      "physical_pages": 7,
+      "pages": [
+        {
+          "page": 1,
+          "canonical_sha256": "9758d2740678f734b8b7b2e0233f371bae91707095b12b45de2cfc4923ef25ca",
+          "canonical_characters": 162,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 1
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 2,
+          "canonical_sha256": "ed1bf97b0ea69dbcef718d1092a5fb35def70b56bc126c144612bd82e3357f35",
+          "canonical_characters": 470,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 2
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 3,
+          "canonical_sha256": "55c96ee4afda020bc981706f3086fa139e23fe610d42db2bafb6002b33b9d279",
+          "canonical_characters": 1416,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 2
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 4,
+          "canonical_sha256": "ad9ebd20e81b220d5034df6d9a7c7a0340d886e24467f43cc33173b58c67c3dd",
+          "canonical_characters": 651,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 3
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 5,
+          "canonical_sha256": "4b342b04d3bf8855635953febc849a05b7da6d7938b7a6818e3f455ad9bcd6b6",
+          "canonical_characters": 2070,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 6,
+          "canonical_sha256": "4ed7a8f01f4dfabad55617389b1c0ff05cbcc580f82782e7dcbccd654ad13da3",
+          "canonical_characters": 3683,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 7,
+          "canonical_sha256": "c7aff1f59777018a4ab3ac854bc5c758c53fa07c612e6d8c4302bf01a06a94e0",
+          "canonical_characters": 2309,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        }
+      ],
+      "mapping_counts": {
+        "mapped": 21
+      },
+      "all_candidate_chunks_mapped": true,
+      "mapping_failures": [],
+      "serving_normalized_text_and_page_parity": true,
+      "serving_raw_chunks": 21,
+      "serving_normalized_empty_chunks": 0,
+      "inspection_only": true,
+      "corpus_admitted": false,
+      "extraction_status": "completed",
+      "rights_screen": {
+        "proposal": "Preferred low-complexity PDF pilot candidate; owner admission pending",
+        "redistribution_decision": "local_only; no PDF/text republication in this PR",
+        "publication_statement_physical_page": 5,
+        "statement_summary": "Voluntary non-government use; not subject to copyright; attribution desired.",
+        "authors": "Peter Mell and Timothy Grance, both NIST",
+        "screen": "All seven extracted pages read; no external reproduced quotation, figure credit or restrictive notice identified in extracted text. Acknowledged outside advice is not treated as proof of outside authorship.",
+        "caveats": [
+          "Text review is not an exhaustive visual/legal clearance.",
+          "Revision includes an editorial erratum dated 2012-04-27 on physical page 4.",
+          "Only 10761 canonical characters; cloud definitions, not a control-ID or command-rich source."
+        ]
+      }
+    },
+    {
+      "doc_id": "nist-sp800-144",
+      "source_sha256": "47f0fdf31f4f2b37fb2a8fa0bf77235aad0b3daa74a6397603a619a839500a42",
+      "source_bytes": 1105061,
+      "source": {
+        "title": "Guidelines on Security and Privacy in Public Cloud Computing",
+        "canonical_url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-144.pdf",
+        "revision": "December 2011",
+        "license_id": "NIST-publication-statement-review-pending",
+        "attribution": "Wayne Jansen (Booz Allen Hamilton) and Timothy Grance (NIST); NIST SP 800-144. Republished courtesy of the National Institute of Standards and Technology. Inspection only; no text redistributed.",
+        "redistribution": "local_only"
+      },
+      "parser": {
+        "profile": "unstructured-pdf-fast-v1",
+        "normalization": "nfc-quotes-artifacts-whitespace-v2",
+        "unicode_version": "15.0.0",
+        "packages": [
+          {
+            "name": "unstructured",
+            "version": "0.18.32"
+          },
+          {
+            "name": "unstructured-inference",
+            "version": "1.6.17"
+          },
+          {
+            "name": "pdfminer.six",
+            "version": "20260107"
+          },
+          {
+            "name": "pypdf",
+            "version": "6.21.4"
+          },
+          {
+            "name": "nltk",
+            "version": "3.10.4"
+          }
+        ]
+      },
+      "normalization": "nfc-quotes-artifacts-whitespace-v2",
+      "chunking_policy": "unstructured-title-page-local-v1:max=1200:new=1000:combine=200:multipage=false",
+      "physical_pages": 80,
+      "pages": [
+        {
+          "page": 1,
+          "canonical_sha256": "247eea599afada308c0c13b702326387e737616c134c0808224db3832538ac61",
+          "canonical_characters": 116,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 1
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 2,
+          "canonical_sha256": "7fc23578ef26e8656c931048313fcf4452a9e8a4577a2b949248a14b9ebae654",
+          "canonical_characters": 508,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 2
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 3,
+          "canonical_sha256": "affc19e74ea2a16a6167ce448645896de8df134c1761f29633621a6b80e963fb",
+          "canonical_characters": 1406,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 2
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 4,
+          "canonical_sha256": "9e8e09da0f1b1dd55c0690abaaf2c7a4fadbea0d8f33231a49c6ce1f768bc6c0",
+          "canonical_characters": 1614,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 2
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 5,
+          "canonical_sha256": "8e03c6244a29cb6af970f7dcb7dfbbceba051a2f01680ab7bf1b438f325b635d",
+          "canonical_characters": 4464,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 6,
+          "canonical_sha256": "7a60cc720b7ae91d727bb3ccba360b57f32cbdca2b4c0fdbdffbbc79351d7424",
+          "canonical_characters": 3424,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 7,
+          "canonical_sha256": "2a6ad3d0eccc0e4fa3517215419afa10f3b2ed284c09868662ae4bd2dcf4944f",
+          "canonical_characters": 3462,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 8,
+          "canonical_sha256": "4a5e04a049f479d8f0ada860d590e6a0261440d3bdf43c5b33c85fea1fffd17f",
+          "canonical_characters": 3481,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 9,
+          "canonical_sha256": "0c5f50c4ff6eb3aee03a50f722a9d193f3209f0ef66b8dcaf36c38a0dee3da51",
+          "canonical_characters": 3569,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 10,
+          "canonical_sha256": "02441f65e045fec1289d4f1dc4b760fd95e4b764e2347dd493f121749d8cff2d",
+          "canonical_characters": 1694,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 7
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 11,
+          "canonical_sha256": "ab58fcdaa3dacca823c4b35b46bb68389fb41de069993559bd045e53ad9df065",
+          "canonical_characters": 2620,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 12,
+          "canonical_sha256": "00e27bc000699b61a50fc01da0bba174207b23bb541903b074e5de179a8e1187",
+          "canonical_characters": 1907,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 13,
+          "canonical_sha256": "a0b997c16d7b896f87047eda6fe28dc5565dada7c3bb7badb187741fb3cf7274",
+          "canonical_characters": 3250,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 14,
+          "canonical_sha256": "b0eb71563ffb33e588e2c51b656d7114c3c159f4893e89750033e4fafea97a73",
+          "canonical_characters": 3198,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 15,
+          "canonical_sha256": "c09b115af56f06e3f1ed37681a4dc58284db97070702c7506a90dfb55212a315",
+          "canonical_characters": 2035,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 3
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 16,
+          "canonical_sha256": "95cfa20d737dd3dded39944ef89111055c817291201d69a650d173aefc5261d5",
+          "canonical_characters": 3264,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 17,
+          "canonical_sha256": "ed050427ad553e0eeaa0a212b81492be31b293e309d322d0f5558ee1a45836d9",
+          "canonical_characters": 3441,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 18,
+          "canonical_sha256": "4f18d679a6e112ce9d9a0f47bc1731ca045a0d38a95e4504749d518c2781688e",
+          "canonical_characters": 3443,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 19,
+          "canonical_sha256": "d75133d066a86cdd9f9c85b5e74b164fa56efc5789f632812d03e53caeef0dec",
+          "canonical_characters": 3532,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 20,
+          "canonical_sha256": "b02edd536ef68d1bae4f244e2361a7d45adb62a5af9a060dbfcea208c13be6b1",
+          "canonical_characters": 3038,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 21,
+          "canonical_sha256": "d68810c34b8eaab67e526c6d83dacffbb6f68dbb218b754cc10f4873627b3dd6",
+          "canonical_characters": 3487,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 22,
+          "canonical_sha256": "24c72fc306343a4c35f242c2aa9314842bcd5fb063468a4dfab995d1abbaa58a",
+          "canonical_characters": 3283,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 23,
+          "canonical_sha256": "7b5f3343c2f39d133b081df7feadd8316eea2df280afeb5373b5313ab8dfd69d",
+          "canonical_characters": 3646,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 24,
+          "canonical_sha256": "7eaa2efca41b6a3465e39957dae41693f4d7dc54c04952ff83d126b6a75f8458",
+          "canonical_characters": 3402,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 25,
+          "canonical_sha256": "f07c720dbec9cd5d06bcde43e1ff4860acd745aedcae010541a8aecc5587065e",
+          "canonical_characters": 3373,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 26,
+          "canonical_sha256": "35caa3e698c6b4a81578a414072d7b9ab5f83736e8383bd83b24e8acf0f2bad2",
+          "canonical_characters": 3181,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 3
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 27,
+          "canonical_sha256": "07171f86e9e8997ae9fcd9cc15049bacbdd3381c0f78f96e9134aa74a75c922c",
+          "canonical_characters": 3326,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 28,
+          "canonical_sha256": "658d6e5c1e043dcfc24934e730e6e25555ab2cdcf53e51e4a371e7f97af90842",
+          "canonical_characters": 3462,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 29,
+          "canonical_sha256": "19d7d7f3e2aa1cc1763e3122c1d59a01298b1742f4e70339b978a16e31ea7cc9",
+          "canonical_characters": 3307,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 30,
+          "canonical_sha256": "d161e5551f861a57a8bb4394d42f64f1c34c167ca341c26720bce25588f6401a",
+          "canonical_characters": 3487,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 31,
+          "canonical_sha256": "a0531158f97eb39f7d7b36bc53598e2a57c7d773884e8a9032b12180329efde0",
+          "canonical_characters": 3380,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 32,
+          "canonical_sha256": "9859083d2dba1b058e742251b9ca144decea929d5e3087b061c60188b3aae1f8",
+          "canonical_characters": 3468,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 33,
+          "canonical_sha256": "50e3e7b86d6bc41319a5fbe049c1cb208653d4fcc55c4eeb84c68d7e351469e1",
+          "canonical_characters": 3590,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 34,
+          "canonical_sha256": "4934ec6adf36025caf5f73d210b8d0a40b38f1ca11f017dd73f777160ecba2e1",
+          "canonical_characters": 3198,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 35,
+          "canonical_sha256": "eb21fb8573b16ee3f6f27fd869632a8275522a7d52c59f24a6c7abb043754f37",
+          "canonical_characters": 3574,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 36,
+          "canonical_sha256": "51b8e535069b605f1c0624607cda9ad5720dc3c2bdfe9c0c471189f73a72b9bf",
+          "canonical_characters": 3007,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 37,
+          "canonical_sha256": "02d368b178bcae0b035149c10b9c83d3e31227a3eb10940e8ae331616121753c",
+          "canonical_characters": 3486,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 38,
+          "canonical_sha256": "6186072523f646040d799f19419f9a1f9b1f2193a9b156347a869b08b5eded88",
+          "canonical_characters": 3250,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 39,
+          "canonical_sha256": "013ae609e8b317adc31d27460181ea96ebcea5c794314a64a0db82e75803f7f1",
+          "canonical_characters": 3345,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 40,
+          "canonical_sha256": "15a0e5975342a784b3b99c97d090de68edfca6986594a318ef49fa5347c330b8",
+          "canonical_characters": 3272,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 41,
+          "canonical_sha256": "500c4d373f4ce67bcded0730dda8071a164c207a8c52d0a9c93bcbf7da5b492d",
+          "canonical_characters": 2957,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 42,
+          "canonical_sha256": "1b0a5bbba8a55a8c8e33889bbba46e1ff4813a1e00be1906653f36642d2d71ee",
+          "canonical_characters": 3519,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 43,
+          "canonical_sha256": "9e6205307c1cd02049cbfa1f006a37e830870b0e26fabaaed433fd5b64788ccc",
+          "canonical_characters": 3461,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 44,
+          "canonical_sha256": "6106e1c2f586ee7b3fcb472216b82e630135677d6d7f13d91400bbb9d1ab6af9",
+          "canonical_characters": 3215,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 45,
+          "canonical_sha256": "9e5782317c91609af288fce3a1b74df5d07ee28544e9a18ce2068957214521fa",
+          "canonical_characters": 2775,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 46,
+          "canonical_sha256": "485e36c5a8f1fe4f5798f66902829eac56bafa1db56559427ddf5eb8d95331a3",
+          "canonical_characters": 2304,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 47,
+          "canonical_sha256": "5472b9dd68649579e7eb7f3d9b8cedf5d391923d513bf03e1fada704666ff767",
+          "canonical_characters": 3610,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 48,
+          "canonical_sha256": "b42a5dedd61fc3ef75230ce36f7cd75fa207af8c512d259e7a59aa75d90f203e",
+          "canonical_characters": 4255,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 49,
+          "canonical_sha256": "2c4720770ae380d531a556989bacd6cbe84ae4fbeeda7693e57e785850212d43",
+          "canonical_characters": 3091,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 50,
+          "canonical_sha256": "d24b6b6098ad5ba3be52bc6d4298212ded80fbb3ee06242a0b9a99ad2fc87d83",
+          "canonical_characters": 3586,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 51,
+          "canonical_sha256": "d0952970ba8aeddc9b8a20cc25118d80d5f08e9949cd1f3d24278e4b5074f905",
+          "canonical_characters": 3090,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 52,
+          "canonical_sha256": "1d20e912089ae82f79e739268b815e2bc855fe076f413df589cc485ba84c002c",
+          "canonical_characters": 2426,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 7
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 53,
+          "canonical_sha256": "a06392f35d342d2396041922f3dc16b439386da3581a9e222cd790e45e79bd69",
+          "canonical_characters": 2549,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 3
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 54,
+          "canonical_sha256": "1fb45c0867896a5fda6dde957c641eda80f1941aaf615f1551301a8f46dc38c8",
+          "canonical_characters": 3462,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 55,
+          "canonical_sha256": "d224b7bb72baeec7c22c2e2bf5daff7b6e0a61e3c4c9ece261a8440563bad425",
+          "canonical_characters": 3570,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 56,
+          "canonical_sha256": "bf73d8b8888cdd1a5cd5ecb0fcf75797eb89a8b4e3a01097c1eb7445884bd71f",
+          "canonical_characters": 3457,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 57,
+          "canonical_sha256": "a250715dbd3884fc2aea3c336975f1552c8c16671d081a352ac59bf6cc712b28",
+          "canonical_characters": 2644,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 58,
+          "canonical_sha256": "a68536603d48c37aa4d4dc1577c9a7e6b42a1e0ec8a15606329554a2aef3f6b1",
+          "canonical_characters": 2783,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 59,
+          "canonical_sha256": "e46207c31139e316faaaa1a0504d5843b7c6dd65df4fb56b5294d744c3536984",
+          "canonical_characters": 2660,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 7
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 60,
+          "canonical_sha256": "897e8cdae3583734155197d1ece04a0ce015b395c2dbd9f37ae5e376ebd093e4",
+          "canonical_characters": 3086,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 3
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 61,
+          "canonical_sha256": "4e6ec2d1ca81e8d922c02e0e1df336a596db43142846af1259c4cc4bfb7eef3d",
+          "canonical_characters": 2488,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 62,
+          "canonical_sha256": "dcf1813ebd35aedc1943c9464d5390f1026c0537ccf4cf61d8b99bd517fbe800",
+          "canonical_characters": 3670,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 63,
+          "canonical_sha256": "dd6016ecf20d2a44d63942a596a6eb7761ead146192709b714ea7facd5584261",
+          "canonical_characters": 2283,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 64,
+          "canonical_sha256": "eff6bd3819e662adf84b002ec05b8feffebc30a2039402068d2df9bd3158b191",
+          "canonical_characters": 2186,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 65,
+          "canonical_sha256": "9b22af01bf9e36807527e1493773eecfdf455d2b27c988cf458004503e819e35",
+          "canonical_characters": 2295,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 66,
+          "canonical_sha256": "ff6ee5ce020d14f39e07914e1cbda88c538683f05d95478f84f41739820e0d06",
+          "canonical_characters": 2257,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 7
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 67,
+          "canonical_sha256": "c5a62386707f1b04b35946993bf34df50d8c74644422abcba528f9af76949cae",
+          "canonical_characters": 2441,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 68,
+          "canonical_sha256": "9f872f52665d99de9c59dab0428c81f86eaaa8fbda1e1373fb20896f17ffd215",
+          "canonical_characters": 2185,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 69,
+          "canonical_sha256": "3a2116553dd5780bf2aab2ce6290167365a84578016c35f84af067e21d54f67c",
+          "canonical_characters": 2231,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 70,
+          "canonical_sha256": "9e9769c391019a9a08743a0091423851704538edc793e0b783e1d0e3e62243de",
+          "canonical_characters": 2207,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 7
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 71,
+          "canonical_sha256": "dae7dad5766a8f4935447f78106a83ede65fc439bb6a6957b9c5973fa84f519f",
+          "canonical_characters": 2315,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 7
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 72,
+          "canonical_sha256": "e90187f21bd6498355f0c4e2b6338625ebcf743652abc5952db6afce9caad064",
+          "canonical_characters": 2134,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 8
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 73,
+          "canonical_sha256": "960ee590700381c245c0d31369859d24b6eb9882475e96d62a432560ad800b66",
+          "canonical_characters": 2236,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 74,
+          "canonical_sha256": "43b9bd40cf4d6d0c9dff92e4483639f8fe3f56ebc6b7c47ae099aa95af0df2f7",
+          "canonical_characters": 2205,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 7
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 75,
+          "canonical_sha256": "3c44934f96b1cc66b4e33fe6896a2c31296f3528855b8658a7a25f1af0f17142",
+          "canonical_characters": 2215,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 76,
+          "canonical_sha256": "de723ed6a5a17e3f52a14f38eb24cc0936c53af888d2388de498989618f20d5b",
+          "canonical_characters": 2278,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 77,
+          "canonical_sha256": "a9e62cfe81bd08c7b504492dff8300f4c0355514927be70cf46b0b2d371f78fa",
+          "canonical_characters": 2444,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 78,
+          "canonical_sha256": "767faff812d63df1f2b2505158a473526fb7b9b0b2e290b62eaecfa99e0c8e97",
+          "canonical_characters": 1306,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 3
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 79,
+          "canonical_sha256": "56b3e11c699d4e4fbf82d954163a5757f873b1d8195b18f012cd2f6e9ed8a54c",
+          "canonical_characters": 1309,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 80,
+          "canonical_sha256": "57e59d45fbcd493e0e05e5198222af2c5f57b972c1f17f80e3591b8bb7c079e2",
+          "canonical_characters": 1849,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        }
+      ],
+      "mapping_counts": {
+        "mapped": 379
+      },
+      "all_candidate_chunks_mapped": true,
+      "mapping_failures": [],
+      "serving_normalized_text_and_page_parity": true,
+      "serving_raw_chunks": 379,
+      "serving_normalized_empty_chunks": 0,
+      "inspection_only": true,
+      "corpus_admitted": false,
+      "extraction_status": "completed",
+      "rights_screen": {
+        "proposal": "Exclude from proposed pilot admission until third-party passages are cleared",
+        "redistribution_decision": "local_only; no PDF/text republication in this PR",
+        "publication_statement_physical_page": 11,
+        "statement_summary": "Voluntary non-government use; not subject to copyright; attribution desired.",
+        "authors": "Wayne Jansen (Booz Allen Hamilton) and Timothy Grance (NIST)",
+        "screen": "Outside coauthor credited on physical page 4; direct third-party quotations on physical pages 47-48, including cloud-provider statements. Publication-level statement does not establish separate rights for incorporated quotations.",
+        "caveats": [
+          "No linked reference material fetched or permission inferred from citation.",
+          "No excerpt redaction or partial-admission policy implemented.",
+          "Older cloud-security guidance, not a current-practice or deployment recommendation."
+        ]
+      }
+    },
+    {
+      "doc_id": "nist-sp800-210",
+      "source_sha256": "147271600180dfd048c21da0892a1228f574bdf7b69f5982710a3aa6ebf79a95",
+      "source_bytes": 1289805,
+      "source": {
+        "title": "General Access Control Guidance for Cloud Systems",
+        "canonical_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-210.pdf",
+        "revision": "July 2020 (final 2020-07-31)",
+        "license_id": "NIST-publication-statement-review-pending",
+        "attribution": "Vincent C. Hu, Michaela Iorga, Wei Bao, Ang Li, Qinghua Li and Antonios Gouglidis; NIST SP 800-210. Republished courtesy of the National Institute of Standards and Technology. Inspection only; no text redistributed.",
+        "redistribution": "local_only"
+      },
+      "parser": {
+        "profile": "unstructured-pdf-fast-v1",
+        "normalization": "nfc-quotes-artifacts-whitespace-v2",
+        "unicode_version": "15.0.0",
+        "packages": [
+          {
+            "name": "unstructured",
+            "version": "0.18.32"
+          },
+          {
+            "name": "unstructured-inference",
+            "version": "1.6.17"
+          },
+          {
+            "name": "pdfminer.six",
+            "version": "20260107"
+          },
+          {
+            "name": "pypdf",
+            "version": "6.21.4"
+          },
+          {
+            "name": "nltk",
+            "version": "3.10.4"
+          }
+        ]
+      },
+      "normalization": "nfc-quotes-artifacts-whitespace-v2",
+      "chunking_policy": "unstructured-title-page-local-v1:max=1200:new=1000:combine=200:multipage=false",
+      "physical_pages": 34,
+      "pages": [
+        {
+          "page": 1,
+          "canonical_sha256": "ef6abb78b369fa99c3d7fb4133219f781ffc4d45cc5e1254e5a703d79dfd8be4",
+          "canonical_characters": 279,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 1
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 2,
+          "canonical_sha256": "8c8501edac136000c3293741d63015a9a5338537a4e6549215e85bcb6784181f",
+          "canonical_characters": 695,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 3
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 3,
+          "canonical_sha256": "70e78473c376550cbb64c9ee1656c3719b455c9adb8d7bde0c2653cd88aa903b",
+          "canonical_characters": 3026,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 4,
+          "canonical_sha256": "6c510671d08e7b229f0446eb2dc4471d9fef196955ed08a0f27b18691561ca3f",
+          "canonical_characters": 2769,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 5,
+          "canonical_sha256": "ee95eac4fe278bae6137b458e0a654338b9c5e5a17969831cfe4a29a446f3aff",
+          "canonical_characters": 1060,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 2
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 6,
+          "canonical_sha256": "109e660bf134f3311a5701ff789622816590f9212a1b62cb73e99b9abbfeba7a",
+          "canonical_characters": 2490,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 7,
+          "canonical_sha256": "8105418cd7f730e03f57dde8339c7bac50fd8c2ce898ee1ddc88595b5c68109f",
+          "canonical_characters": 4325,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 7
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 8,
+          "canonical_sha256": "bf7950061a633cfc0f6f36b2c17cf7699b6d0d25e0ab388b110442dec0db34d1",
+          "canonical_characters": 1658,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 9,
+          "canonical_sha256": "d55c88e6fa91433b77b47de225bd31aa44bc4e924f95c6249a49956ce42671c5",
+          "canonical_characters": 3226,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 7
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 10,
+          "canonical_sha256": "01e32f569a883f26ba7864820e5f8eac84401c42b6bcc8f516f9287b5b4476dd",
+          "canonical_characters": 807,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 1
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 11,
+          "canonical_sha256": "ae5eab94deb8515c3fd445058c5ef1197b021ca9f9e41cc7623825587b865874",
+          "canonical_characters": 3592,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 7
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 12,
+          "canonical_sha256": "1152624c9bf3ef689d2226cdac0b351ba75a9d9d137b2b9d046cc62fb16dd676",
+          "canonical_characters": 1554,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 3
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 13,
+          "canonical_sha256": "261c63864337d5e75f50a553b78c9c575d8227922bc0894d52d8a854cd218963",
+          "canonical_characters": 2421,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 14,
+          "canonical_sha256": "7e00267178f9ed7242863959e2616f45158d3b140c8fd633e019f580fd4deab6",
+          "canonical_characters": 1785,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 2
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 15,
+          "canonical_sha256": "a6f87c027f02f68c59ea41295cfdd133ca7b55fc9f2bf549d8751fbb74a902e0",
+          "canonical_characters": 3451,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 16,
+          "canonical_sha256": "2f8779a06f295425a7cf6b645abc57cac68d25431d04e59cb69a0722bac25fa0",
+          "canonical_characters": 3643,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 6
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 17,
+          "canonical_sha256": "7d62a3635782d4bb3369902b9c6ef2ab6106dde5be8220834c2185b9dd045d91",
+          "canonical_characters": 3670,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 18,
+          "canonical_sha256": "10b3f8f147e2c3caff452e39b95aa3ef9b454d8f32cbe2225c20aa59d9796343",
+          "canonical_characters": 2501,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 19,
+          "canonical_sha256": "b8dedc2b93294338c47db9471588f87f3f74ac238431cec776aac19298fd5da2",
+          "canonical_characters": 3216,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 20,
+          "canonical_sha256": "82ede51906f7ba66dca641cd7bda35794b5fb3cfbee92ffee24341a241336e44",
+          "canonical_characters": 1469,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 3
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 21,
+          "canonical_sha256": "ffc75663fab133f103b779e240a0c0cafadcab92abf4add7109bd006bfb9a0bf",
+          "canonical_characters": 2459,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 22,
+          "canonical_sha256": "442ec5a7384dfd6f846e2a3aff03390f297988dccd83143152f970b7ee13b4c2",
+          "canonical_characters": 3347,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 23,
+          "canonical_sha256": "5e34e2068260357e54fbda116455aacb5392d651e0cdec955f824577849bd530",
+          "canonical_characters": 3814,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 7
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 24,
+          "canonical_sha256": "fb3de104fd5732bc7bf0f532dd11e19e061bf16c5c548eed54c6271029339a3b",
+          "canonical_characters": 3464,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 25,
+          "canonical_sha256": "0e7d673893da6bf263036a57f2c1350304b24ed70929c03230526b4a062946fa",
+          "canonical_characters": 919,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 3
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 26,
+          "canonical_sha256": "170046d43c9b4aa4a856262ae55144e9ced5733ba8324ff7fb403d8eec40fa89",
+          "canonical_characters": 2018,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 4
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 27,
+          "canonical_sha256": "cc2b822f360a7fa4e30b22cd096de7e8d91642dd4f0e7e0af89ff4bcf5cf7806",
+          "canonical_characters": 1325,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 3
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 28,
+          "canonical_sha256": "d460e58ab6ad4c73c6240d307fb3a80e85f98c799e81f72d444a82ef4957fa76",
+          "canonical_characters": 1129,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 2
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 29,
+          "canonical_sha256": "664e99b8e039336547320b1c0729448f0aca283d65070339de1f3ecc9c0ac1de",
+          "canonical_characters": 2783,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 30,
+          "canonical_sha256": "f918cf9a97c3388f9e398caa6dc49259addcc83fe83849b0f5807982620372d2",
+          "canonical_characters": 2911,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 31,
+          "canonical_sha256": "b39ebdb58d4fd0a8a12b6fe05501d948a8cd90accc91b4c99ec5fed1f023028e",
+          "canonical_characters": 2897,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 3
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 32,
+          "canonical_sha256": "283db9f3b3a30e18546d40a2b944294c9a0833f9b983a5593362199339110b75",
+          "canonical_characters": 2567,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 5
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 33,
+          "canonical_sha256": "cfaab3969f3e7dd1d2fb2d1d59b2e00e903dd8b5ae1d4625d399f5b7d51478ff",
+          "canonical_characters": 1717,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 7
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        },
+        {
+          "page": 34,
+          "canonical_sha256": "866ae0000c1f464e5dff09c62f941db35870a30a87543dfe248063e24e7baa2c",
+          "canonical_characters": 475,
+          "blank": false,
+          "raw_partition_cf": {},
+          "canonical_cf": {},
+          "canonical_cc": {},
+          "partition_repeat_matches_canonical": true,
+          "mapping_counts": {
+            "mapped": 2
+          },
+          "nonspace_characters_outside_mapped_chunks": 0
+        }
+      ],
+      "mapping_counts": {
+        "mapped": 144
+      },
+      "all_candidate_chunks_mapped": true,
+      "mapping_failures": [],
+      "serving_normalized_text_and_page_parity": true,
+      "serving_raw_chunks": 144,
+      "serving_normalized_empty_chunks": 0,
+      "inspection_only": true,
+      "corpus_admitted": false,
+      "extraction_status": "completed",
+      "rights_screen": {
+        "proposal": "Defer pilot admission pending independent mixed-authorship/figure provenance review",
+        "redistribution_decision": "local_only; no PDF/text republication in this PR",
+        "publication_statement_physical_page": 3,
+        "statement_summary": "Not subject to copyright in the United States; attribution appreciated.",
+        "authors": "NIST authors Vincent C. Hu and Michaela Iorga plus University of Arkansas and Lancaster University coauthors (physical page 2)",
+        "screen": "Strong publication-level US statement, but mixed authorship and six diagrams require provenance review before global redistribution or corpus admission. No contrary copyright credit identified in extracted text; external authorship alone is not a finding of infringement or a claim the publication statement is invalid.",
+        "caveats": [
+          "Figures cannot be rights-cleared or semantically validated solely from fast extracted text.",
+          "Do not label NIST-hosted mixed-authorship work CC0 or assume a worldwide public-domain grant.",
+          "Access-control guidance/policy tables may suit identifier questions, but no measured retrieval claim."
+        ]
+      }
+    }
+  ],
+  "decision": "NO_ADMISSION_OR_LABELS; owner selection and independent review pending",
+  "acquisition": [
+    {
+      "name": "sp800-145-landing",
+      "requested_url": "https://csrc.nist.gov/pubs/sp/800/145/final",
+      "utc": "2026-11-02T00:19:28.929211+00:00",
+      "status": "acquired",
+      "final_url": "https://csrc.nist.gov/pubs/sp/800/145/final",
+      "content_type": "text/html",
+      "bytes": 43219,
+      "sha256": "fff793095248af749f8db3360e4343b15dd6d264f4a9daa14f4331626b3bcd3f"
+    },
+    {
+      "name": "sp800-144-landing",
+      "requested_url": "https://csrc.nist.gov/pubs/sp/800/144/final",
+      "utc": "2026-11-02T00:19:29.357214+00:00",
+      "status": "acquired",
+      "final_url": "https://csrc.nist.gov/pubs/sp/800/144/final",
+      "content_type": "text/html",
+      "bytes": 44035,
+      "sha256": "f7b68b0e830f8c4ea7316b5870327e271e0183c06747d0c773996e1297b8fb14"
+    },
+    {
+      "name": "sp800-210-landing",
+      "requested_url": "https://csrc.nist.gov/pubs/sp/800/210/final",
+      "utc": "2026-11-02T00:19:29.701218+00:00",
+      "status": "acquired",
+      "final_url": "https://csrc.nist.gov/pubs/sp/800/210/final",
+      "content_type": "text/html",
+      "bytes": 45847,
+      "sha256": "f1ce2296e446cb1134941d93a9e1738f62dbd7bd0db78516c14066dde8e017c9"
+    },
+    {
+      "name": "sp800-145",
+      "requested_url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-145.pdf",
+      "utc": "2026-11-02T00:19:29.957745+00:00",
+      "status": "acquired",
+      "final_url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-145.pdf",
+      "content_type": "application/pdf",
+      "bytes": 85781,
+      "sha256": "7b0c1a9fdfc67218b8ba2098f448c100c27070db91736b3c87fed63bfa21d418"
+    },
+    {
+      "name": "sp800-144",
+      "requested_url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-144.pdf",
+      "utc": "2026-11-02T00:19:33.428402+00:00",
+      "status": "acquired",
+      "final_url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-144.pdf",
+      "content_type": "application/pdf",
+      "bytes": 1105061,
+      "sha256": "47f0fdf31f4f2b37fb2a8fa0bf77235aad0b3daa74a6397603a619a839500a42"
+    },
+    {
+      "name": "sp800-210",
+      "requested_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-210.pdf",
+      "utc": "2026-11-02T00:19:33.869492+00:00",
+      "status": "acquired",
+      "final_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-210.pdf",
+      "content_type": "application/pdf",
+      "bytes": 1289805,
+      "sha256": "147271600180dfd048c21da0892a1228f574bdf7b69f5982710a3aa6ebf79a95"
+    },
+    {
+      "name": "nist-license",
+      "requested_url": "https://www.nist.gov/open/license",
+      "utc": "2026-11-02T00:19:34.377647+00:00",
+      "status": "failed",
+      "reason": "HTTPError: HTTP Error 301: Moved Permanently"
+    }
+  ],
+  "acquisition_limits": {
+    "pdf_bytes_per_file": 5242880,
+    "pdf_bytes_total": 12582912,
+    "html_bytes_per_file": 262144,
+    "physical_pages_total": 180
+  },
+  "policy_acquisition": [
+    {
+      "url": "https://www.nist.gov/oism/copyrights",
+      "status": 301,
+      "location": "/copyrights-disclaimers"
+    },
+    {
+      "url": "https://www.nist.gov/copyrights-disclaimers",
+      "bytes": 79348,
+      "sha256": "6c13feaf1f8289f199268295d8d23fd576987e4e80c76113c47ce6eabec2d063",
+      "status": "acquired"
+    },
+    {
+      "url": "https://www.nist.gov/open/copyright-fair-use-and-licensing-statements-srd-data-software-and-technical-series-publications",
+      "bytes": 94091,
+      "sha256": "0f86eb39fd7ce5bf83f37732c060154a2c5d112291f02d882c1c01ef222283db",
+      "status": "acquired"
+    }
+  ],
+  "requests": {
+    "total": 10,
+    "accepted_bodies": 8,
+    "rejected_redirects": 2,
+    "unauthenticated": true,
+    "automatic_redirects": false,
+    "crawl": false
+  },
+  "limits": [
+    "No visual-completeness claim; fast embedded-text extraction does not capture diagram semantics.",
+    "Cf inventory is Unstructured partition text, not every encoded PDF glyph or text object.",
+    "Same-runtime repeat partition and serving parity, not independent accuracy or corpus admission.",
+    "No canonical corpus manifest, real gold labels, split or holdout created.",
+    "Per-document rights decisions are conservative screening, not legal advice."
+  ]
+}

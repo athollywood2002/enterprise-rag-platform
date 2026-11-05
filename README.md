@@ -234,6 +234,8 @@ an explicitly supplied, rights-admitted canonical JSON manifest, not running
 services or parser packages. Run `python -m evaluation.label --help` from this
 repository root. Type/difficulty are explicit; no holdout mode or secrecy claim.
 Real annotation remains owner/review gated; the tests use synthetic data only.
+See the [NIST PDF candidate inspection](docs/nist-pilot-candidates.md) for bounded
+source/rights and extraction evidence; none of those candidates is admitted yet.
 
 A separately run two-page synthetic fixture at `fa6c9e5` established ingestion,
 page provenance, answer/citation selection, manually reviewed abstention and stable

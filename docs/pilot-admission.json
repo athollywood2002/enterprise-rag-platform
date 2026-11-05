@@ -1,0 +1,49 @@
+{
+  "schema": "development-pilot-admission-record-v1",
+  "record_date": "2026-11-02",
+  "authority": "Explicit owner decision following independent Option A screening review",
+  "scope": "development-pilot preparation including authorized real question drafts for review and private canonical manifest; annotation/timed execution still require owner authorization",
+  "preparation_update": "Owner accepted eight exact AI-assisted wordings and approved #77 explicit-policy-delegation versus ODP-placeholder convention. Exact selections adopted; candidate packet/provenance/order frozen FOR REVIEW only. Eight owner-derived AI-assisted / twelve agent questions, prior times NOT RECORDED; original submissions/edits/reserve retained privately. Independent all-20 final-candidate review and separate execution/publication decision still required; no gold, spans or labels authorized",
+  "historical_inspection_records_unchanged": true,
+  "documents": [
+    {
+      "doc_id": "nist-sp800-171r3",
+      "title": "Protecting Controlled Unclassified Information in Nonfederal Systems and Organizations",
+      "revision": "Revision 3, May 2024, final 2024-05-14",
+      "source_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-171r3.pdf",
+      "doi": "https://doi.org/10.6028/NIST.SP.800-171r3",
+      "source_sha256": "3e4631df8b5d61f40a6e542b52779ef30ddbbfff31e09214fa94ad6e6f5e6d08",
+      "source_bytes": 1593213,
+      "physical_pages": 120,
+      "admission": "approved-for-development-pilot-corpus-use-only",
+      "canonical_profile": "unstructured-pdf-fast-v1",
+      "normalization": "nfc-quotes-artifacts-whitespace-v2",
+      "canonical_page_hash_evidence": "nist-option-a-inventory.json:documents[nist-sp800-171r3].pages",
+      "runtime_evidence": "nist-option-a-inventory.json",
+      "rights_statement_physical_page": 3,
+      "rights_statement_scope": "Specific publication states no copyright in the United States and requests attribution; no blanket grant for independently owned third-party material or other NIST publications",
+      "citation": "Ross R, Pillitteri V (2024), Protecting Controlled Unclassified Information in Nonfederal Systems and Organizations, NIST SP 800-171r3, National Institute of Standards and Technology, Gaithersburg, MD. https://doi.org/10.6028/NIST.SP.800-171r3 (accessed 2026-11-02). Republished courtesy of the National Institute of Standards and Technology.",
+      "excerpt_and_label_publication": {
+        "owner_permission": "conditional",
+        "condition": "Only insofar as compliant with applicable document rights and attribution; flag and withhold independently owned or unclear third-party material for review",
+        "not_automatic_publication_authorization": true,
+        "scope_excludes": ["uncleared third-party content", "automatic raw-PDF or image redistribution", "government branding or endorsement", "other documents", "protected holdout publication before separately approved final evaluation"]
+      },
+      "source_bodies_currently": "retained privately; no source PDF, canonical bodies, gold or labels published by this preparation",
+      "known_limitations": ["Table 3 physical page 103 flattens row relationships", "requirement prose and identifiers can span baseline chunks", "zero-padded and unpadded control forms are not automatically rewritten", "130 distinct dotted IDs include cross-references and withdrawn entries, not 130 active requirements"],
+      "unicode_preflight": "zero raw-partition Cf and canonical Cf/Cc for the vetted file/runtime; recheck if runtime or source changes"
+    },
+    {
+      "doc_id": "nist-sp800-190",
+      "revision": "September 2017, final 2017-09-25",
+      "source_sha256": "0ebad52c4a3aba971b3a707b056e57238d1c4ad8f212dffd461ff9f5fed1bdb6",
+      "admission": "deferred; not permitted in pilot questions, labels or corpus",
+      "excerpt_and_label_publication": "not approved by this decision",
+      "source_bodies_currently": "retain privately; no deletion or redistribution",
+      "reasons": ["garbled rotated margin notice on physical pages 3-63", "missing figure labels in canonical text", "mixed-authorship and incorporated-material rights review outstanding"],
+      "future_work": ["#68 separate noise detector proposal", "versioned serving/evaluation noise policy requires dedicated review; no change now"]
+    }
+  ],
+  "not_a_canonical_corpus_or_label_file": true,
+  "not_authorized": ["gold excerpts or labels creation", "annotation", "timed pilot execution", "holdout creation or access", "real retrieval or generation baseline", "PR merges", "live model/API inference", "Docker or GPU or Qdrant actions", "unrelated downloads", "deletions or Phase 1 asset changes"]
+}

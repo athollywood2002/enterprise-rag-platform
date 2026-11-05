@@ -1,0 +1,220 @@
+{
+  "frozen_shortlist_sha256": "acb3551de1d64d4644a2b66b0d626ad0e8248ec0362e4f1fb7ce52860a1be1e8",
+  "started_utc": "2026-11-02T00:44:53.706881+00:00",
+  "candidates": [
+    {
+      "id": "nist-sp800-171r3",
+      "title": "Protecting Controlled Unclassified Information in Nonfederal Systems and Organizations",
+      "version": "SP 800-171 Revision 3, final May 2024; verify current errata on official landing page before full acquisition",
+      "landing_url": "https://csrc.nist.gov/pubs/sp/800/171/r3/final",
+      "pdf_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-171r3.pdf",
+      "selection_reason": "Structured security requirement identifiers such as 03.01.01",
+      "requests": [
+        {
+          "kind": "landing",
+          "method": "GET",
+          "url": "https://csrc.nist.gov/pubs/sp/800/171/r3/final",
+          "status": 200,
+          "final_url": "https://csrc.nist.gov/pubs/sp/800/171/r3/final",
+          "content_type": "text/html",
+          "content_length": null,
+          "content_range": null,
+          "bytes": 51768,
+          "sha256": "76bfb3947a5a2a3b3819111667c5ce87e8eb369fc8a09ccd082f5f3ea7547a78"
+        },
+        {
+          "kind": "pdf_head",
+          "method": "HEAD",
+          "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-171r3.pdf",
+          "status": 200,
+          "final_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-171r3.pdf",
+          "content_type": "application/pdf",
+          "content_length": "1593213",
+          "content_range": null
+        },
+        {
+          "kind": "pdf_prefix",
+          "method": "GET",
+          "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-171r3.pdf",
+          "status": 206,
+          "final_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-171r3.pdf",
+          "content_type": "application/pdf",
+          "content_length": "16384",
+          "content_range": "bytes 0-16383/1593213",
+          "bytes": 16384,
+          "sha256": "20a921f341000f7f99452cddb28c3924a8de667a826aa9af177064b5007b5140"
+        }
+      ],
+      "linearization_page_count": 120,
+      "landing_metadata": {
+        "release": "Revision 3, May 2024, final 2024-05-14",
+        "authors": "Ron Ross and Victoria Pillitteri (NIST)",
+        "planning_note": "2024-06-25 HTML version availability; not identified as a PDF erratum"
+      },
+      "page_count_basis": "N in first PDF linearization dictionary from HTTP 206 bytes 0-16383; not full-parser verification",
+      "prefix_hash_is_full_pdf_hash": false,
+      "corpus_admitted": false
+    },
+    {
+      "id": "nist-sp800-53b",
+      "title": "Control Baselines for Information Systems and Organizations",
+      "version": "SP 800-53B, final October 2020; verify current updates on official landing page before full acquisition",
+      "landing_url": "https://csrc.nist.gov/pubs/sp/800/53/b/upd1/final",
+      "pdf_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53B.pdf",
+      "selection_reason": "Control identifiers and baseline tables",
+      "requests": [
+        {
+          "kind": "landing",
+          "method": "GET",
+          "url": "https://csrc.nist.gov/pubs/sp/800/53/b/upd1/final",
+          "status": 200,
+          "final_url": "https://csrc.nist.gov/pubs/sp/800/53/b/upd1/final",
+          "content_type": "text/html",
+          "content_length": null,
+          "content_range": null,
+          "bytes": 46426,
+          "sha256": "ce2e081214a1f1ddab54d9dfdb57657c01a9c704c840307db8d49650a4b67bed"
+        },
+        {
+          "kind": "pdf_head",
+          "method": "HEAD",
+          "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53B.pdf",
+          "status": 200,
+          "final_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53B.pdf",
+          "content_type": "application/pdf",
+          "content_length": "1627293",
+          "content_range": null
+        },
+        {
+          "kind": "pdf_prefix",
+          "method": "GET",
+          "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53B.pdf",
+          "status": 206,
+          "final_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53B.pdf",
+          "content_type": "application/pdf",
+          "content_length": "16384",
+          "content_range": "bytes 0-16383/1627293",
+          "bytes": 16384,
+          "sha256": "366d2a7a6b5bcd305913366bdca15e577e6ded23a7e5d06c32c44f472dc891ee"
+        }
+      ],
+      "linearization_page_count": 85,
+      "landing_metadata": {
+        "release": "Landing page says September 2020, updates as of 2020-12-10; planning note announces Release 5.2.0 on 2025-08-27",
+        "authors": "Joint Task Force",
+        "revision_caveat": "Initial request plan named October 2020 provisionally. Official landing page provides newer/different dates. Full PDF release cannot be confirmed from prefix metadata; pin exact release and raw bytes before approved full acquisition."
+      },
+      "page_count_basis": "N in first PDF linearization dictionary from HTTP 206 bytes 0-16383; not full-parser verification",
+      "prefix_hash_is_full_pdf_hash": false,
+      "corpus_admitted": false
+    },
+    {
+      "id": "nist-sp800-190",
+      "title": "Application Container Security Guide",
+      "version": "SP 800-190, final September 2017",
+      "landing_url": "https://csrc.nist.gov/pubs/sp/800/190/final",
+      "pdf_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-190.pdf",
+      "selection_reason": "Infrastructure/container semantic questions",
+      "requests": [
+        {
+          "kind": "landing",
+          "method": "GET",
+          "url": "https://csrc.nist.gov/pubs/sp/800/190/final",
+          "status": 200,
+          "final_url": "https://csrc.nist.gov/pubs/sp/800/190/final",
+          "content_type": "text/html",
+          "content_length": null,
+          "content_range": null,
+          "bytes": 45666,
+          "sha256": "2545464a9b3a0612f59b5e837f868a28f9d70e714fda50582fb87d22c4aaeb6e"
+        },
+        {
+          "kind": "pdf_head",
+          "method": "HEAD",
+          "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-190.pdf",
+          "status": 200,
+          "final_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-190.pdf",
+          "content_type": "application/pdf",
+          "content_length": "666229",
+          "content_range": null
+        },
+        {
+          "kind": "pdf_prefix",
+          "method": "GET",
+          "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-190.pdf",
+          "status": 206,
+          "final_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-190.pdf",
+          "content_type": "application/pdf",
+          "content_length": "16384",
+          "content_range": "bytes 0-16383/666229",
+          "bytes": 16384,
+          "sha256": "d0fcfec63634da09753a9e3aed40907db0e494e305391680f1ee44cb7eb50bfd"
+        }
+      ],
+      "linearization_page_count": 63,
+      "landing_metadata": {
+        "release": "September 2017, final 2017-09-25",
+        "authors": "Murugiah Souppaya (NIST), John Morello (Twistlock), Karen Scarfone (Scarfone Cybersecurity)",
+        "rights_caveat": "Mixed authorship is a review flag, not proof of restrictions; document statement and incorporated material not yet inspected."
+      },
+      "page_count_basis": "N in first PDF linearization dictionary from HTTP 206 bytes 0-16383; not full-parser verification",
+      "prefix_hash_is_full_pdf_hash": false,
+      "corpus_admitted": false
+    }
+  ],
+  "frozen_request_plan": {
+    "status": "preflight_only_not_admitted",
+    "frozen_before_requests": true,
+    "limits": {
+      "pdf_bytes_per_file": 5242880,
+      "pdf_bytes_total": 12582912,
+      "physical_pages_total": 180,
+      "html_bytes_per_file": 262144,
+      "preflight_pdf_range_bytes_per_file": 16384,
+      "requests_maximum": 9,
+      "automatic_redirects": false
+    },
+    "candidates": [
+      {
+        "id": "nist-sp800-171r3",
+        "title": "Protecting Controlled Unclassified Information in Nonfederal Systems and Organizations",
+        "version": "SP 800-171 Revision 3, final May 2024; verify current errata on official landing page before full acquisition",
+        "landing_url": "https://csrc.nist.gov/pubs/sp/800/171/r3/final",
+        "pdf_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-171r3.pdf",
+        "selection_reason": "Structured security requirement identifiers such as 03.01.01"
+      },
+      {
+        "id": "nist-sp800-53b",
+        "title": "Control Baselines for Information Systems and Organizations",
+        "version": "SP 800-53B, final October 2020; verify current updates on official landing page before full acquisition",
+        "landing_url": "https://csrc.nist.gov/pubs/sp/800/53/b/upd1/final",
+        "pdf_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53B.pdf",
+        "selection_reason": "Control identifiers and baseline tables"
+      },
+      {
+        "id": "nist-sp800-190",
+        "title": "Application Container Security Guide",
+        "version": "SP 800-190, final September 2017",
+        "landing_url": "https://csrc.nist.gov/pubs/sp/800/190/final",
+        "pdf_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-190.pdf",
+        "selection_reason": "Infrastructure/container semantic questions"
+      }
+    ]
+  },
+  "schema": "nist-pdf-shortlist-preflight-v1",
+  "decision": "BLOCKED_BY_180_PAGE_BATCH_CAP_AND_PENDING_REVISION_CONFIRMATION",
+  "full_pdfs_acquired": 0,
+  "pdf_prefix_bytes_total": 49152,
+  "header_declared_pages_total": 268,
+  "head_declared_pdf_bytes_total": 3886735,
+  "full_source_sha256": null,
+  "corpus_admitted": false,
+  "pending_checks": [
+    "Full byte SHA-256 pin",
+    "Full document-specific rights/third-party screen",
+    "Real parser physical-page count",
+    "Unicode Cf and canonical page hashes",
+    "Mapping and serving parity",
+    "Identifier and table-text retention"
+  ]
+}
