@@ -3,7 +3,9 @@
 This workflow uses Read/Write Files from Disk, Extract from File, Code and HTTP
 Request nodes. It is inactive and has no schedule, webhook, credential ID or key.
 The JSON and Code-node tests do not establish an actual n8n import/execution.
-Verify node availability in the installed n8n version before import.
+Verify node availability in the installed n8n version before import. Read/Write
+Files from Disk v1.1 is required so a missing file raises an error rather than
+silently ending the workflow without output.
 
 1. Review [text-csv-demo.json](text-csv-demo.json). In n8n choose **Import from
    File** and select it. Leave it inactive; use **Execute Workflow** once when

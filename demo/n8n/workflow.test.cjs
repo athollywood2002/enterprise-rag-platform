@@ -38,6 +38,7 @@ test('export has manual trigger, serial ingest-before-ask and no secrets/credent
   assert.equal(workflow.active, false);
   assert.equal(workflow.nodes[0].type, 'n8n-nodes-base.manualTrigger');
   for (const n of workflow.nodes) {
+    if (n.type === 'n8n-nodes-base.readWriteFile') assert.equal(n.typeVersion, 1.1);
     assert.equal(n.credentials, undefined);
     assert.equal(n.retryOnFail, undefined);
     assert.equal(n.continueOnFail, undefined);

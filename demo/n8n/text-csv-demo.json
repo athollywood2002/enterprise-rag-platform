@@ -35,7 +35,7 @@
       "id": "demo-03",
       "name": "Read runbook",
       "type": "n8n-nodes-base.readWriteFile",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [
         480,
         0
@@ -124,7 +124,7 @@
       "id": "demo-08",
       "name": "Read inventory",
       "type": "n8n-nodes-base.readWriteFile",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [
         720,
         220
