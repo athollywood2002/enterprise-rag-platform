@@ -93,6 +93,7 @@ def run():
     )
     assert "ORION" in answer["answer"] and "NetworkOps" in answer["answer"]
     assert answer["generation"]["status"] == "complete"
+    assert answer["model_mode"] == "synthetic"
     assert len({s["source"] for s in answer["sources"]}) == 5
     pdf = request(
         "POST",

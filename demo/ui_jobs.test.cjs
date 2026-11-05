@@ -16,7 +16,7 @@ function fixture() {
   const context=vm.createContext({document:{getElementById:$,createElement:()=>new Element()},setInterval:f=>{poll=f;},fetch:(url,options)=>new Promise(resolve=>calls.push({url,options,reply:body=>resolve({ok:true,json:async()=>body}),fail:()=>resolve({ok:false,status:503,json:async()=>({detail:'offline'})})}))});
   vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../src/rag/web/app.js'),'utf8'),context);
   vm.runInContext("key='fixture'; config={};",context);
-  return {$,calls,poll:()=>poll(),select:id=>{$('job-select').value=id; return $('job-select').onchange();},load:()=>vm.runInContext('loadJob()',context)};
+  return {$,calls,poll:()=>poll(),select:id=>{$('job-select').value=id; return $('job-select').onchange();},load:()=>vm.runInContext('loadJob()',context),mode:value=>vm.runInContext('config.model_mode='+JSON.stringify(value),context)};
 }
 const job=(id,source=id)=>({id,source,mode:'server',status:'queued',created:1,files:[{path:'a.txt',status:'pending'}],counts:{pending:1,failed:1}});
 async function selected(f,id) {const done=f.select(id); f.calls.at(-1).reply(job(id)); await done;}
@@ -64,5 +64,37 @@ test('late readiness snapshots cannot overwrite a newer check',async()=>{
  const f=fixture(),first=f.$('refresh-readiness').onclick(),old=f.calls.at(-1),last=f.$('refresh-readiness').onclick();
  const state=mode=>({mode,chat_model:{name:'chat',status:'available'},embedding_model:{name:'embed',status:'available'},checked_at:new Date().toISOString(),metadata_ready:true,ollama:'reachable',qdrant:'reachable'});
  f.calls.at(-1).reply(state('synthetic'));await last;old.reply(state('real'));await first;
- assert.match(f.$('model-mode').textContent,/synthetic/);
+  assert.match(f.$('model-mode').textContent,/synthetic/);
 });
+
+const metadata=mode=>({mode,chat_model:{name:'chat',status:'available'},embedding_model:{name:'embed',status:'available'},checked_at:new Date().toISOString(),metadata_ready:true,ollama:'reachable',qdrant:'reachable'});
+const answer=mode=>({model_mode:mode,answer:'Fixture [1].',sources:[{source:'fixture.txt',text:'Fixture.',chunk:0}],generation:{status:'complete',eval_count:4}});
+async function ask(f) {f.$('question').value='Fixture?';f.$('search-scope').value='all';return f.$('ask-form').onsubmit({preventDefault(){}});}
+for(const [cached,actual] of [['real','synthetic'],['synthetic','real']]) {
+  test(`answer mode comes from response, not cached ${cached} or readiness`,async()=>{
+    const f=fixture();f.mode(cached);
+    const ready=f.$('refresh-readiness').onclick();f.calls.at(-1).reply(metadata(actual));await ready;
+    const asking=ask(f);f.calls.at(-1).reply(answer(actual));await asking;
+    assert.match(f.$('generation').textContent,new RegExp('Model mode: '+actual+' '));
+    assert.equal(f.$('generation').textContent.includes('simulated reply'),actual==='synthetic');
+    assert.match(f.$('generation').textContent,/operator configuration, not evidence of inference/);
+  });
+  test(`in-flight ${cached} answer keeps its label after readiness changes to ${actual}`,async()=>{
+    const f=fixture();f.mode(cached);
+    const asking=ask(f),request=f.calls.at(-1);
+    const ready=f.$('refresh-readiness').onclick();f.calls.at(-1).reply(metadata(actual));await ready;
+    request.reply(answer(cached));await asking;
+    assert.match(f.$('model-mode').textContent,new RegExp(actual));
+    assert.match(f.$('generation').textContent,new RegExp('Model mode: '+cached+' '));
+    assert.equal(f.$('generation').textContent.includes('simulated reply'),cached==='synthetic');
+  });
+}
+for(const mode of [undefined,'unknown','invalid']) {
+  test(`missing or unsupported response mode (${mode}) remains unknown`,async()=>{
+    const f=fixture();f.mode('real');
+    const ready=f.$('refresh-readiness').onclick();f.calls.at(-1).reply(metadata('synthetic'));await ready;
+    const asking=ask(f);f.calls.at(-1).reply(answer(mode));await asking;
+    assert.match(f.$('generation').textContent,/Model mode: unknown /);
+    assert.doesNotMatch(f.$('generation').textContent,/simulated reply/);
+  });
+}

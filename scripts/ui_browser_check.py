@@ -54,6 +54,8 @@ with sync_playwright() as p:
     expect(page.locator("#generation")).to_contain_text("simulated reply, not real inference")
     assert "ORION" in page.locator("#answer").inner_text()
     assert "NetworkOps" in page.locator("#answer").inner_text()
+    expect(page.locator("#generation")).to_contain_text("Model mode: synthetic")
+    expect(page.locator("#generation")).to_contain_text("simulated reply, not real inference")
     page.screenshot(path="docs/images/folder-results.png", full_page=True)
     page.locator("input[value=server]").check()
     page.wait_for_selector("#folder-list li")

@@ -28,6 +28,11 @@ One Uvicorn process and one ingestion worker are supported. A filesystem lock
 refuses a second API process using the same data directory. Do not use `--workers`
 or scale replicas. SQLite is local, not a network-share database.
 
+Settings are validated at startup: a missing `API_KEY` fails startup rather than
+leaving a healthy but unusable authenticated API. Compose reads `RAG_API_KEY` from
+its env file and passes it as the container's `API_KEY`; direct Python launches
+configure `API_KEY` through the process environment or `.env`.
+
 1. Connect using the API key. **API authenticated** confirms only authentication.
    The Models and services panel checks Ollama `/api/tags` and Qdrant `/collections`
    with read-only GETs, a four-second deadline per concurrent check, and a 1 MiB
@@ -38,7 +43,11 @@ or scale replicas. SQLite is local, not a network-share database.
    Set `RAG_MODEL_MODE=real` only when pointing to real models; `synthetic` labels
    deterministic fixtures and `unknown` is the default. This is an operator label,
    not automatic detection. The synthetic Compose override sets it explicitly.
-   Answers show the mode; simulated replies are labeled as such.
+   Each `/library/ask` response includes the serving request's `model_mode` operator
+   label, captured before the ask. The UI uses that response-bound value (or unknown
+   for an older/missing value), not a cached authentication or newer readiness label.
+   Simulated replies are labeled as such. A real label is not proof of real inference:
+   endpoint/model identities and actual response evidence must support that claim.
 2. Choose **Folder on this computer**. Enter a stable source name and select the
    directory. The browser sends relative paths, including subfolders; it cannot
    grant the server access to a local path. Browsers exposing `webkitdirectory`
@@ -220,7 +229,7 @@ the API container, not the machine running n8n.
 - `GET /library/readiness`: authenticated metadata snapshot; no inference or writes.
 - `POST /library/jobs/{job}/retry` / `cancel`: explicit retry or cooperative cancellation.
 - `GET /library/documents`: committed document metadata and cleanup backlog.
-- `POST /library/ask`: `{ "question":"…", "top_k":5, "job_id":"optional job ID" }`; returns the existing answer/sources/generation shape with relative source paths and PDF pages.
+- `POST /library/ask`: `{ "question":"…", "top_k":5, "job_id":"optional job ID" }`; returns answer/sources/generation with relative paths/PDF pages plus request-bound `model_mode`. Legacy `/ask` and the existing n8n contract are unchanged.
 
 A minimal n8n flow is Manual Trigger → preview server selection → create server job
 (including the returned digest) → bounded polling of job
