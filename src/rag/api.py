@@ -1,6 +1,5 @@
 """Simple local-only authenticated RAG demonstration API."""
 
-import os
 import secrets
 import threading
 from contextlib import asynccontextmanager
@@ -23,7 +22,7 @@ from .documents import SUPPORTED_EXTENSIONS, parse_document, sanitize_document_f
 
 @asynccontextmanager
 async def lifespan(app):
-    if os.getenv("INGEST_DATA_DIR"):
+    if settings().ingest_data_dir:
         library()
     yield
     current = getattr(app.state, "library", None)

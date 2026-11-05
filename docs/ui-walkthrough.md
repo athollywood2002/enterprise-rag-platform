@@ -32,6 +32,12 @@ refresh recovery, question/citation display, server browsing, keyboard focus and
 results, server-source and mobile screenshots. The separate `container-smoke` job
 uses a real Qdrant server and parsers from inside the built Docker image.
 
+`node --test demo/ui_selection.test.cjs` also exercises the shipped JavaScript
+with deterministic DOM/fetch fixtures: reordered previews, source edits, mode/root
+changes, stale browse results and an upload set captured before an in-flight create.
+These are race regressions, not an additional real-browser run. The API independently
+checks the displayed preview's digest against the current server inventory.
+
 The execution workspace used for implementation cannot launch Chromium (its Unix
 socket syscall is denied), and has no Docker daemon. CI performs those isolated
 checks instead. The source is not deployed to shared n8n or AiMiniRig, and no real

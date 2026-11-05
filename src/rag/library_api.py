@@ -24,6 +24,10 @@ class Selection(BaseModel):
     files: list[FileSpec] = Field(default_factory=list, max_length=5000)
 
 
+class ReviewedSelection(Selection):
+    preview_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class Question(BaseModel):
     question: str = Field(min_length=1, max_length=4000)
     top_k: int = Field(default=5, ge=1, le=10)
@@ -51,7 +55,7 @@ def routes(authorize, manager):
         return manager().preview(**selection.model_dump())
 
     @router.post("/jobs", status_code=201)
-    def create(selection: Selection):
+    def create(selection: ReviewedSelection):
         return manager().create(**selection.model_dump())
 
     @router.get("/jobs")

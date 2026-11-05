@@ -195,7 +195,7 @@ class Library:
             raise DocumentError(
                 "batch_limit", "Selection exceeds the batch byte limit. Choose a smaller folder."
             )
-        return {
+        preview = {
             "mode": mode,
             "source": source,
             "files": results,
@@ -204,9 +204,35 @@ class Library:
             "eligible": sum(f["eligible"] for f in results),
             "formats": sorted(FORMATS),
         }
+        # Bind job creation to the reviewed inventory, not a later silent rescan.
+        # Canonical ordering ignores filesystem/browser enumeration order only.
+        reviewed = {
+            "mode": mode,
+            "source": source,
+            "folder": folder if mode == "server" else "",
+            "files": sorted(
+                [(f["path"], f["size"], f["eligible"]) for f in results], key=lambda f: f[0]
+            ),
+        }
+        preview["preview_digest"] = digest(
+            json.dumps(reviewed, sort_keys=True, separators=(",", ":")).encode()
+        )
+        return preview
 
-    def create(self, mode, source, files=None, folder=""):
-        preview = self.preview(mode, source, files, folder)
+    def create(self, mode, source, files=None, folder="", preview_digest=None):
+        try:
+            preview = self.preview(mode, source, files, folder)
+        except DocumentError as error:
+            if mode == "server" and preview_digest:
+                raise DocumentError(
+                    "selection_changed",
+                    "Selection changed. Preview the folder again before starting.",
+                ) from error
+            raise
+        if preview_digest != preview["preview_digest"]:
+            raise DocumentError(
+                "selection_changed", "Selection changed. Preview the folder again before starting."
+            )
         job = uuid.uuid4().hex
         with self.db() as db:
             if db.execute("SELECT count(*) FROM jobs").fetchone()[0] >= self.config.ingest_max_jobs:
@@ -461,6 +487,11 @@ class Library:
         )
 
     def parse(self, path, name):
+        if sys.platform != "linux":
+            raise DocumentError(
+                "parser_platform",
+                "Resource-isolated ingestion requires Linux. Run the Docker workspace on this platform.",
+            )
         output = path.with_suffix(".parsed")
         try:
             subprocess.run(

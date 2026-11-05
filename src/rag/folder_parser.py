@@ -117,6 +117,8 @@ def chunks_from_pages(pages, size=900, overlap=150, max_chunks=3000):
 
 def main():
     # The worker starts this child with a wall deadline. OS limits bound hostile PDF expansion.
+    if sys.platform != "linux":
+        raise SystemExit("Resource-isolated ingestion requires Linux; use the Docker workspace.")
     import resource
 
     resource.setrlimit(resource.RLIMIT_AS, (512 * 1024**2, 512 * 1024**2))

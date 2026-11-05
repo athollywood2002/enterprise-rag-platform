@@ -16,6 +16,7 @@ jobs:
         with:
           node-version: '22'
       - run: node --test demo/n8n/workflow.test.cjs
+      - run: node --test demo/ui_selection.test.cjs
       - run: python3 -m unittest discover -s demo -p 'test_*.py' -v
       - run: docker compose -f compose.demo.yaml -f compose.smoke.yaml build
       - name: Verify classic builder compatibility

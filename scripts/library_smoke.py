@@ -23,15 +23,12 @@ def request(method, path, **kwargs):
 
 
 def stage(files, source="container-smoke"):
-    job = request(
-        "POST",
-        "/library/jobs",
-        json={
-            "mode": "browser",
-            "source": source,
-            "files": [{"path": p, "size": len(data)} for p, data in files.items()],
-        },
-    )
+    selection = {
+        "mode": "browser",
+        "source": source,
+        "files": [{"path": p, "size": len(data)} for p, data in files.items()],
+    }
+    job = create_job(selection)
     for file in job["files"]:
         if file["status"] == "pending":
             response = request(
@@ -39,6 +36,13 @@ def stage(files, source="container-smoke"):
             )
             assert response["ready_to_search"] is False
     return job["id"]
+
+
+def create_job(selection):
+    preview = request("POST", "/library/preview", json=selection)
+    return request(
+        "POST", "/library/jobs", json=selection | {"preview_digest": preview["preview_digest"]}
+    )
 
 
 def wait(job, target=None, timeout=90):
@@ -123,7 +127,7 @@ def run():
     # Source-root preview and copy run through the same parser/worker, under a read-only mount.
     config = request("GET", "/library/config")
     if "fixture-root" in config["roots"]:
-        server = request("POST", "/library/jobs", json={"mode": "server", "source": "fixture-root"})
+        server = create_job({"mode": "server", "source": "fixture-root"})
         assert wait(server["id"])["counts"]["successful"] == 2
     print(
         json.dumps(

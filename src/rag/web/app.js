@@ -1,6 +1,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 let key = '', config, selection, selectedFiles = new Map(), currentJob = null, serverPath = '', polling = false, busy = false;
+let selectionGeneration = 0, browseGeneration = 0, previewFiles = new Map(), previewEligible = 0;
 const bytes = n => n < 1024 ? `${n} B` : n < 1024 ** 2 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 ** 2).toFixed(1)} MB`;
 const say = text => { $('message').textContent = text; };
 const node = (tag, text, className) => { const e = document.createElement(tag); e.textContent = text; if (className) e.className = className; return e; };
@@ -14,7 +15,18 @@ const post = (path, body) => api(path, { method: 'POST', ...(body ? { body: JSON
 function guarded(fn) { return async event => { try { await fn(event); } catch (error) { say(error.message); $('message').scrollIntoView({block: 'nearest'}); } }; }
 function metrics(target, entries) { target.replaceChildren(...entries.map(([value, label]) => { const e = node('div', '', 'metric'); e.append(node('strong', String(value)), node('span', label)); return e; })); }
 function badge(text) { return node('span', text.replaceAll('_', ' '), 'badge ' + text); }
-function clearPreview() { selection = null; $('preview-panel').hidden = true; $('preview-empty').hidden = false; }
+function clearPreview() { ++selectionGeneration; selection = null; previewFiles = new Map(); previewEligible = 0; $('start').disabled = true; $('preview-panel').hidden = true; $('preview-empty').hidden = false; }
+async function approvePreview(candidate, files = new Map()) {
+  clearPreview();
+  const generation = selectionGeneration;
+  try {
+    const preview = await post('/preview', candidate);
+    if (generation !== selectionGeneration) return;
+    selection = Object.freeze({ ...candidate, preview_digest: preview.preview_digest });
+    previewFiles = new Map(files); previewEligible = preview.eligible;
+    renderPreview(preview); say('Review the selection, then start ingestion.');
+  } catch (error) { if (generation === selectionGeneration) throw error; }
+}
 function renderPreview(preview) {
   $('preview-source').textContent = `${preview.mode === 'server' ? 'Server' : 'Browser'} source: ${preview.source}${selection?.folder ? '/' + selection.folder : ''}`;
   $('preview-empty').hidden = true; $('preview-panel').hidden = false;
@@ -32,20 +44,25 @@ $('connect-form').addEventListener('submit', guarded(async e => {
 }));
 $('source-mode').addEventListener('change', guarded(async () => {
   const server = document.querySelector('[name=mode]:checked').value === 'server';
-  $('browser-fields').hidden = server; $('server-fields').hidden = !server; selection = null; $('preview-panel').hidden = true; $('preview-empty').hidden = false;
+  ++browseGeneration; clearPreview();
+  $('browser-fields').hidden = server; $('server-fields').hidden = !server;
   if (server) { serverPath = ''; await browse(); }
 }));
 $('folder-input').addEventListener('change', guarded(async () => {
   selectedFiles = new Map(Array.from($('folder-input').files).map(f => [f.webkitRelativePath || f.name, f]));
-  selection = { mode: 'browser', source: $('source-name').value, files: [...selectedFiles].map(([path, f]) => ({ path, size: f.size })) };
-  renderPreview(await post('/preview', selection)); say('Review the selection, then start ingestion.');
+  const files = Object.freeze([...selectedFiles].map(([path, f]) => Object.freeze({ path, size: f.size })));
+  await approvePreview({ mode: 'browser', source: $('source-name').value, files }, selectedFiles);
 }));
 $('source-name').addEventListener('input', () => { clearPreview(); say('Source name changed. Reselect the folder to preview it.'); });
 async function browse() {
   clearPreview();
+  const generation = ++browseGeneration, root = $('root-select').value, path = serverPath;
   $('folder-list').replaceChildren(); $('server-path').textContent = serverPath || '/';
   if (!config.roots.length) { say('No server roots configured. Add a read-only mount and INGEST_SOURCE_ROOTS, or choose a folder on this computer.'); return; }
-  const data = await api(`/browse?root=${encodeURIComponent($('root-select').value)}&path=${encodeURIComponent(serverPath)}`);
+  let data;
+  try { data = await api(`/browse?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}`); }
+  catch (error) { if (generation === browseGeneration) throw error; return; }
+  if (generation !== browseGeneration) return;
   for (const entry of data.entries) {
     const li = document.createElement('li');
     if (entry.kind === 'folder') { const button = node('button', 'Folder · ' + entry.name, 'secondary'); button.onclick = guarded(async () => { serverPath = [serverPath, entry.name].filter(Boolean).join('/'); await browse(); }); li.append(button); }
@@ -55,7 +72,7 @@ async function browse() {
 }
 $('root-select').onchange = guarded(async () => { serverPath = ''; await browse(); });
 $('browse-up').onclick = guarded(async () => { serverPath = serverPath.split('/').slice(0, -1).join('/'); await browse(); });
-$('preview-server').onclick = guarded(async () => { selection = { mode: 'server', source: $('root-select').value, folder: serverPath }; renderPreview(await post('/preview', selection)); });
+$('preview-server').onclick = guarded(async () => { await approvePreview({ mode: 'server', source: $('root-select').value, folder: serverPath }); });
 async function stageBrowser(job, filesForJob = new Map(selectedFiles)) {
   for (const file of job.files.filter(f => f.status === 'pending')) {
     const local = filesForJob.get(file.path);
@@ -67,10 +84,11 @@ async function stageBrowser(job, filesForJob = new Map(selectedFiles)) {
 }
 $('start').onclick = guarded(async () => {
   if (!selection || busy) return;
-  const filesForJob = new Map(selectedFiles);
+  const approvedSelection = selection, filesForJob = new Map(previewFiles);
   busy = true; $('start').disabled = true;
-  try { const job = await post('/jobs', selection); currentJob = job.id; await refreshJobs(); if (job.mode === 'browser') await stageBrowser(job, filesForJob); say('Job created. Follow the file results below.'); await refreshJobs(); }
-  finally { busy = false; $('start').disabled = false; }
+  try { const job = await post('/jobs', approvedSelection); currentJob = job.id; await refreshJobs(); if (job.mode === 'browser') await stageBrowser(job, filesForJob); say('Job created. Follow the file results below.'); await refreshJobs(); }
+  catch (error) { clearPreview(); throw error; }
+  finally { busy = false; $('start').disabled = !selection || !previewEligible; }
 });
 async function refreshJobs() {
   const jobs = await api('/jobs');

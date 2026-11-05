@@ -51,6 +51,11 @@ on the saved job to supply missing bytes. Staged files do not need reuploading.
 If closed between the last upload and Start, use that same retry button to release
 staged work. Do not create a new job merely to recover a saved job.
 
+Start is bound to the exact displayed preview and upload set. Editing the source,
+changing mode/root/folder, or making another selection invalidates it; late responses
+cannot restore an obsolete preview. If a server inventory changes before job creation,
+Start fails with `selection_changed` and creates no job. Preview the folder again.
+
 ## Server folders
 
 Server mode only sees explicitly configured roots in the container. Example:
@@ -76,6 +81,9 @@ itself and its parent directories must be administrator-controlled. Keep the mou
 read-only; this complements rather than replaces descriptor-based containment.
 Sources changing during staging fail explicitly. A server job copies files into
 staging before parsing; source contents can change between preview and staging.
+The preview digest binds paths, declared sizes and eligibility, not a content hash:
+same-size edits before staging are captured in the staged snapshot. New files after
+job creation are not added to that job, and missing files do not delete indexed documents.
 
 ## Actual format support
 
@@ -85,6 +93,10 @@ hash; no optional Unstructured closure, NLTK downloads, OCR or model downloads a
 required for this path. TXT/CSV use Python's standard library. Parsing runs in a
 separate child with a 512 MiB address-space bound, 32 MiB output-file bound and a
 wall timeout. PDF extraction is explicitly text-only and physical-page-local.
+The resource-isolated worker/parser child requires **Linux** (including Docker Desktop
+on macOS/Windows). Direct macOS ingestion returns `parser_platform` with Docker
+guidance; it does not silently run an unbounded parser. The child-dependent tests
+explicitly skip off Linux; pure parser, API boundary and containment tests still run.
 
 | Format | Behavior |
 | --- | --- |
@@ -135,6 +147,8 @@ After a restart, in-flight files with no committed revision become failed/interr
 and require explicit retry. A committed revision is recognized from SQLite.
 Pending queued work resumes. Interrupted uploads require reupload unless fully
 staged. Runtime success is never inferred from an upload, process exit, or filename.
+Startup uses resolved Settings, including `INGEST_DATA_DIR` in a direct launch's
+`.env` file; recovery and queued work do not wait for a browser/library request.
 Retention is conservative: staged bytes, jobs and document versions remain on disk
 up to quotas; there is no automatic source-document deletion or retention purge.
 
@@ -181,8 +195,8 @@ the API container, not the machine running n8n.
 
 - `GET /library/config`: supported formats, configured root labels, destination and limits.
 - `GET /library/browse?root=label&path=subfolder`: bounded folder listing.
-- `POST /library/preview`: `{ "mode":"browser", "source":"team", "files":[{"path":"docs/a.txt","size":123}] }`, or `{ "mode":"server", "source":"team-documents", "folder":"manuals" }`.
-- `POST /library/jobs`: same selection, creates persisted job/file IDs. Server jobs queue immediately after staging each selected file. Browser jobs wait for uploads and Start.
+- `POST /library/preview`: `{ "mode":"browser", "source":"team", "files":[{"path":"docs/a.txt","size":123}] }`, or `{ "mode":"server", "source":"team-documents", "folder":"manuals" }`. Returns a canonical `preview_digest` binding mode, source, folder and sorted path/size/eligibility entries.
+- `POST /library/jobs`: same selection **plus its returned `preview_digest`**, creates persisted job/file IDs only if a fresh preview matches. Added/removed/resized/changed-eligibility files cause `selection_changed` (400) with no job. Missing/malformed digests fail validation. Server jobs queue immediately after staging each selected file. Browser jobs wait for uploads and Start. Existing legacy endpoints are unchanged.
 - `PUT /library/jobs/{job}/files/{file}`: raw file bytes, exact preview size. Returns `staged`, **not** indexed.
 - `POST /library/jobs/{job}/start`: release fully staged browser job.
 - `GET /library/jobs` / `GET /library/jobs/{job}`: status and per-file results.
@@ -190,7 +204,8 @@ the API container, not the machine running n8n.
 - `GET /library/documents`: committed document metadata and cleanup backlog.
 - `POST /library/ask`: `{ "question":"…", "top_k":5, "job_id":"optional job ID" }`; returns the existing answer/sources/generation shape with relative source paths and PDF pages.
 
-A minimal n8n flow is Manual Trigger → create server job → bounded polling of job
+A minimal n8n flow is Manual Trigger → preview server selection → create server job
+(including the returned digest) → bounded polling of job
 status → check successful/failed counts → library ask → inspect citations. For
 files on the n8n host, use browser-mode manifest + raw PUTs + Start instead. The
 old exported workflow continues using its original `/ingest` and `/ask` route.

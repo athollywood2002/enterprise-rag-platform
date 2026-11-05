@@ -1,5 +1,6 @@
 """Real SQLite/Qdrant-local/parser tests; synthetic model transport, no services."""
 
+import sys
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import Mock
@@ -17,6 +18,10 @@ from rag.core import RagEngine
 from rag.folder_parser import DocumentError, chunks_from_pages, parse_pages
 from rag.library import Library
 from rag.source_roots import browse, inventory, open_beneath, relative_path
+
+linux_parser = pytest.mark.skipif(
+    sys.platform != "linux", reason="Resource-isolated parser child requires Linux/Docker"
+)
 
 
 @pytest.fixture
@@ -66,9 +71,14 @@ def library(tmp_path):
     db.close()
 
 
+def create_job(lib, mode, source, files=None, folder=""):
+    preview = lib.preview(mode, source, files, folder)
+    return lib.create(mode, source, files, folder, preview_digest=preview["preview_digest"])
+
+
 def upload(lib, files, source="docs"):
-    job = lib.create(
-        "browser", source, [{"path": path, "size": len(data)} for path, data in files.items()]
+    job = create_job(
+        lib, "browser", source, [{"path": path, "size": len(data)} for path, data in files.items()]
     )
     for f in job["files"]:
         if f["status"] != "pending":
@@ -139,6 +149,7 @@ def test_encrypted_scanned_and_limits():
         parse_pages(b"abc", "a.txt", max_chars=2)
 
 
+@linux_parser
 def test_nested_identity_skip_and_replacement(library):
     lib = library
     first = upload(
@@ -162,6 +173,7 @@ def test_nested_identity_skip_and_replacement(library):
     assert lib.ask("Recovery?")["generation"]["status"] == "complete"
 
 
+@linux_parser
 def test_root_namespace_and_model_change(library):
     lib = library
     finish(lib, upload(lib, {"same.txt": b"one"}, "source-a"))
@@ -176,6 +188,7 @@ def test_root_namespace_and_model_change(library):
 
 
 @pytest.mark.parametrize("failure", ["parse", "embed", "index"])
+@linux_parser
 def test_failed_replacement_preserves_searchable_revision(library, monkeypatch, failure):
     lib = library
     finish(lib, upload(lib, {"a.txt": b"original ORION"}))
@@ -203,6 +216,7 @@ def test_failed_replacement_preserves_searchable_revision(library, monkeypatch, 
     assert all(s["text"] == "original ORION" for s in answer["sources"])
 
 
+@linux_parser
 def test_retry_failed_and_cancelled(library):
     lib = library
     lib.test_state["embed_failure"] = True
@@ -218,6 +232,7 @@ def test_retry_failed_and_cancelled(library):
     assert finish(lib, cancelled)["counts"]["successful"] == 1
 
 
+@linux_parser
 def test_cancel_inflight_before_commit_keeps_previous(library, monkeypatch):
     lib = library
     finish(lib, upload(lib, {"a.txt": b"original"}))
@@ -237,12 +252,13 @@ def test_cancel_inflight_before_commit_keeps_previous(library, monkeypatch):
     )
 
 
+@linux_parser
 def test_restart_upload_and_processing_recovery(library):
     lib = library
     job = upload(lib, {"a.txt": b"ORION"})
     row = lib.get_job(job)["files"][0]
     lib.set_file(row["id"], "embedding")
-    partial = lib.create("browser", "docs", [{"path": "b.txt", "size": 3}])
+    partial = create_job(lib, "browser", "docs", [{"path": "b.txt", "size": 3}])
     lib.begin_upload(partial["id"], partial["files"][0]["id"])
     lib.close()
     resumed = Library(lib.config, lib.engine_factory, start_worker=False)
@@ -258,6 +274,7 @@ def test_restart_upload_and_processing_recovery(library):
         resumed.close()
 
 
+@linux_parser
 def test_restart_after_commit_recognizes_visibility_transaction(library):
     lib = library
     job = upload(lib, {"a.txt": b"ORION"})
@@ -272,6 +289,7 @@ def test_restart_after_commit_recognizes_visibility_transaction(library):
         resumed.close()
 
 
+@linux_parser
 def test_missing_vectors_are_not_skipped(library):
     lib = library
     finish(lib, upload(lib, {"a.txt": b"x"}))
@@ -289,6 +307,7 @@ def test_paths_rejected(path):
         relative_path(path)
 
 
+@linux_parser
 def test_server_symlinks_special_files_and_nested(library, tmp_path):
     root = Path(library.source_root("shared"))
     (root / "nested").mkdir()
@@ -307,7 +326,7 @@ def test_server_symlinks_special_files_and_nested(library, tmp_path):
             pass
     with pytest.raises(DocumentError):
         browse(str(root), "../", 20)
-    job = library.create("server", "shared", folder="nested")
+    job = create_job(library, "server", "shared", folder="nested")
     assert finish(library, job["id"])["counts"]["successful"] == 1
     assert library.documents()["documents"][0]["path"] == "nested/a.txt"
 
@@ -328,6 +347,7 @@ def test_limits_and_exclusions(library):
         )
 
 
+@linux_parser
 def test_http_auth_streaming_recovery_and_static_ui(library, monkeypatch):
     monkeypatch.setattr(api, "settings", lambda: library.config)
     monkeypatch.setattr(api, "library", lambda: library)
@@ -338,14 +358,16 @@ def test_http_auth_streaming_recovery_and_static_ui(library, monkeypatch):
         assert client.get("/ui/app.js").status_code == 200
         assert client.get("/library/jobs").status_code == 401
         headers = {"x-api-key": library.config.api_key}
+        selection = {
+            "mode": "browser",
+            "source": "demo",
+            "files": [{"path": "folder/test.txt", "size": 3}],
+        }
+        preview = client.post("/library/preview", headers=headers, json=selection).json()
         job = client.post(
             "/library/jobs",
             headers=headers,
-            json={
-                "mode": "browser",
-                "source": "demo",
-                "files": [{"path": "folder/test.txt", "size": 3}],
-            },
+            json=selection | {"preview_digest": preview["preview_digest"]},
         ).json()
         file = job["files"][0]
         endpoint = f"/library/jobs/{job['id']}/files/{file['id']}"
@@ -368,6 +390,7 @@ def test_http_auth_streaming_recovery_and_static_ui(library, monkeypatch):
     api.app.state.library = None
 
 
+@linux_parser
 def test_model_change_mid_document_fails_without_replacement(library, monkeypatch):
     lib = library
     finish(lib, upload(lib, {"a.txt": b"original"}))
@@ -386,6 +409,7 @@ def test_model_change_mid_document_fails_without_replacement(library, monkeypatc
     assert lib.documents()["documents"][0]["revision"] == original["revision"]
 
 
+@linux_parser
 def test_cleanup_failure_is_reported_but_never_searchable(library, monkeypatch):
     lib = library
     finish(lib, upload(lib, {"a.txt": b"original"}))
@@ -402,6 +426,7 @@ def test_cleanup_failure_is_reported_but_never_searchable(library, monkeypatch):
     assert engine.db.count(engine.config.qdrant_collection).count == 1
 
 
+@linux_parser
 def test_parser_timeout_and_late_result_never_publish(library, monkeypatch):
     import subprocess
 
@@ -420,7 +445,7 @@ def test_single_instance_and_server_changed_source(library):
         Library(library.config, library.engine_factory, start_worker=False)
     root = Path(library.source_root("shared"))
     (root / "change.txt").write_text("old")
-    job = library.create("server", "shared")
+    job = create_job(library, "server", "shared")
     (root / "change.txt").write_text("changed after preview")
     result = finish(library, job["id"])
     assert result["files"][0]["code"] == "source_changed"
@@ -430,7 +455,7 @@ def test_server_component_swap_to_symlink(library, tmp_path):
     root = Path(library.source_root("shared"))
     (root / "folder").mkdir()
     (root / "folder/a.txt").write_text("abc")
-    job = library.create("server", "shared")
+    job = create_job(library, "server", "shared")
     (root / "folder").rename(root / "original-folder")
     outside = tmp_path / "private"
     outside.mkdir()
@@ -440,6 +465,7 @@ def test_server_component_swap_to_symlink(library, tmp_path):
     assert not library.documents()["documents"]
 
 
+@linux_parser
 def test_managed_collection_alias_is_rejected(library, monkeypatch):
     from types import SimpleNamespace
 
@@ -476,6 +502,7 @@ def test_api_json_boundary_and_no_stored_key(library, monkeypatch):
     api.app.state.library = None
 
 
+@linux_parser
 def test_unchanged_staged_uploads_still_consume_quota(library):
     lib = library
     lib.config.ingest_max_staged_bytes = 8
@@ -485,6 +512,7 @@ def test_unchanged_staged_uploads_still_consume_quota(library):
         upload(lib, {"a.txt": b"four"})
 
 
+@linux_parser
 def test_late_embedding_result_cannot_commit(library, monkeypatch):
     lib = library
     finish(lib, upload(lib, {"a.txt": b"original"}))
@@ -504,3 +532,136 @@ def test_late_embedding_result_cannot_commit(library, monkeypatch):
     job = upload(lib, {"a.txt": b"late replacement"})
     assert finish(lib, job)["files"][0]["code"] == "processing_limit"
     assert lib.documents()["documents"][0]["revision"] == old
+
+
+@pytest.mark.parametrize("change", ["added", "removed", "resized", "eligibility", "folder_removed"])
+def test_server_job_requires_unchanged_preview_inventory(library, change):
+    root = Path(library.source_root("shared")) / "nested"
+    root.mkdir()
+    (root / "a.txt").write_bytes(b"abc")
+    preview = library.preview("server", "shared", folder="nested")
+    if change == "added":
+        (root / "b.txt").write_bytes(b"new")
+    elif change == "removed":
+        (root / "a.txt").unlink()
+    elif change == "resized":
+        (root / "a.txt").write_bytes(b"resized")
+    elif change == "eligibility":
+        library.config.ingest_max_file_bytes = 2
+    else:
+        root.rename(root.with_name("moved"))
+    with pytest.raises(DocumentError) as error:
+        library.create(
+            "server", "shared", folder="nested", preview_digest=preview["preview_digest"]
+        )
+    assert error.value.code == "selection_changed"
+    assert library.list_jobs() == []
+
+
+def test_preview_digest_is_canonical_and_binds_source_mode_folder_and_files(library):
+    files = [{"path": "b.txt", "size": 3}, {"path": "a.txt", "size": 3}]
+    preview = library.preview("browser", "docs", files)
+    assert (
+        preview["preview_digest"]
+        == library.preview("browser", "docs", files[::-1])["preview_digest"]
+    )
+    assert preview["preview_digest"] != library.preview("browser", "other", files)["preview_digest"]
+    for changed in ([{"path": "c.txt", "size": 3}], [{"path": "a.txt", "size": 4}]):
+        with pytest.raises(DocumentError, match="Selection changed"):
+            library.create("browser", "docs", changed, preview_digest=preview["preview_digest"])
+    with pytest.raises(DocumentError, match="Selection changed"):
+        library.create("browser", "docs", files)
+    assert library.list_jobs() == []
+    job = library.create("browser", "docs", files[::-1], preview_digest=preview["preview_digest"])
+    assert sorted(f["path"] for f in job["files"]) == ["a.txt", "b.txt"]
+
+
+def test_http_server_selection_changed_rejected_before_job_creation(library, monkeypatch):
+    monkeypatch.setattr(api, "settings", lambda: library.config)
+    monkeypatch.setattr(api.app.state, "library", library, raising=False)
+    root = Path(library.source_root("shared"))
+    (root / "a.txt").write_bytes(b"abc")
+    selection = {"mode": "server", "source": "shared"}
+    headers = {"x-api-key": library.config.api_key}
+    with TestClient(api.app) as client:
+        preview = client.post("/library/preview", headers=headers, json=selection).json()
+        assert client.post("/library/jobs", headers=headers, json=selection).status_code == 422
+        (root / "b.txt").write_bytes(b"new")
+        response = client.post(
+            "/library/jobs",
+            headers=headers,
+            json=selection | {"preview_digest": preview["preview_digest"]},
+        )
+        assert response.status_code == 400
+        assert response.json()["code"] == "selection_changed"
+        assert library.list_jobs() == []
+        updated = client.post("/library/preview", headers=headers, json=selection).json()
+        response = client.post(
+            "/library/jobs",
+            headers=headers,
+            json=selection | {"preview_digest": updated["preview_digest"]},
+        )
+        assert response.status_code == 201
+        assert len(response.json()["files"]) == 2
+
+
+@linux_parser
+def test_env_file_lifespan_recovers_and_runs_queued_work_without_library_request(
+    library, monkeypatch, tmp_path
+):
+    import time
+
+    import rag.library as module
+
+    queued = upload(library, {"queued.txt": b"ORION"})
+    interrupted = upload(library, {"interrupted.txt": b"ORION"})
+    library.set_file(library.get_job(interrupted)["files"][0]["id"], "embedding")
+    library.close()
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        f"API_KEY=synthetic-env-only\nINGEST_DATA_DIR={library.config.ingest_data_dir}\n"
+    )
+    monkeypatch.delenv("INGEST_DATA_DIR", raising=False)
+    monkeypatch.setattr(api, "settings", lambda: Settings(_env_file=env_file))
+    monkeypatch.setattr(api.app.state, "library", None, raising=False)
+    monkeypatch.setattr(module, "Library", lambda c: Library(c, library.engine_factory))
+    with TestClient(api.app) as client:
+        assert client.get("/health").status_code == 200  # No /library request triggers startup.
+        resumed = api.app.state.library
+        assert isinstance(resumed, Library)
+        assert resumed.get_job(interrupted)["files"][0]["code"] == "interrupted"
+        deadline = time.monotonic() + 10
+        while resumed.get_job(queued)["counts"]["pending"] and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert resumed.get_job(queued)["counts"]["successful"] == 1
+        assert resumed.get_job(interrupted)["counts"]["failed"] == 1
+    assert api.app.state.library is None
+
+
+def test_disabled_library_lifespan_preserves_legacy_health(monkeypatch):
+    monkeypatch.setattr(
+        api, "settings", lambda: Settings(_env_file=None, api_key="synthetic-disabled")
+    )
+    manager = Mock(side_effect=AssertionError("Disabled library must not start"))
+    monkeypatch.setattr(api, "library", manager)
+    monkeypatch.setattr(api.app.state, "library", None, raising=False)
+    with TestClient(api.app) as client:
+        assert client.get("/health").json() == {"status": "ok"}
+    manager.assert_not_called()
+
+
+def test_nonlinux_parser_is_explicit_and_never_removes_limits(library, monkeypatch):
+    import subprocess
+
+    from rag import folder_parser
+
+    run = Mock(side_effect=AssertionError("No unbounded parser subprocess"))
+    monkeypatch.setattr(subprocess, "run", run)
+    with monkeypatch.context() as context:
+        context.setattr(sys, "platform", "darwin")
+        with pytest.raises(DocumentError) as error:
+            library.parse(Path("unused"), "a.txt")
+        assert error.value.code == "parser_platform"
+        with pytest.raises(SystemExit, match="requires Linux"):
+            folder_parser.main()
+    run.assert_not_called()
