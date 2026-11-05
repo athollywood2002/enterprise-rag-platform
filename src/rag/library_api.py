@@ -41,6 +41,12 @@ def routes(authorize, manager):
     def config():
         return manager().public_config()
 
+    @router.get("/readiness")
+    async def readiness():
+        from .readiness import check_readiness
+
+        return await check_readiness(manager().config)
+
     @router.get("/browse")
     def folders(root: str, path: str = ""):
         lib = manager()

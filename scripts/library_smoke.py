@@ -58,6 +58,9 @@ def wait(job, target=None, timeout=90):
 
 
 def run():
+    readiness = request("GET", "/library/readiness")
+    assert readiness["mode"] == "synthetic"
+    assert readiness["metadata_ready"] and not readiness["inference_tested"]
     with httpx.Client() as client:
         assert client.get(BASE + "/library/jobs").status_code == 401
         assert client.get(BASE + "/").status_code == 200

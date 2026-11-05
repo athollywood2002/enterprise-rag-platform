@@ -2,6 +2,7 @@
 services:
   api:
     environment:
+      RAG_MODEL_MODE: synthetic
       OLLAMA_URL: http://ollama-stub:11434
       INGEST_SOURCE_ROOTS: '{"fixture-root":"/sources/fixtures"}'
     volumes:

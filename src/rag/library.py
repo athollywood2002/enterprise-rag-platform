@@ -137,6 +137,7 @@ class Library:
         c = self.config
         return {
             "formats": sorted(FORMATS),
+            "model_mode": c.rag_model_mode,
             "roots": sorted(c.ingest_source_roots),
             "destination": c.qdrant_collection
             + " (managed library; isolated from legacy ingestion)",

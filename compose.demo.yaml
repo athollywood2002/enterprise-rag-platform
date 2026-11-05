@@ -6,6 +6,7 @@ services:
     build: .
     init: true
     environment:
+      RAG_MODEL_MODE: ${RAG_MODEL_MODE:-unknown}
       API_KEY: ${RAG_API_KEY:?Set RAG_API_KEY in .env.demo}
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: rag_text_csv_demo_v1

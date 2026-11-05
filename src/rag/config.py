@@ -1,4 +1,5 @@
 import re
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -8,6 +9,7 @@ from .collection_safety import validate_writable_collection_name
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", validate_assignment=True)
+    rag_model_mode: Literal["unknown", "synthetic", "real"] = "unknown"
     ollama_url: str = "http://localhost:11434"
     qdrant_url: str = "http://localhost:6333"
     ollama_chat_model: str = "qwen3:8b"

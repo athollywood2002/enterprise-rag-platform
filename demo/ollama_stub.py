@@ -12,7 +12,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(404)
             return
         body = json.dumps(
-            {"models": [{"name": "nomic-embed-text:latest", "digest": "synthetic-ci-embedding-v1"}]}
+            {
+                "models": [
+                    {"name": "nomic-embed-text:latest", "digest": "synthetic-ci-embedding-v1"},
+                    {"name": "qwen3:8b", "digest": "synthetic-ci-chat-v1"},
+                ]
+            }
         ).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")

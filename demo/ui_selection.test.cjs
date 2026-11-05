@@ -29,6 +29,7 @@ function fixture() {
           counts: { successful: 0, failed: 0, skipped: 0, cancelled: 0, pending: (manifest.files || []).length } };
         if (!state.deferJob) return Promise.resolve(response(state.job));
       } else if (url === '/library/jobs') return Promise.resolve(response([state.job]));
+      else if (url === '/library/jobs/job') return Promise.resolve(response(state.job));
       else if (options.method === 'PUT') return Promise.resolve(response({ status: 'staged' }));
       else if (url.endsWith('/start')) return Promise.resolve(response(state.job));
       return new Promise(resolve => { call.resolve = body => resolve(response(body)); call.reject = error => resolve({ ok: false, status: 400, json: async () => ({ detail: error }) }); });

@@ -16,7 +16,7 @@ Updated November 5, 2026. Local single-instance prototype, not a production serv
 - Earlier authenticated text HTTP and private development A/B evidence remains
   historical. The deferred PDF follow-up is complete, not pending approval.
 
-## Folder UI implementation (this branch)
+## Folder UI implementation (merged PR #22)
 
 The same-origin web interface adds browser-folder upload and bounded read-only
 server-root browsing, preview, SQLite-persisted jobs, real per-file progress,
@@ -27,8 +27,10 @@ active-revision registry preserve a usable document on replacement failure.
 
 See [operating guide](folder-library.md) for the separate managed collection, limits,
 source identity semantics and n8n API integration. See [UI walkthrough](ui-walkthrough.md)
-for actual browser evidence and limitations. This is reviewable branch work; it is
-not an image release or a claim that the branch was deployed on AiMiniRig.
+for actual browser evidence and limitations. PR #22 merged at `fb1cb26`, including
+its three pre-merge fixes. All four post-merge checks passed: base Python tests,
+optional document tests, Docker integration and Chromium browser tests. This is
+not an image release or a claim of a real-model folder UI deployment on AiMiniRig.
 
 The old API/n8n demo remains supported. The new Docker parser and UI passed their own isolated container and Chromium
 validation; historical PDF smoke results are not reused as proof for this
@@ -38,6 +40,15 @@ complex PDF layout support, production readiness or tenant isolation.
 PRs #12 and #13 remain separate and outside this change. No retained data, private
 receipts, model assets or failed runs were deleted. No registry publication or
 shared-service deployment is included.
+
+## Follow-up and next milestone
+
+The follow-up fixes stale job status responses, aligns actions with the displayed
+job, and distinguishes API authentication from bounded model/database metadata
+readiness. Mode is explicitly configured as synthetic, real or unknown; metadata
+success does not establish inference success. See the [live UI test plan](live-folder-ui-test-plan.md).
+That real-model folder run remains pending execution approval. Historical n8n and
+PDF smoke tests remain complete; they are not evidence of this new UI run.
 
 ## Private provisional development pilot
 

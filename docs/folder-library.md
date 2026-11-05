@@ -28,7 +28,17 @@ One Uvicorn process and one ingestion worker are supported. A filesystem lock
 refuses a second API process using the same data directory. Do not use `--workers`
 or scale replicas. SQLite is local, not a network-share database.
 
-1. Connect using the API key.
+1. Connect using the API key. **API authenticated** confirms only authentication.
+   The Models and services panel checks Ollama `/api/tags` and Qdrant `/collections`
+   with read-only GETs, a four-second deadline per concurrent check, and a 1 MiB
+   response limit. It lists configured chat/embedding models as available, missing
+   or unknown. **Metadata checks passed** does not prove model loading, inference,
+   collection compatibility or database writes. Use **Check readiness** for a fresh
+   snapshot; this is not continuous monitoring.
+   Set `RAG_MODEL_MODE=real` only when pointing to real models; `synthetic` labels
+   deterministic fixtures and `unknown` is the default. This is an operator label,
+   not automatic detection. The synthetic Compose override sets it explicitly.
+   Answers show the mode; simulated replies are labeled as such.
 2. Choose **Folder on this computer**. Enter a stable source name and select the
    directory. The browser sends relative paths, including subfolders; it cannot
    grant the server access to a local path. Browsers exposing `webkitdirectory`
@@ -47,7 +57,9 @@ or scale replicas. SQLite is local, not a network-share database.
 Refreshing restores jobs after reconnecting. After all uploads finish, the browser
 submits Start and can close safely; the server owns processing. If closed during
 upload, reselect the original folder and click **Retry failed / cancelled files**
-on the saved job to supply missing bytes. Staged files do not need reuploading.
+on the saved job to supply missing bytes. Staged files do not need reuploading. Missing uploads are matched by relative path
+and byte size, not by their original content hash; reselect the intended original
+files. The backend hashes the bytes actually uploaded.
 If closed between the last upload and Start, use that same retry button to release
 staged work. Do not create a new job merely to recover a saved job.
 
@@ -55,6 +67,11 @@ Start is bound to the exact displayed preview and upload set. Editing the source
 changing mode/root/folder, or making another selection invalidates it; late responses
 cannot restore an obsolete preview. If a server inventory changes before job creation,
 Start fails with `selection_changed` and creates no job. Preview the folder again.
+
+Changing the saved-job selection immediately hides the previous panel and disables
+Cancel/Retry until the selected status arrives. Late status/list/action responses
+cannot overwrite a newer selection. A submitted action stays bound to the job
+that was displayed when clicked, even if you then select another job.
 
 ## Server folders
 
@@ -200,6 +217,7 @@ the API container, not the machine running n8n.
 - `PUT /library/jobs/{job}/files/{file}`: raw file bytes, exact preview size. Returns `staged`, **not** indexed.
 - `POST /library/jobs/{job}/start`: release fully staged browser job.
 - `GET /library/jobs` / `GET /library/jobs/{job}`: status and per-file results.
+- `GET /library/readiness`: authenticated metadata snapshot; no inference or writes.
 - `POST /library/jobs/{job}/retry` / `cancel`: explicit retry or cooperative cancellation.
 - `GET /library/documents`: committed document metadata and cleanup backlog.
 - `POST /library/ask`: `{ "question":"…", "top_k":5, "job_id":"optional job ID" }`; returns the existing answer/sources/generation shape with relative source paths and PDF pages.
