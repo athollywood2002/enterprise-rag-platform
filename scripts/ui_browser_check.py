@@ -3,7 +3,7 @@ import os
 import sys
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 root = Path(os.environ["UI_FIXTURE_DIR"]) / "sources"
@@ -32,14 +32,12 @@ with sync_playwright() as p:
     page.wait_for_selector("#preview-panel:not([hidden])")
     page.screenshot(path="docs/images/folder-preview.png", full_page=True)
     page.get_by_role("button", name="Start ingestion", exact=True).click()
-    page.wait_for_function(
-        "document.querySelector('#job-title').textContent.includes('completed')", timeout=30000
-    )
+    expect(page.locator("#job-title")).to_contain_text("completed", timeout=30000)
     job = page.locator("#job-select").input_value()
     page.reload()
     page.get_by_label("API key", exact=True).fill("synthetic-ui-fixture-key")
     page.get_by_role("button", name="Connect", exact=True).click()
-    page.wait_for_function("document.querySelector('#job-title').textContent.includes('completed')")
+    expect(page.locator("#job-title")).to_contain_text("completed", timeout=30000)
     assert page.locator("#job-select").input_value() == job
     page.get_by_label("Your question", exact=True).fill(
         "What is the recovery code and who owns the router?"
@@ -55,11 +53,11 @@ with sync_playwright() as p:
     page.wait_for_selector("#preview-panel:not([hidden])")
     page.screenshot(path="docs/images/server-folder.png", full_page=True)
     page.set_viewport_size({"width": 390, "height": 844})
-    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    assert page.evaluate("() => document.documentElement.scrollWidth <= innerWidth")
     page.screenshot(path="docs/images/mobile-library.png", full_page=True)
     # Keyboard focus is visible and controls are native form elements.
     page.keyboard.press("Tab")
-    assert page.evaluate("document.activeElement.tagName") in [
+    assert page.evaluate("() => document.activeElement.tagName") in [
         "INPUT",
         "BUTTON",
         "SELECT",

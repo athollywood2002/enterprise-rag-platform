@@ -216,9 +216,12 @@ class Library:
                 )
             # Reserve declared bytes for all retained staged files, including pending uploads.
             reserved = db.execute(
-                "SELECT coalesce(sum(size),0) FROM files WHERE status!='skipped'"
+                "SELECT coalesce(sum(size),0) FROM files WHERE code!='excluded'"
             ).fetchone()[0]
-            if reserved + preview["total_size"] > self.config.ingest_max_staged_bytes:
+            if (
+                reserved + sum(f["size"] for f in preview["files"] if f["eligible"])
+                > self.config.ingest_max_staged_bytes
+            ):
                 raise DocumentError(
                     "storage_limit",
                     "Staging quota reached. Raise INGEST_MAX_STAGED_BYTES or use a new data volume.",
@@ -596,7 +599,7 @@ class Library:
             self.checkpoint(job_id, deadline)
             self.set_file(file_id, "indexing", done=0)
             engine.ensure_collection(len(vectors[0]))
-            source = f"{job['source']}/{row['path']}"
+            source = f"{job['mode']}:{job['source']}/{row['path']}"
             points = [
                 models.PointStruct(
                     id=pid,
@@ -625,8 +628,18 @@ class Library:
                     "Indexed chunks could not be verified. Previous revision remains searchable.",
                 )
             with self.index_lock:
+                current_fingerprint, _ = self.model_context()
+                if current_fingerprint != fingerprint:
+                    raise DocumentError(
+                        "model_changed",
+                        "Embedding model changed while processing. Retry with a stable model.",
+                    )
                 self.checkpoint(job_id, deadline)
                 with self.db() as db:
+                    if db.execute("SELECT cancel FROM jobs WHERE id=?", (job_id,)).fetchone()[0]:
+                        raise DocumentError(
+                            "cancelled", "Cancelled before publishing the new revision."
+                        )
                     db.execute(
                         "UPDATE revisions SET state='retired' WHERE doc_id=? AND state='active'",
                         (row["doc_id"],),
@@ -636,7 +649,7 @@ class Library:
                         "INSERT OR REPLACE INTO documents VALUES(?,?,?,?,?,?,?,?,?)",
                         (
                             row["doc_id"],
-                            job["source"],
+                            f"{job['mode']}:{job['source']}",
                             row["path"],
                             content_hash,
                             fingerprint,

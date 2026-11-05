@@ -195,6 +195,7 @@ class RagEngine:
                 "score": round(float(p.score), 4),
                 "text": p.payload["text"],
                 "page_number": p.payload.get("page_number"),
+                **({"document_id": p.payload["document_id"]} if "document_id" in p.payload else {}),
             }
             for p in result.points
         ]

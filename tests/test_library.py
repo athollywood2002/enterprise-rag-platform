@@ -366,3 +366,120 @@ def test_http_auth_streaming_recovery_and_static_ui(library, monkeypatch):
             == 1
         )
     api.app.state.library = None
+
+
+def test_model_change_mid_document_fails_without_replacement(library, monkeypatch):
+    lib = library
+    finish(lib, upload(lib, {"a.txt": b"original"}))
+    original = lib.documents()["documents"][0]
+    _, engine = lib.model_context()
+    embed = engine.embed
+
+    def changing(text):
+        result = embed(text)
+        lib.test_state["digest"] = "changed-during-processing"
+        return result
+
+    monkeypatch.setattr(engine, "embed", changing)
+    result = finish(lib, upload(lib, {"a.txt": b"new text"}))
+    assert result["files"][0]["code"] == "model_changed"
+    assert lib.documents()["documents"][0]["revision"] == original["revision"]
+
+
+def test_cleanup_failure_is_reported_but_never_searchable(library, monkeypatch):
+    lib = library
+    finish(lib, upload(lib, {"a.txt": b"original"}))
+    _, engine = lib.model_context()
+    delete = engine.db.delete
+    monkeypatch.setattr(engine.db, "delete", Mock(side_effect=RuntimeError("offline")))
+    result = finish(lib, upload(lib, {"a.txt": b"replacement"}))
+    assert result["counts"]["successful"] == 1
+    assert lib.documents()["cleanup_pending"] == 1
+    assert [s["text"] for s in lib.ask("question", 2)["sources"]] == ["replacement"]
+    monkeypatch.setattr(engine.db, "delete", delete)
+    lib.cleanup()
+    assert lib.documents()["cleanup_pending"] == 0
+    assert engine.db.count(engine.config.qdrant_collection).count == 1
+
+
+def test_parser_timeout_and_late_result_never_publish(library, monkeypatch):
+    import subprocess
+
+    lib = library
+    job = upload(lib, {"a.txt": b"fact"})
+    monkeypatch.setattr(
+        subprocess, "run", Mock(side_effect=subprocess.TimeoutExpired("parser", 30))
+    )
+    result = finish(lib, job)
+    assert result["files"][0]["code"] == "parser_limit"
+    assert not lib.documents()["documents"]
+
+
+def test_single_instance_and_server_changed_source(library):
+    with pytest.raises(RuntimeError, match="one API process"):
+        Library(library.config, library.engine_factory, start_worker=False)
+    root = Path(library.source_root("shared"))
+    (root / "change.txt").write_text("old")
+    job = library.create("server", "shared")
+    (root / "change.txt").write_text("changed after preview")
+    result = finish(library, job["id"])
+    assert result["files"][0]["code"] == "source_changed"
+
+
+def test_server_component_swap_to_symlink(library, tmp_path):
+    root = Path(library.source_root("shared"))
+    (root / "folder").mkdir()
+    (root / "folder/a.txt").write_text("abc")
+    job = library.create("server", "shared")
+    (root / "folder").rename(root / "original-folder")
+    outside = tmp_path / "private"
+    outside.mkdir()
+    (outside / "a.txt").write_text("xyz")
+    (root / "folder").symlink_to(outside, target_is_directory=True)
+    assert finish(library, job["id"])["files"][0]["code"] == "source_unavailable"
+    assert not library.documents()["documents"]
+
+
+def test_managed_collection_alias_is_rejected(library, monkeypatch):
+    from types import SimpleNamespace
+
+    lib = library
+    _, engine = lib.model_context()
+    monkeypatch.setattr(
+        engine.db,
+        "get_aliases",
+        lambda: SimpleNamespace(
+            aliases=[SimpleNamespace(alias_name=engine.config.qdrant_collection)]
+        ),
+    )
+    result = finish(lib, upload(lib, {"a.txt": b"fact"}))
+    assert result["counts"]["failed"] == 1
+    assert not lib.documents()["documents"]
+
+
+def test_api_json_boundary_and_no_stored_key(library, monkeypatch):
+    monkeypatch.setattr(api, "settings", lambda: library.config)
+    api.app.state.library = library
+    with TestClient(api.app) as client:
+        assert (
+            client.post(
+                "/library/preview",
+                content=b"x" * (2 * 1024**2 + 1),
+                headers={"x-api-key": library.config.api_key},
+            ).status_code
+            == 413
+        )
+        response = client.get("/")
+        assert "unsafe-eval" not in response.headers["content-security-policy"]
+        javascript = client.get("/ui/app.js").text
+        assert "localStorage" not in javascript and library.config.api_key not in javascript
+    api.app.state.library = None
+
+
+def test_unchanged_staged_uploads_still_consume_quota(library):
+    lib = library
+    lib.config.ingest_max_staged_bytes = 8
+    finish(lib, upload(lib, {"a.txt": b"four"}))
+    assert finish(lib, upload(lib, {"a.txt": b"four"}))["counts"]["skipped"] == 1
+    with pytest.raises(DocumentError, match="Staging quota"):
+        upload(lib, {"a.txt": b"four"})

@@ -14,7 +14,9 @@ const post = (path, body) => api(path, { method: 'POST', ...(body ? { body: JSON
 function guarded(fn) { return async event => { try { await fn(event); } catch (error) { say(error.message); } }; }
 function metrics(target, entries) { target.replaceChildren(...entries.map(([value, label]) => { const e = node('div', '', 'metric'); e.append(node('strong', String(value)), node('span', label)); return e; })); }
 function badge(text) { return node('span', text.replaceAll('_', ' '), 'badge ' + text); }
+function clearPreview() { selection = null; $('preview-panel').hidden = true; $('preview-empty').hidden = false; }
 function renderPreview(preview) {
+  $('preview-source').textContent = `${preview.mode === 'server' ? 'Server' : 'Browser'} source: ${preview.source}${selection?.folder ? '/' + selection.folder : ''}`;
   $('preview-empty').hidden = true; $('preview-panel').hidden = false;
   metrics($('preview-metrics'), [[preview.count, 'files selected'], [bytes(preview.total_size), 'total size'], [preview.count - preview.eligible, 'excluded']]);
   $('preview-rows').replaceChildren(...preview.files.map(file => { const tr = document.createElement('tr'); tr.append(node('td', file.path), node('td', bytes(file.size)), node('td', file.eligible ? 'Ready for parsing' : file.reason)); return tr; }));
@@ -40,6 +42,7 @@ $('folder-input').addEventListener('change', guarded(async () => {
 }));
 $('source-name').addEventListener('change', () => { selection = null; $('preview-panel').hidden = true; say('Source name changed. Reselect the folder to preview it.'); });
 async function browse() {
+  clearPreview();
   $('folder-list').replaceChildren(); $('server-path').textContent = serverPath || '/';
   if (!config.roots.length) { say('No server roots configured. Add a read-only mount and INGEST_SOURCE_ROOTS, or choose a folder on this computer.'); return; }
   const data = await api(`/browse?root=${encodeURIComponent($('root-select').value)}&path=${encodeURIComponent(serverPath)}`);
@@ -54,8 +57,9 @@ $('root-select').onchange = guarded(async () => { serverPath = ''; await browse(
 $('browse-up').onclick = guarded(async () => { serverPath = serverPath.split('/').slice(0, -1).join('/'); await browse(); });
 $('preview-server').onclick = guarded(async () => { selection = { mode: 'server', source: $('root-select').value, folder: serverPath }; renderPreview(await post('/preview', selection)); });
 async function stageBrowser(job) {
+  const filesForJob = new Map(selectedFiles);
   for (const file of job.files.filter(f => f.status === 'pending')) {
-    const local = selectedFiles.get(file.path);
+    const local = filesForJob.get(file.path);
     if (!local || local.size !== file.size) { say(`Reselect the original folder to upload ${file.path}, then retry this job.`); return false; }
     say(`Uploading ${file.path} (${bytes(file.size)}). Not yet indexed.`);
     await api(`/jobs/${job.id}/files/${file.id}`, { method: 'PUT', body: local, headers: { 'Content-Type': 'application/octet-stream' } });
