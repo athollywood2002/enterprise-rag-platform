@@ -29,10 +29,11 @@ Document upload -> Unstructured -> page-local/title-aware chunks -> embeddings -
 Question -> Ollama embedding -> top-k retrieval -> Ollama chat -> Answer + source excerpts
 ```
 
-## Docker text/CSV quickstart (draft)
+## Docker quickstart and existing text/CSV demo
 
-This demo uses `/ingest` for TXT and labeled CSV text; it does not need the
-optional PDF parser. Image tag: **`enterprise-rag-platform:demo-text-csv-v1`**
+The web UI supports TXT, CSV and text-based PDF through `/library/*`.
+The existing n8n/CLI demo continues using `/ingest` for TXT and labeled CSV text;
+it does not need the optional legacy Unstructured parser. Image tag: **`enterprise-rag-platform:demo-text-csv-v1`**
 (local build, no registry publication). The image uses the frozen Linux amd64
 Python 3.12 text-runtime wheel lock; Apple Silicon runs it under emulation.
 Qdrant is pinned to **`qdrant/qdrant:v1.17.0`**, accessible only within the
@@ -47,11 +48,13 @@ into Ollama. Host-loopback-only Ollama may not be reachable from a Linux contain
 If it is unreachable, stop and review the route; do not change its listener
 silently. Existing Ollama and Open WebUI remain independently managed.
 
-**Validation status:** Python fixture tests and exported workflow Code-node
-tests pass. The API image build and container smoke also passed in GitHub Actions using
-real Qdrant 1.17.0 and synthetic Ollama responses (run 41958469483).
-Actual n8n import and inference on the target hosts remain pending. The synthetic
-CI result is never evidence of real model behavior.
+**Completed historical validation:** PR #21's actual two-host manual n8n demo
+passed on November 5, 2026 with a correct ORION/NetworkOps answer and both citations.
+The separate bounded two-page PDF test also passed and was explicitly accepted by
+the owner. Both are closed; neither is a general retrieval benchmark. The new
+folder UI/parser implementation has its own unit, container and browser checks;
+see [current status](docs/CURRENT_STATUS.md) and [walkthrough](docs/ui-walkthrough.md).
+Synthetic CI replies are never evidence of real-model quality.
 
 ### Start
 
@@ -110,7 +113,7 @@ HTTP nodes. No secret or credential ID is included in the export.
 Before a two-host run, review actual private addresses/ports, the n8n-readable
 folder, and Ollama model tags. Make only the RAG API reachable from n8n; Qdrant
 has no published ports. Do not change running n8n, Ollama, Open WebUI or network
-rules as an implicit setup step. PDF validation is separate and paused.
+rules as an implicit setup step. The completed private PDF smoke is a separate historical test, not permission for another live run.
 
 ### Stop
 
@@ -119,7 +122,7 @@ docker compose --env-file .env.demo -f compose.demo.yaml down
 ```
 
 This stops/removes only the demo Compose containers/network and retains the demo
-volume. It does not stop Ollama, Open WebUI or n8n. There is deliberately no
+Qdrant and library-state volumes. It does not stop Ollama, Open WebUI or n8n. There is deliberately no
 volume-delete command in the live quickstart. Verify that this project name is
 unused before first deployment; never attach existing Qdrant storage.
 
@@ -132,6 +135,7 @@ node --test demo/n8n/workflow.test.cjs
 RAG_API_KEY=ci-only-disposable-demo-key docker compose -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml build
 RAG_API_KEY=ci-only-disposable-demo-key docker compose -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml up -d --wait --wait-timeout 90
 RAG_API_KEY=ci-only-disposable-demo-key docker compose -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/demo_smoke.py
+RAG_API_KEY=ci-only-disposable-demo-key docker compose -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/library_smoke.py
 RAG_API_KEY=ci-only-disposable-demo-key docker compose -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml down
 ```
 

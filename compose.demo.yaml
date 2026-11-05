@@ -28,7 +28,7 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
   qdrant:
-    image: qdrant/qdrant:v1.17.0
+    image: qdrant/qdrant:v1.17.0@sha256:f1c7272cdac52b38c1a0e89313922d940ba50afd90d593a1605dbbc214e66ffb
     volumes:
       - demo-qdrant:/qdrant/storage
     # No host ports, external volume, or existing collection connection.

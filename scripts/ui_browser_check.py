@@ -30,6 +30,12 @@ with sync_playwright() as p:
     page.locator("#source-name").fill("Operations")
     page.locator("#folder-input").set_input_files(str(root))
     page.wait_for_selector("#preview-panel:not([hidden])")
+    # Editing a source invalidates the preview immediately, before blur.
+    page.locator("#source-name").fill("Operations updated")
+    expect(page.locator("#preview-panel")).to_be_hidden()
+    page.locator("#source-name").fill("Operations")
+    page.locator("#folder-input").set_input_files(str(root))
+    page.wait_for_selector("#preview-panel:not([hidden])")
     page.screenshot(path="docs/images/folder-preview.png", full_page=True)
     page.get_by_role("button", name="Start ingestion", exact=True).click()
     expect(page.locator("#job-title")).to_contain_text("completed", timeout=30000)

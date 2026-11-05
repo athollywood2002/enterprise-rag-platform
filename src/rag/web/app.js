@@ -40,7 +40,7 @@ $('folder-input').addEventListener('change', guarded(async () => {
   selection = { mode: 'browser', source: $('source-name').value, files: [...selectedFiles].map(([path, f]) => ({ path, size: f.size })) };
   renderPreview(await post('/preview', selection)); say('Review the selection, then start ingestion.');
 }));
-$('source-name').addEventListener('change', () => { selection = null; $('preview-panel').hidden = true; say('Source name changed. Reselect the folder to preview it.'); });
+$('source-name').addEventListener('input', () => { clearPreview(); say('Source name changed. Reselect the folder to preview it.'); });
 async function browse() {
   clearPreview();
   $('folder-list').replaceChildren(); $('server-path').textContent = serverPath || '/';

@@ -18,7 +18,7 @@ jobs:
       - run: node --test demo/n8n/workflow.test.cjs
       - run: python3 -m unittest discover -s demo -p 'test_*.py' -v
       - run: docker compose -f compose.demo.yaml -f compose.smoke.yaml build
-      - name: Verify classic builder compatibility (AiMiniRig has no Buildx)
+      - name: Verify classic builder compatibility
         env:
           DOCKER_BUILDKIT: '0'
         run: docker build -t enterprise-rag-platform:demo-text-csv-v1 .

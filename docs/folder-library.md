@@ -107,6 +107,8 @@ switch. For consistent folder parsing, new n8n workflows use the library API bel
 ## Durable identity and replacement
 
 The stable ID hashes source mode, stable source label and full relative path.
+Citations include the browser/server mode, source label and relative path; managed
+source entries also include their document ID.
 Same basenames in different folders/roots remain distinct; renaming/moving a file
 creates another identity. Absence in a later selection never deletes a document.
 

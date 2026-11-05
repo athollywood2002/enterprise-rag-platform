@@ -483,3 +483,24 @@ def test_unchanged_staged_uploads_still_consume_quota(library):
     assert finish(lib, upload(lib, {"a.txt": b"four"}))["counts"]["skipped"] == 1
     with pytest.raises(DocumentError, match="Staging quota"):
         upload(lib, {"a.txt": b"four"})
+
+
+def test_late_embedding_result_cannot_commit(library, monkeypatch):
+    lib = library
+    finish(lib, upload(lib, {"a.txt": b"original"}))
+    old = lib.documents()["documents"][0]["revision"]
+    clock = [100.0]
+    monkeypatch.setattr("rag.library.time.monotonic", lambda: clock[0])
+    lib.config.ingest_file_seconds = 1
+    _, engine = lib.model_context()
+    embed = engine.embed
+
+    def late(text):
+        vector = embed(text)
+        clock[0] += 2
+        return vector
+
+    monkeypatch.setattr(engine, "embed", late)
+    job = upload(lib, {"a.txt": b"late replacement"})
+    assert finish(lib, job)["files"][0]["code"] == "processing_limit"
+    assert lib.documents()["documents"][0]["revision"] == old

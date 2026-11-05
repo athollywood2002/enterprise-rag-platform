@@ -94,6 +94,14 @@ def routes(authorize, manager):
         except TimeoutError as error:
             lib.set_file(file_id, "failed", "upload_timeout", "Upload timed out. Retry the file.")
             raise HTTPException(408, "Upload timed out. Retry the file.") from error
+        except DocumentError as error:
+            lib.set_file(
+                file_id,
+                "cancelled" if error.code == "cancelled" else "failed",
+                error.code,
+                str(error),
+            )
+            raise
         except BaseException:
             lib.set_file(
                 file_id, "failed", "upload_failed", "Upload failed. Retry and reselect this file."
