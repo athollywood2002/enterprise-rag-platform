@@ -1,7 +1,7 @@
 name: rag-text-csv-demo
 services:
   api:
-    image: enterprise-rag-platform:demo-text-csv-v1
+    image: enterprise-rag-platform:folder-ui-v1
     platform: linux/amd64
     build: .
     init: true

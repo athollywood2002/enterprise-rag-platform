@@ -21,7 +21,7 @@ jobs:
       - name: Verify classic builder compatibility
         env:
           DOCKER_BUILDKIT: '0'
-        run: docker build -t enterprise-rag-platform:demo-text-csv-v1 .
+        run: docker build -t enterprise-rag-platform:folder-ui-v1 .
       - run: docker compose -f compose.demo.yaml -f compose.smoke.yaml up -d --wait --wait-timeout 90
       - name: Real API and pinned Qdrant, synthetic Ollama (not a live-model test)
         run: docker compose -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/demo_smoke.py

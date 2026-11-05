@@ -30,9 +30,9 @@ source identity semantics and n8n API integration. See [UI walkthrough](ui-walkt
 for actual browser evidence and limitations. This is reviewable branch work; it is
 not an image release or a claim that the branch was deployed on AiMiniRig.
 
-The old API/n8n demo remains supported. The new Docker parser and UI require their
-own isolated container validation; historical PDF smoke results are not reused as
-proof for this implementation. Fixture tests do not prove broad retrieval quality,
+The old API/n8n demo remains supported. The new Docker parser and UI passed their own isolated container and Chromium
+validation; historical PDF smoke results are not reused as proof for this
+implementation. See the walkthrough for exact test scope and CI evidence. Fixture tests do not prove broad retrieval quality,
 complex PDF layout support, production readiness or tenant isolation.
 
 PRs #12 and #13 remain separate and outside this change. No retained data, private

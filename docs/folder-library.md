@@ -10,8 +10,8 @@ keys/documents over an untrusted network. No CORS access is enabled.
 ## Start, use, stop
 
 ```sh
-cp .env.demo.example .env.demo
-# Edit .env.demo: set a fresh RAG_API_KEY, your Ollama endpoint and installed models.
+# First use the README Start command to create .env.demo without overwriting it.
+# Edit .env.demo: set your Ollama endpoint and installed models.
 # Obtain the model names from your own Ollama installation; no model is downloaded by this app.
 docker compose --env-file .env.demo -f compose.demo.yaml up -d --build --wait
 # Open http://localhost:18000/
@@ -157,6 +157,10 @@ separate counts so it is not mistaken for successful indexing.
 | `INGEST_MAX_PAGES` / `INGEST_MAX_CHARS` / `INGEST_MAX_CHUNKS` | 200 / 2,000,000 / 3000 per file |
 | `INGEST_UPLOAD_SECONDS` / `INGEST_PARSE_SECONDS` | 120 / 30 |
 | `INGEST_FILE_SECONDS` | 300 cooperative processing deadline |
+
+For Compose, set these application variables in an override file under
+`services.api.environment`; adding them to `.env.demo` alone does not forward them
+into the container. Preserve the `/data` volume when changing limits.
 
 Selection JSON has an additional 2 MiB request boundary; server traversal depth is
 limited to 32. Embedding requests have the existing 120-second HTTP timeout, model

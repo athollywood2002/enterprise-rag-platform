@@ -33,7 +33,7 @@ Question -> Ollama embedding -> top-k retrieval -> Ollama chat -> Answer + sourc
 
 The web UI supports TXT, CSV and text-based PDF through `/library/*`.
 The existing n8n/CLI demo continues using `/ingest` for TXT and labeled CSV text;
-it does not need the optional legacy Unstructured parser. Image tag: **`enterprise-rag-platform:demo-text-csv-v1`**
+it does not need the optional legacy Unstructured parser. Image tag: **`enterprise-rag-platform:folder-ui-v1`**
 (local build, no registry publication). The image uses the frozen Linux amd64
 Python 3.12 text-runtime wheel lock; Apple Silicon runs it under emulation.
 Qdrant is pinned to **`qdrant/qdrant:v1.17.0`**, accessible only within the
