@@ -1,0 +1,16 @@
+# CI protocol smoke only: deliberately replaces Ollama with a deterministic fixture.
+services:
+  api:
+    environment:
+      OLLAMA_URL: http://ollama-stub:11434
+    depends_on:
+      - ollama-stub
+  ollama-stub:
+    image: enterprise-rag-platform:demo-text-csv-v1
+    platform: linux/amd64
+    command: [python, /app/demo/ollama_stub.py]
+    healthcheck:
+      test: [CMD, python, -c, "import socket; socket.create_connection(('127.0.0.1',11434),2).close()"]
+      interval: 2s
+      timeout: 3s
+      retries: 15

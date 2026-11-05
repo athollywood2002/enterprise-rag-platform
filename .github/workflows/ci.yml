@@ -10,7 +10,7 @@ jobs:
           python-version: '3.11'
       - run: pip install -e '.[dev]'
       - run: python -m ruff check .
-      - run: python -m ruff format --check .
+      - run: python -m ruff format --check --diff .
       - name: Verify optional parser is absent in the base-only job
         run: python -c "from importlib.util import find_spec; assert find_spec('unstructured') is None"
       - run: python -m pytest -q

@@ -1,0 +1,12 @@
+**
+!Dockerfile
+!docker/
+!docker/requirements.lock
+!src/
+!src/**
+!demo/
+!demo/**
+!scripts/
+!scripts/demo_smoke.py
+**/__pycache__
+**/*.pyc

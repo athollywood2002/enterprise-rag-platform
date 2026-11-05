@@ -1,0 +1,400 @@
+{
+  "name": "RAG text and CSV manual demo",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "demo-01",
+      "name": "Manual demo",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Change these two values after verifying the actual n8n execution environment.\n// API key belongs in an HTTP Header Auth credential, never in this node.\nreturn [{json: {\n  apiUrl: 'http://REVIEWED-PRIVATE-API-HOST:18000',\n  demoFolder: '/files/rag-demo',\n  question: 'What is the recovery code for demo-router-01 and which team owns it?'\n}}];"
+      },
+      "id": "demo-02",
+      "name": "Demo configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $('Demo configuration').first().json.demoFolder + '/runbook.txt' }}",
+        "options": {}
+      },
+      "id": "demo-03",
+      "name": "Read runbook",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "data",
+        "destinationKey": "text",
+        "options": {
+          "encoding": "utf8",
+          "keepSource": "json"
+        }
+      },
+      "id": "demo-04",
+      "name": "Extract runbook",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\nif (items.length !== 1) throw new Error('Expected exactly one runbook.txt');\nconst text = items[0].json.text;\nif (typeof text !== 'string' || !text.trim() || text.trim().length > 700) throw new Error('Runbook must contain 1 to 700 characters');\nif ($('Read runbook').first().json.fileName !== 'runbook.txt') throw new Error('Wrong runbook filename');\nreturn [{json: {source: 'runbook.txt', text: text.trim()}}];"
+      },
+      "id": "demo-05",
+      "name": "Prepare runbook",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Demo configuration').first().json.apiUrl.replace(/\\/$/, '') + '/ingest' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { source: $json.source, text: $json.text } }}",
+        "options": {
+          "timeout": 240000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "demo-06",
+      "name": "Ingest runbook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "if ($input.all().length !== 1 || $input.first().json.source !== 'runbook.txt' || $input.first().json.chunks_indexed !== 1) throw new Error('Runbook ingestion failed');\nreturn $input.all();"
+      },
+      "id": "demo-07",
+      "name": "Check runbook ingestion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $('Demo configuration').first().json.demoFolder + '/inventory.csv' }}",
+        "options": {}
+      },
+      "id": "demo-08",
+      "name": "Read inventory",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "binaryPropertyName": "data",
+        "options": {
+          "headerRow": true,
+          "delimiter": ",",
+          "encoding": "utf8"
+        }
+      },
+      "id": "demo-09",
+      "name": "Extract inventory CSV",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const rows = $input.all().map(item => item.json);\nconst fields = ['asset', 'owner', 'location'];\nif ($('Read inventory').first().json.fileName !== 'inventory.csv') throw new Error('Wrong inventory filename');\nif (rows.length < 1 || rows.length > 10) throw new Error('Expected 1 to 10 inventory rows');\nconst text = rows.map((row, i) => {\n  if (Object.keys(row).length !== fields.length || fields.some(k => typeof row[k] !== 'string' || !row[k].trim())) throw new Error('Expected nonempty asset,owner,location CSV columns');\n  return `Inventory row ${i + 1}: ` + fields.map(k => `${k}: ${row[k].trim()}`).join('; ');\n}).join('\\n');\nif (text.length > 700) throw new Error('Keep demo inventory within 700 characters');\nreturn [{json: {source: 'inventory.csv', text}}];"
+      },
+      "id": "demo-10",
+      "name": "Label inventory rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Demo configuration').first().json.apiUrl.replace(/\\/$/, '') + '/ingest' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { source: $json.source, text: $json.text } }}",
+        "options": {
+          "timeout": 240000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "demo-11",
+      "name": "Ingest inventory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "if ($input.all().length !== 1 || $input.first().json.source !== 'inventory.csv' || $input.first().json.chunks_indexed !== 1) throw new Error('Inventory ingestion failed');\nreturn $input.all();"
+      },
+      "id": "demo-12",
+      "name": "Check inventory ingestion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Demo configuration').first().json.apiUrl.replace(/\\/$/, '') + '/ask' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { question: $('Demo configuration').first().json.question, top_k: 2 } }}",
+        "options": {
+          "timeout": 240000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "demo-13",
+      "name": "Ask demo question",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const result = $input.first().json;\nconst answer = result.answer;\nif (typeof answer !== 'string' || !/\\bORION\\b/i.test(answer) || !/\\bNetworkOps\\b/i.test(answer)) throw new Error('Expected ORION and NetworkOps; inspect the raw Ask response');\nif (result.generation?.status !== 'complete') throw new Error('Incomplete generation');\nconst sources = result.sources;\nconst normalize = text => text.replace(/\\s+/g, ' ').trim();\nconst expected = {\n  'runbook.txt': normalize($('Prepare runbook').first().json.text),\n  'inventory.csv': normalize($('Label inventory rows').first().json.text)\n};\nif (!Array.isArray(sources) || sources.length !== 2 || new Set(sources.map(s => s.source)).size !== 2 || sources.some(s => !(s.source in expected) || s.chunk !== 0 || s.text !== expected[s.source])) throw new Error('Fixture source metadata/text mismatch');\nconst cites = [...answer.matchAll(/\\[(\\d+)\\]/g)].map(m => Number(m[1]));\nif (!cites.length || cites.some(n => n < 1 || n > sources.length)) throw new Error('Missing/out-of-range citations');\nif (new Set(cites.map(n => sources[n - 1].source)).size !== 2) throw new Error('Both fixture sources must be cited');\nreturn [{json: {demoCheck: 'PASS', question: $('Demo configuration').first().json.question, answer, sources, generation: result.generation, scope: 'Synthetic fixture assertions; inspect answer meaning, not a retrieval-quality benchmark'}}];"
+      },
+      "id": "demo-14",
+      "name": "Check answer and sources",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        660
+      ]
+    }
+  ],
+  "connections": {
+    "Manual demo": {
+      "main": [
+        [
+          {
+            "node": "Demo configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Demo configuration": {
+      "main": [
+        [
+          {
+            "node": "Read runbook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read runbook": {
+      "main": [
+        [
+          {
+            "node": "Extract runbook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract runbook": {
+      "main": [
+        [
+          {
+            "node": "Prepare runbook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare runbook": {
+      "main": [
+        [
+          {
+            "node": "Ingest runbook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest runbook": {
+      "main": [
+        [
+          {
+            "node": "Check runbook ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check runbook ingestion": {
+      "main": [
+        [
+          {
+            "node": "Read inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read inventory": {
+      "main": [
+        [
+          {
+            "node": "Extract inventory CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract inventory CSV": {
+      "main": [
+        [
+          {
+            "node": "Label inventory rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label inventory rows": {
+      "main": [
+        [
+          {
+            "node": "Ingest inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest inventory": {
+      "main": [
+        [
+          {
+            "node": "Check inventory ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check inventory ingestion": {
+      "main": [
+        [
+          {
+            "node": "Ask demo question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask demo question": {
+      "main": [
+        [
+          {
+            "node": "Check answer and sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 600
+  },
+  "pinData": {}
+}

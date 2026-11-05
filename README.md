@@ -17,6 +17,117 @@ Document upload -> Unstructured -> page-local/title-aware chunks -> embeddings -
 Question -> Ollama embedding -> top-k retrieval -> Ollama chat -> Answer + source excerpts
 ```
 
+## Docker text/CSV quickstart (draft)
+
+This demo uses `/ingest` for TXT and labeled CSV text; it does not need the
+optional PDF parser. Image tag: **`enterprise-rag-platform:demo-text-csv-v1`**
+(local build, no registry publication). The image uses the frozen Linux amd64
+Python 3.12 text-runtime wheel lock; Apple Silicon runs it under emulation.
+Qdrant is pinned to **`qdrant/qdrant:v1.17.0`**, accessible only within the
+Compose network, with a dedicated project-scoped `demo-qdrant` volume.
+The API collection is fixed to `rag_text_csv_demo_v1`. No shared Qdrant URL or
+storage path is accepted by this Compose setup.
+
+Prerequisites: Docker Engine/Desktop with Compose v2 (`up --wait` support),
+and an existing Ollama endpoint with an installed embedding and chat model.
+Check the model names first; this setup does not start, upgrade or pull models
+into Ollama. Host-loopback-only Ollama may not be reachable from a Linux container.
+If it is unreachable, stop and review the route; do not change its listener
+silently. Existing Ollama and Open WebUI remain independently managed.
+
+**Validation status:** Python fixture tests and exported workflow Code-node
+tests pass. The API image build and container smoke also passed in GitHub Actions using
+real Qdrant 1.17.0 and synthetic Ollama responses (run 41958469483).
+Actual n8n import and inference on the target hosts remain pending. The synthetic
+CI result is never evidence of real model behavior.
+
+### Start
+
+From the repository root, generate a private local configuration (fails if
+`.env.demo` already exists, preserving your existing configuration):
+
+```bash
+umask 077
+python3 - <<'PY'
+from pathlib import Path
+import secrets
+text = Path(".env.demo.example").read_text()
+text = text.replace("RAG_API_KEY=\n", "RAG_API_KEY=" + secrets.token_urlsafe(32) + "\n")
+with open(".env.demo", "x") as output:
+    output.write(text)
+PY
+# Edit .env.demo: choose the existing OLLAMA_URL and installed model tags.
+# On Linux, host.docker.internal is mapped to the Docker host gateway.
+docker compose --env-file .env.demo -f compose.demo.yaml config --quiet
+docker compose --env-file .env.demo -f compose.demo.yaml build
+docker compose --env-file .env.demo -f compose.demo.yaml up -d --wait --wait-timeout 90
+curl --fail --silent --show-error http://127.0.0.1:18000/health
+```
+
+The default API listener is loopback-only. `/health` reports API process health,
+not Ollama or database readiness. Do not print the expanded Compose configuration:
+it contains the API key. `.env.demo` is ignored by Git and excluded from the image.
+
+### Test
+
+For a CLI smoke using the configured Ollama endpoint:
+
+```bash
+docker compose --env-file .env.demo -f compose.demo.yaml exec -T api python scripts/demo_smoke.py
+```
+
+This checks unauthorized 401s, ingests `runbook.txt` and the CSV converted to
+labeled text under `inventory.csv`, then asks:
+“What is the recovery code for demo-router-01 and which team owns it?”
+Expected: **ORION**, **NetworkOps**, both filenames in the sources, and citations
+resolving to both sources. Each file is one chunk; this sequence makes three
+embedding requests and one chat request. It is not the private budget-supervised
+PDF test. The script prints the raw answer before assertions, so failures remain
+inspectable. Semantic contradictions still require human review; these small
+fixture checks are not a grounding evaluator.
+
+Alternatively, run the same demo manually through the
+[importable n8n workflow](demo/n8n/text-csv-demo.json), following the
+[import and two-host setup instructions](demo/n8n/README.md). For the requested
+one-workflow live demo, use n8n as the inference test; do not also run the CLI
+smoke against the live model beforehand. n8n reads the files where n8n runs,
+not from the Mac or the API container. Set its API URL to the reviewed private
+listener, and use an HTTP Header Auth credential (`x-api-key`) on all three
+HTTP nodes. No secret or credential ID is included in the export.
+
+Before a two-host run, review actual private addresses/ports, the n8n-readable
+folder, and Ollama model tags. Make only the RAG API reachable from n8n; Qdrant
+has no published ports. Do not change running n8n, Ollama, Open WebUI or network
+rules as an implicit setup step. PDF validation is separate and paused.
+
+### Stop
+
+```bash
+docker compose --env-file .env.demo -f compose.demo.yaml down
+```
+
+This stops/removes only the demo Compose containers/network and retains the demo
+volume. It does not stop Ollama, Open WebUI or n8n. There is deliberately no
+volume-delete command in the live quickstart. Verify that this project name is
+unused before first deployment; never attach existing Qdrant storage.
+
+### Offline and synthetic container checks
+
+```bash
+python3 -m unittest discover -s demo -p 'test_*.py' -v
+node --test demo/n8n/workflow.test.cjs
+# A separate CI-only project and volume; stub inference, real API/Qdrant:
+RAG_API_KEY=ci-only-disposable-demo-key docker compose -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml build
+RAG_API_KEY=ci-only-disposable-demo-key docker compose -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml up -d --wait --wait-timeout 90
+RAG_API_KEY=ci-only-disposable-demo-key docker compose -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/demo_smoke.py
+RAG_API_KEY=ci-only-disposable-demo-key docker compose -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml down
+```
+
+Do not run the CI override on a live-demo project: it intentionally substitutes
+synthetic Ollama responses. The GitHub `docker-demo` job builds and tests this
+isolated stack without pushing an image. The Code-node tests execute exported
+JavaScript in a harness; they do not claim an n8n engine/import test.
+
 ## Prerequisites
 
 - Python 3.11+

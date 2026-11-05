@@ -9,3 +9,4 @@ __pycache__/
 !sample_docs/*.pdf
 /.local/evaluation/
 /evaluation-runs/
+.env.demo
