@@ -36,9 +36,10 @@ If it is unreachable, stop and review the route; do not change its listener
 silently. Existing Ollama and Open WebUI remain independently managed.
 
 **Validation status:** Python fixture tests and exported workflow Code-node
-tests pass. Container build/smoke and actual n8n import/live inference must be
-confirmed by their recorded run results. A synthetic Ollama CI fixture tests
-container wiring separately and is never evidence of real model behavior.
+tests pass. The API image build and container smoke also passed in GitHub Actions using
+real Qdrant 1.17.0 and synthetic Ollama responses (run 41958469483).
+Actual n8n import and inference on the target hosts remain pending. The synthetic
+CI result is never evidence of real model behavior.
 
 ### Start
 
