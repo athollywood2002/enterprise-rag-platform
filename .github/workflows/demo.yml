@@ -1,0 +1,29 @@
+name: docker-demo
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  container-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      COMPOSE_PROJECT_NAME: rag-demo-ci
+      # Synthetic, ephemeral CI key only; never used by a live service.
+      RAG_API_KEY: ci-only-disposable-demo-key
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - run: node --test demo/n8n/workflow.test.cjs
+      - run: python3 -m unittest discover -s demo -p 'test_*.py' -v
+      - run: docker compose -f compose.demo.yaml -f compose.smoke.yaml build
+      - run: docker compose -f compose.demo.yaml -f compose.smoke.yaml up -d --wait --wait-timeout 90
+      - name: Real API and pinned Qdrant, synthetic Ollama (not a live-model test)
+        run: docker compose -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/demo_smoke.py
+      - name: Service logs
+        if: failure()
+        run: docker compose -f compose.demo.yaml -f compose.smoke.yaml logs --no-color --tail 100
+      - name: Stop disposable CI stack and its dedicated volume
+        if: always()
+        run: docker compose -f compose.demo.yaml -f compose.smoke.yaml down --volumes

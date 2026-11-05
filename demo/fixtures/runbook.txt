@@ -1,0 +1,4 @@
+Synthetic recovery runbook for demo-router-01.
+The recovery code for demo-router-01 is ORION.
+Use the inventory to identify the device owner before starting recovery.
+This document is a synthetic demo fixture, not an instruction to operate real equipment.
