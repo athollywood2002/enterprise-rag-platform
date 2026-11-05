@@ -8,5 +8,6 @@
 !demo/**
 !scripts/
 !scripts/demo_smoke.py
+!scripts/library_smoke.py
 **/__pycache__
 **/*.pyc

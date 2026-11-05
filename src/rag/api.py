@@ -1,6 +1,8 @@
 """Simple local-only authenticated RAG demonstration API."""
 
 import secrets
+import threading
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
@@ -17,7 +19,36 @@ from .config import Settings
 from .core import RagEngine
 from .documents import SUPPORTED_EXTENSIONS, parse_document, sanitize_document_filename
 
-app = FastAPI(title="Enterprise RAG Platform", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app):
+    if settings().ingest_data_dir:
+        library()
+    yield
+    current = getattr(app.state, "library", None)
+    if current:
+        current.close()
+        app.state.library = None
+
+
+app = FastAPI(title="Enterprise RAG Platform", version="0.1.0", lifespan=lifespan)
+_library_lock = threading.Lock()
+
+
+def library():
+    from .library import Library
+
+    with _library_lock:
+        current = getattr(app.state, "library", None)
+        if current is None:
+            config = settings()
+            if not config.ingest_data_dir:
+                raise HTTPException(503, "Folder library is disabled. Configure INGEST_DATA_DIR.")
+            current = Library(config)
+            app.state.library = current
+        return current
+
+
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
 
 
@@ -127,3 +158,8 @@ def _process_document(data: bytes, filename: str) -> dict[str, str | int]:
     except Exception as error:
         raise HTTPException(status_code=500, detail="Document ingestion failed") from error
     return {"source": filename, "chunks_indexed": count}
+
+
+from .library_api import install
+
+install(app, authorize, library)

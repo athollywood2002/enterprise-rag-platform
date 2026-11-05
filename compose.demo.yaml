@@ -1,7 +1,7 @@
 name: rag-text-csv-demo
 services:
   api:
-    image: enterprise-rag-platform:demo-text-csv-v1
+    image: enterprise-rag-platform:folder-ui-v1
     platform: linux/amd64
     build: .
     init: true
@@ -20,15 +20,18 @@ services:
       - host.docker.internal:host-gateway
     depends_on:
       - qdrant
+    volumes:
+      - library-state:/data
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
   qdrant:
-    image: qdrant/qdrant:v1.17.0
+    image: qdrant/qdrant:v1.17.0@sha256:f1c7272cdac52b38c1a0e89313922d940ba50afd90d593a1605dbbc214e66ffb
     volumes:
       - demo-qdrant:/qdrant/storage
     # No host ports, external volume, or existing collection connection.
 volumes:
   demo-qdrant:
+  library-state:

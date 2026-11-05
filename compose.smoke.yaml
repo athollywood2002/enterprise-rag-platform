@@ -3,10 +3,13 @@ services:
   api:
     environment:
       OLLAMA_URL: http://ollama-stub:11434
+      INGEST_SOURCE_ROOTS: '{"fixture-root":"/sources/fixtures"}'
+    volumes:
+      - ./demo/fixtures:/sources/fixtures:ro
     depends_on:
       - ollama-stub
   ollama-stub:
-    image: enterprise-rag-platform:demo-text-csv-v1
+    image: enterprise-rag-platform:folder-ui-v1
     platform: linux/amd64
     command: [python, /app/demo/ollama_stub.py]
     healthcheck:

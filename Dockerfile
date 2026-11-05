@@ -1,4 +1,4 @@
-FROM python:3.12.14-slim-bookworm
+FROM python:3.12.14-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/src
 WORKDIR /app
 COPY docker/requirements.lock /app/requirements.lock
@@ -8,6 +8,9 @@ RUN python -m pip install --no-cache-dir --only-binary=:all: --require-hashes -r
 COPY src /app/src
 COPY demo /app/demo
 COPY scripts/demo_smoke.py /app/scripts/demo_smoke.py
+COPY scripts/library_smoke.py /app/scripts/library_smoke.py
+RUN mkdir -p /data && chown 10001:10001 /data
+ENV INGEST_DATA_DIR=/data
 USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=5s --timeout=3s --start-period=10s --retries=12 \

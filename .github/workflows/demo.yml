@@ -16,18 +16,57 @@ jobs:
         with:
           node-version: '22'
       - run: node --test demo/n8n/workflow.test.cjs
+      - run: node --test demo/ui_selection.test.cjs
       - run: python3 -m unittest discover -s demo -p 'test_*.py' -v
       - run: docker compose -f compose.demo.yaml -f compose.smoke.yaml build
-      - name: Verify classic builder compatibility (AiMiniRig has no Buildx)
+      - name: Verify classic builder compatibility
         env:
           DOCKER_BUILDKIT: '0'
-        run: docker build -t enterprise-rag-platform:demo-text-csv-v1 .
+        run: docker build -t enterprise-rag-platform:folder-ui-v1 .
       - run: docker compose -f compose.demo.yaml -f compose.smoke.yaml up -d --wait --wait-timeout 90
       - name: Real API and pinned Qdrant, synthetic Ollama (not a live-model test)
         run: docker compose -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/demo_smoke.py
+      - name: Folder library — real parsers and database, synthetic model
+        run: docker compose -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/library_smoke.py
+      - name: Stage interrupted work for restart recovery
+        run: docker compose -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/library_smoke.py seed-restart
+      - name: Restart only disposable API (interrupt in-flight request)
+        run: |
+          docker compose -f compose.demo.yaml -f compose.smoke.yaml restart -t 1 api
+          docker compose -f compose.demo.yaml -f compose.smoke.yaml up -d --wait --wait-timeout 90 api
+      - name: Verify persisted jobs and explicit retry
+        run: docker compose -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/library_smoke.py check-restart
       - name: Service logs
         if: failure()
         run: docker compose -f compose.demo.yaml -f compose.smoke.yaml logs --no-color --tail 100
       - name: Stop disposable CI stack and its dedicated volume
         if: always()
         run: docker compose -f compose.demo.yaml -f compose.smoke.yaml down --volumes
+
+  browser-workspace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.12'
+      - run: pip install -e '.[dev]' playwright==1.64.1
+      - run: python -m playwright install --with-deps chromium
+      - name: Actual UI with isolated SQLite/parser/local Qdrant and synthetic model
+        env:
+          UI_FIXTURE_DIR: ${{ runner.temp }}/ui-fixture
+          UI_EMIT_SCREENSHOTS: '1'
+        run: |
+          mkdir -p "$UI_FIXTURE_DIR/sources/nested" docs/images
+          cp demo/fixtures/runbook.txt demo/fixtures/inventory.csv "$UI_FIXTURE_DIR/sources/"
+          python -m demo.serve_ui_fixture > "$RUNNER_TEMP/ui-server.log" 2>&1 &
+          UI_SERVER_PID=$!
+          trap 'kill "$UI_SERVER_PID" || true' EXIT
+          python -c "import time,httpx; time.sleep(2); httpx.get('http://127.0.0.1:18890/health').raise_for_status()"
+          python scripts/ui_browser_check.py
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: actual-ui-screenshots
+          path: docs/images/*.png
