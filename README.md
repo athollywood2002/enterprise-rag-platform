@@ -269,16 +269,20 @@ production-readiness claims.
 
 ## Limitations and next steps
 
-- The 10 MiB file check does **not** bound total request bodies, multipart spooling,
+- **Legacy `/ingest/document`:** the 10 MiB file check does **not** bound total request bodies, multipart spooling,
   disk use, document expansion, parser CPU/RAM/time or concurrency. Parsing and
   synchronous indexing run in a worker thread, not the event loop; this is not
   process isolation, a durable job queue or a guarantee of cancellation/rollback.
-- Missing parser imports and exact built-in resource `LookupError` return opaque
+- **Legacy `/ingest/document`:** missing parser imports and exact built-in resource `LookupError` return opaque
   503s; `KeyError`/`IndexError` are opaque processing 500s. Error text is sanitized,
   not a global log-redaction policy. See [pre-merge corrections](docs/premerge-corrections.md).
-- Changed documents can leave stale chunks. Replacement/deletion semantics,
-  batching, hybrid retrieval, reranking, retrieval evaluation, observability and
-  enterprise identity/authorization remain future work.
+- **Legacy `/ingest` and `/ingest/document`:** changed documents can leave stale
+  chunks; these synchronous endpoints do not provide managed replacement or durable jobs.
+  The [folder library](docs/folder-library.md) does provide persisted jobs, bounded
+  parsing and committed document replacement in separate managed collections.
+  It does not automatically delete documents absent from a later selection.
+- Hybrid retrieval, reranking, broad retrieval evaluation, enterprise observability
+  and identity/authorization remain future work.
 - Application protected-name and alias guards are not server-side authorization.
   Never use existing data-bearing collections for tests. See the
   [collection safety policy](docs/collection-safety.md) before ingestion.
@@ -295,3 +299,5 @@ production-readiness claims.
 ## License
 
 MIT. Contributions welcome.
+
+The next real-model UI milestone is a [bounded mixed-folder test](docs/live-folder-ui-test-plan.md), planned separately from synthetic CI.

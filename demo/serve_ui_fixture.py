@@ -17,6 +17,7 @@ def main():
     root = Path(os.environ["UI_FIXTURE_DIR"])
     config = Settings(
         _env_file=None,
+        rag_model_mode="synthetic",
         api_key="synthetic-ui-fixture-key",
         ingest_data_dir=str(root / "state"),
         ingest_source_roots={"demo-server": str(root / "sources")},

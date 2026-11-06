@@ -41,6 +41,12 @@ def routes(authorize, manager):
     def config():
         return manager().public_config()
 
+    @router.get("/readiness")
+    async def readiness():
+        from .readiness import check_readiness
+
+        return await check_readiness(manager().config)
+
     @router.get("/browse")
     def folders(root: str, path: str = ""):
         lib = manager()
@@ -134,7 +140,12 @@ def routes(authorize, manager):
     @router.post("/ask")
     def ask(question: Question):
         try:
-            return manager().ask(question.question, question.top_k, question.job_id)
+            library = manager()
+            # Snapshot the serving instance's operator label before the request;
+            # a later deployment/readiness snapshot must not relabel this answer.
+            model_mode = library.config.rag_model_mode
+            result = library.ask(question.question, question.top_k, question.job_id)
+            return {**result, "model_mode": model_mode}
         except DocumentError:
             raise
         except Exception as error:

@@ -2,6 +2,7 @@
 const $ = id => document.getElementById(id);
 let key = '', config, selection, selectedFiles = new Map(), currentJob = null, serverPath = '', polling = false, busy = false;
 let selectionGeneration = 0, browseGeneration = 0, previewFiles = new Map(), previewEligible = 0;
+let jobGeneration = 0, jobRequest = 0, jobListRequest = 0, displayedJob = null, jobAction = false, readinessRequest = 0;
 const bytes = n => n < 1024 ? `${n} B` : n < 1024 ** 2 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 ** 2).toFixed(1)} MB`;
 const say = text => { $('message').textContent = text; };
 const node = (tag, text, className) => { const e = document.createElement(tag); e.textContent = text; if (className) e.className = className; return e; };
@@ -36,11 +37,11 @@ function renderPreview(preview) {
 }
 $('connect-form').addEventListener('submit', guarded(async e => {
   e.preventDefault(); key = $('api-key').value; config = await api('/config'); $('api-key').value = '';
-  $('connection').textContent = 'Connected · authenticated'; $('connect-panel').hidden = true; $('workspace').hidden = false;
+  $('connection').textContent = 'API authenticated'; $('connect-panel').hidden = true; $('workspace').hidden = false;
   $('formats').textContent = `TXT · CSV · Text PDF — up to ${config.max_files} files, ${bytes(config.max_file_bytes)} per file, ${bytes(config.max_batch_bytes)} per selection. PDF limit: ${config.max_pages} pages.`;
   $('destination').textContent = `Destination: ${config.destination}`;
   $('root-select').replaceChildren(...config.roots.map(root => { const o = node('option', root); o.value = root; return o; }));
-  await refreshJobs(); await refreshDocuments(); say('Connected. Select a folder or reopen a saved job.');
+  await refreshReadiness(); await refreshJobs(); await refreshDocuments(); say('API authenticated. Select a folder or reopen a saved job.');
 }));
 $('source-mode').addEventListener('change', guarded(async () => {
   const server = document.querySelector('[name=mode]:checked').value === 'server';
@@ -86,18 +87,45 @@ $('start').onclick = guarded(async () => {
   if (!selection || busy) return;
   const approvedSelection = selection, filesForJob = new Map(previewFiles);
   busy = true; $('start').disabled = true;
-  try { const job = await post('/jobs', approvedSelection); currentJob = job.id; await refreshJobs(); if (job.mode === 'browser') await stageBrowser(job, filesForJob); say('Job created. Follow the file results below.'); await refreshJobs(); }
+  try { const job = await post('/jobs', approvedSelection); selectJob(job.id); await refreshJobs(); if (job.mode === 'browser') await stageBrowser(job, filesForJob); say('Job created. Follow the file results below.'); await refreshJobs(); }
   catch (error) { clearPreview(); throw error; }
   finally { busy = false; $('start').disabled = !selection || !previewEligible; }
 });
+function clearJobDisplay(message) {
+  displayedJob = null; $('job-panel').hidden = true;
+  $('cancel').disabled = true; $('retry').disabled = true;
+  $('job-status').textContent = message;
+}
+function selectJob(id) {
+  currentJob = id || null; ++jobGeneration; ++jobRequest;
+  $('job-select').value = currentJob || '';
+  clearJobDisplay(currentJob ? 'Loading selected job…' : 'No jobs yet.');
+}
+async function loadJob() {
+  if (!currentJob) return;
+  const id = currentJob, generation = jobGeneration, request = ++jobRequest;
+  const current = () => id === currentJob && generation === jobGeneration && request === jobRequest;
+  try {
+    const job = await api('/jobs/' + id);
+    if (current()) renderJob(job);
+  } catch (error) {
+    if (current()) clearJobDisplay(`Selected job status unavailable: ${error.message}. Refresh jobs to retry.`);
+  }
+}
 async function refreshJobs() {
-  const jobs = await api('/jobs');
+  const generation = jobGeneration, request = ++jobListRequest;
+  let jobs;
+  try { jobs = await api('/jobs'); }
+  catch (error) { if (generation === jobGeneration && request === jobListRequest) throw error; return; }
+  if (generation !== jobGeneration || request !== jobListRequest) return;
   $('job-select').replaceChildren(...jobs.map(job => { const o = node('option', `${job.source} · ${new Date(job.created * 1000).toLocaleString()} · ${job.status.replaceAll('_', ' ')}`); o.value = job.id; return o; }));
-  if (!jobs.length) return;
-  if (!jobs.some(j => j.id === currentJob)) currentJob = jobs[0].id;
-  $('job-select').value = currentJob; renderJob(jobs.find(j => j.id === currentJob));
+  if (!jobs.some(j => j.id === currentJob)) selectJob(jobs[0]?.id);
+  $('job-select').value = currentJob || '';
+  await loadJob();
 }
 function renderJob(job) {
+  if (job.id !== currentJob) return;
+  displayedJob = job.id; $('job-status').textContent = '';
   $('job-panel').hidden = false;
   $('job-title').textContent = `${job.source} · ${job.mode === 'server' ? 'Folder on server' : 'Uploaded folder'} · ${job.status.replaceAll('_', ' ')}`;
   metrics($('job-counts'), Object.entries(job.counts).map(([label, value]) => [value, label]));
@@ -107,14 +135,38 @@ function renderJob(job) {
   const active = job.files.find(f => ['uploading', 'parsing', 'chunking', 'embedding', 'indexing'].includes(f.status));
   const text = active ? `${active.status} · ${active.path}${active.total ? ` · ${active.done}/${active.total} chunks` : ''}` : job.status === 'uploading' ? 'Waiting for uploads. Reselect the original folder after a refresh and retry this job.' : job.counts.pending ? 'Waiting for the worker' : 'Processing finished. Completed files are indexed; unchanged files keep their verified index.';
   if ($('current-stage').textContent !== text) $('current-stage').textContent = text;
-  $('cancel').disabled = !job.counts.pending || !!job.cancel;
-  $('retry').disabled = !!active || !(job.counts.failed || job.counts.cancelled || job.status === 'uploading');
+  $('cancel').disabled = jobAction || !job.counts.pending || !!job.cancel;
+  $('retry').disabled = jobAction || !!active || !(job.counts.failed || job.counts.cancelled || job.status === 'uploading');
   $('job-rows').replaceChildren(...job.files.map(f => { const tr = document.createElement('tr'); const state = node('td', ''); state.append(badge(f.status)); tr.append(node('td', f.path), state, node('td', f.error || (f.status === 'completed' ? 'Indexed and ready to search' : f.staged ? 'Upload safely staged' : ''))); return tr; }));
 }
-$('job-select').onchange = guarded(async () => { currentJob = $('job-select').value; renderJob(await api('/jobs/' + currentJob)); });
+$('job-select').onchange = guarded(async () => { selectJob($('job-select').value); await loadJob(); });
 $('refresh-jobs').onclick = guarded(refreshJobs);
-$('cancel').onclick = guarded(async () => { renderJob(await post(`/jobs/${currentJob}/cancel`)); say('Cancellation requested. Waiting for any in-flight operation to return.'); });
-$('retry').onclick = guarded(async () => { const job = await post(`/jobs/${currentJob}/retry`); if (job.status === 'uploading') await stageBrowser(job); await refreshJobs(); });
+async function mutateJob(action) {
+  if (jobAction || !currentJob || displayedJob !== currentJob || $('job-select').value !== currentJob || $(action).disabled) return;
+  const id = currentJob, files = new Map(selectedFiles);
+  jobAction = true; ++jobRequest; $('cancel').disabled = true; $('retry').disabled = true;
+  try {
+    const job = await post(`/jobs/${id}/${action}`);
+    if (action === 'retry' && job.status === 'uploading') await stageBrowser(job, files);
+    if (id === currentJob && action === 'cancel') say('Cancellation requested. Waiting for any in-flight operation to return.');
+  } catch (error) { say(`Job ${id}: ${error.message}`); }
+  finally { jobAction = false; await loadJob(); }
+}
+$('cancel').onclick = guarded(() => mutateJob('cancel'));
+$('retry').onclick = guarded(() => mutateJob('retry'));
+async function refreshReadiness() {
+  const request = ++readinessRequest;
+  $('readiness-status').textContent = 'Checking service metadata…';
+  try {
+    const state = await api('/readiness');
+    if (request !== readinessRequest) return;
+    $('model-mode').textContent = `Model mode: ${state.mode} (deployment label)`;
+    $('chat-model').textContent = `Chat model: ${state.chat_model.name} — ${state.chat_model.status}`;
+    $('embedding-model').textContent = `Embedding model: ${state.embedding_model.name} — ${state.embedding_model.status}`;
+    $('readiness-status').textContent = `Ollama: ${state.ollama}. Qdrant: ${state.qdrant}. ${state.metadata_ready ? 'Metadata checks passed' : 'Not ready / unable to verify'}. Checked ${new Date(state.checked_at).toLocaleTimeString()}.`;
+  } catch (error) { if (request === readinessRequest) $('readiness-status').textContent = `Readiness unavailable: ${error.message}`; }
+}
+$('refresh-readiness').onclick = guarded(refreshReadiness);
 async function refreshDocuments() {
   const data = await api('/documents'); $('indexed-count').textContent = `${data.documents.length} indexed documents`;
   $('documents').replaceChildren(...data.documents.map(d => node('li', `${d.source}/${d.path} — ${d.chunks} chunks`)));
@@ -126,7 +178,8 @@ $('ask-form').onsubmit = guarded(async e => {
     const question = { question: $('question').value, top_k: 5 };
     if ($('search-scope').value === 'job') { if (!currentJob) throw new Error('Choose a job first.'); question.job_id = currentJob; }
     const result = await post('/ask', question);
-    $('answer').textContent = result.answer; $('generation').textContent = `Generation: ${result.generation?.status || 'No generation'}${result.generation?.eval_count != null ? ` · ${result.generation.eval_count} output tokens` : ''}. Inspect each claim against its excerpt.`;
+    const mode = ['unknown', 'synthetic', 'real'].includes(result.model_mode) ? result.model_mode : 'unknown';
+    $('answer').textContent = result.answer; $('generation').textContent = `Model mode: ${mode} (request-bound deployment label)${mode === 'synthetic' ? ' — simulated reply, not real inference' : ''}. Generation: ${result.generation?.status || 'No generation'}${result.generation?.eval_count != null ? ` · ${result.generation.eval_count} output tokens` : ''}. Mode is operator configuration, not evidence of inference. Inspect each claim against its excerpt.`;
     $('citations').replaceChildren(...result.sources.map((source, i) => { const box = node('div', '', 'citation'); box.append(node('strong', `[${i+1}] ${source.source}${source.page_number ? ` · page ${source.page_number}` : ''} · chunk ${source.chunk}`), node('p', source.text)); return box; }));
     $('answer-panel').hidden = false; $('ask-status').textContent = result.generation?.status === 'complete' ? 'Answer complete. Verify the citations below.' : 'Review required: generation is incomplete, unknown, or returned no sources.';
   } finally { $('ask').disabled = false; if ($('answer-panel').hidden) $('ask-status').textContent = 'Question failed. See the error below.'; }
@@ -134,7 +187,7 @@ $('ask-form').onsubmit = guarded(async e => {
 setInterval(async () => {
   if (!key || !config || polling || document.hidden) return;
   polling = true;
-  try { if (currentJob) renderJob(await api('/jobs/' + currentJob)); await refreshDocuments(); }
+  try { await loadJob(); await refreshDocuments(); }
   catch (error) { say(`Status unavailable: ${error.message}`); }
   finally { polling = false; }
 }, 1500);
