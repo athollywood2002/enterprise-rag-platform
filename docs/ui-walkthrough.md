@@ -18,7 +18,7 @@ Choose **Documents from the selected job**, ask a question and inspect the numbe
 
 ![Recovered results and cited answer from a synthetic model in the Chromium test](images/folder-results.png)
 
-**Separate real-model example.** In the completed mixed-folder test, the maintenance answer cited page 1 of `procedure.pdf` for **21:15 UTC** and page 2 for **the blue indicator**. David accepted that answer and three others, including the response that the documents gave no purchase price. The harness recorded `FAILED_INCOMPLETE` because log capture was partial. Shutdown was verified. See [all four answers and the limits of the evidence](CURRENT_STATUS.md#what-the-real-browser-run-answered).
+**Separate real-model example.** In the completed mixed-folder test, the maintenance answer cited page 1 of `procedure.pdf` for **21:15 UTC** and page 2 for **the blue indicator**. The maintainer accepted that answer and three others, including the response that the documents gave no purchase price. The harness recorded `FAILED_INCOMPLETE` because log capture was partial. Shutdown was verified. See [all four answers and the limits of the evidence](CURRENT_STATUS.md#what-the-real-browser-run-answered).
 
 ## 4. Stop with the library saved
 

@@ -7,8 +7,8 @@ Updated November 6, 2026. The browser library and manual n8n workflow are availa
 | Demonstration | Observed outcome |
 | --- | --- |
 | Docker and n8n (PR #21, `379d434`) | One manual two-host run read the public TXT and CSV fixtures, ingested both through the legacy API, and returned ORION and NetworkOps with citations to both files. The isolated demo stopped. |
-| Separate two-page text-PDF HTTP smoke (`f20ac879`) | Parsing preserved pages, identical reingestion kept the point count stable, and David accepted both cited answers. The test metered six embedding calls and two chats and verified shutdown. Its scope was this HTTP stack and fixture. |
-| Real browser-folder workflow (attempt 3) | A browser upload ingested one TXT, one CSV and one two-page text PDF. Three documents yielded four indexed chunks. After refresh and reconnect, the saved job reopened. David accepted all four answers below. |
+| Separate two-page text-PDF HTTP smoke (`f20ac879`) | Parsing preserved pages, identical reingestion kept the point count stable, and the maintainer accepted both cited answers. The test metered six embedding calls and two chats and verified shutdown. Its scope was this HTTP stack and fixture. |
+| Real browser-folder workflow (attempt 3) | A browser upload ingested one TXT, one CSV and one two-page text PDF. Three documents yielded four indexed chunks. After refresh and reconnect, the saved job reopened. The maintainer accepted all four answers below. |
 
 ### What the real browser run answered
 
@@ -21,7 +21,7 @@ The following are summaries of the retained real-model answers. The chat model w
 | When does maintenance start, and what must be checked before it ends? | Start at 21:15 UTC. Verify the blue indicator before ending maintenance. | `procedure.pdf`, pages 1 and 2 respectively |
 | What is ORION's purchase price? | The supplied excerpts give no price. | Answer referred to all four retrieved excerpts. |
 
-**Formal attempt 3 outcome: `FAILED_INCOMPLETE`.** The harness captured only part of the required service logs. Shutdown was verified. David's acceptance closes the four answer reviews. Eight embeddings and four chats were expected; the run had no enforced budget or independently verified call totals.
+**Formal attempt 3 outcome: `FAILED_INCOMPLETE`.** The harness captured only part of the required service logs. Shutdown was verified. The maintainer's acceptance closes the four answer reviews. Eight embeddings and four chats were expected; the run had no enforced budget or independently verified call totals.
 
 The public quickstart uses different fixtures: ORION is the recovery **code** for `demo-router-01`. In the live test ORION was the **asset**. The [walkthrough screenshots](ui-walkthrough.md) illustrate the UI using synthetic responses.
 

@@ -80,7 +80,7 @@ This removes the project's containers and network. The named volumes `library-st
 
 ## Demonstrated scope and limits
 
-The Docker/n8n text-and-CSV demo and the separate two-page PDF HTTP smoke both completed. In a later real browser run, three files produced four indexed chunks, the saved job reopened after refresh, and David accepted four answers and their citations. Attempt 3 formally remains `FAILED_INCOMPLETE` because the harness kept partial service logs. Shutdown was verified. The expected embedding/chat counts were not independently verified. [Results and development history](docs/CURRENT_STATUS.md)
+The Docker/n8n text-and-CSV demo and the separate two-page PDF HTTP smoke both completed. In a later real browser run, three files produced four indexed chunks, the saved job reopened after refresh, and the maintainer accepted four answers and their citations. Attempt 3 formally remains `FAILED_INCOMPLETE` because the harness kept partial service logs. Shutdown was verified. The expected embedding/chat counts were not independently verified. [Results and development history](docs/CURRENT_STATUS.md)
 
 This is a local, single-instance prototype with a shared API key. OCR, tenant isolation and broad retrieval-quality evaluation are outside its demonstrated scope. Four chunks fit within the live test's five-result retrieval limit. The next task is a modest test with competing documents.
 
