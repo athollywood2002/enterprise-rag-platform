@@ -20,6 +20,7 @@ cd enterprise-rag-platform
 Create the configuration once. This generates a key for your installation and refuses to overwrite an existing file.
 
 ```sh
+(
 umask 077
 python3 - <<'PY'
 from pathlib import Path
@@ -30,6 +31,7 @@ config = config.replace("RAG_MODEL_MODE=unknown", "RAG_MODEL_MODE=real")
 with open(".env.demo", "x") as output:
     output.write(config)
 PY
+)
 ```
 
 Open `.env.demo` in your local editor. Keep `OLLAMA_URL=http://host.docker.internal:11434` for an Ollama service reachable at the Docker host gateway, or enter the URL of your own reachable Ollama server. Set `OLLAMA_CHAT_MODEL` and `OLLAMA_EMBED_MODEL` to your installed tags. Keep the generated `RAG_API_KEY` handy for **Connect**. This file is ignored by Git and excluded from the image.
@@ -47,7 +49,7 @@ The default Compose project is `rag-text-csv-demo`. Use a fresh project for a cl
 1. Open [the local UI](http://127.0.0.1:18000/). Paste **only the value** after `RAG_API_KEY=` from your local file into **API key**, then click **Connect**. Under **Models and services**, click **Check readiness** to check the model tags and Qdrant connection.
 2. Choose **Folder on this computer**. Set **Source name** to `router-demo`. Click **Select a folder**, open **Documents → enterprise-rag-platform → demo**, select **fixtures** and confirm the browser picker. The service receives files from that folder, including subfolders.
 3. Under **Review selection**, look for `runbook.txt` and `inventory.csv`, both eligible. Check the destination, byte count and any exclusions before clicking **Start ingestion**.
-4. Wait for both files to show **completed** under **Ingestion progress**. Uploading stages bytes. Completion means the file is indexed. To check recovery, reload the browser, connect again with the same key and select the same **Saved job**.
+4. On the first import, wait for both files to show **completed** under **Ingestion progress**. Uploading stages bytes; completion means the file is indexed. If you reimport the same `router-demo` source and unchanged files on retained volumes, they may instead show **skipped** with an unchanged-file detail: their compatible index is verified and they remain searchable, so proceed to Ask. An unsupported-file skip does not mean that file was indexed; check the per-file detail. To check recovery, reload the browser, connect again with the same key and select the same **Saved job**.
 
 ### 3. Ask and inspect citations
 

@@ -8,18 +8,25 @@ For a first run, follow the [Docker browser quickstart](../README.md#docker-brow
 python3 -m unittest discover -s demo -p 'test_*.py' -v
 node --test demo/n8n/workflow.test.cjs
 # Create .env.demo as in the quickstart. Choose a free loopback port.
-# A separate project and volumes; synthetic model, real API and Qdrant:
-RAG_PORT=18001 docker compose --env-file .env.demo -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml build
-RAG_PORT=18001 docker compose --env-file .env.demo -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml up -d --wait --wait-timeout 90
-RAG_PORT=18001 docker compose --env-file .env.demo -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/demo_smoke.py
-RAG_PORT=18001 docker compose --env-file .env.demo -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/library_smoke.py
-RAG_PORT=18001 docker compose --env-file .env.demo -p rag-demo-ci -f compose.demo.yaml -f compose.smoke.yaml down
+# Generate once per invocation; reuse this name through down.
+SMOKE_PROJECT="rag-demo-ci-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
+# Fresh project and volumes; synthetic model, real API and Qdrant:
+RAG_PORT=18001 docker compose --env-file .env.demo -p "$SMOKE_PROJECT" -f compose.demo.yaml -f compose.smoke.yaml build
+RAG_PORT=18001 docker compose --env-file .env.demo -p "$SMOKE_PROJECT" -f compose.demo.yaml -f compose.smoke.yaml up -d --wait --wait-timeout 90
+RAG_PORT=18001 docker compose --env-file .env.demo -p "$SMOKE_PROJECT" -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/demo_smoke.py
+RAG_PORT=18001 docker compose --env-file .env.demo -p "$SMOKE_PROJECT" -f compose.demo.yaml -f compose.smoke.yaml exec -T api python scripts/library_smoke.py
+RAG_PORT=18001 docker compose --env-file .env.demo -p "$SMOKE_PROJECT" -f compose.demo.yaml -f compose.smoke.yaml down
 ```
 
 Do not run the CI override on a live-demo project: it intentionally substitutes
 synthetic Ollama responses. The GitHub `docker-demo` job builds and tests this
 isolated stack without pushing an image. The Code-node tests execute exported
 JavaScript in a harness; they do not claim an n8n engine/import test.
+
+Generate a new `SMOKE_PROJECT` when repeating this block: the library smoke expects
+a fresh index, and `down` retains the previous invocation's volumes. No volume
+deletion is needed. In contrast, keep your ordinary browser project's name stable
+across restarts to reopen its saved library.
 
 ## Prerequisites
 
