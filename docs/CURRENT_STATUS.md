@@ -1,61 +1,46 @@
 # Current status
 
-Updated November 5, 2026. Local single-instance prototype, not a production service.
+Updated November 6, 2026. The browser library and manual n8n workflow are available for community setup and workflow review. Both use the same API service with separate collections. Start with the [Docker browser quickstart](../README.md#docker-browser-quickstart) or [see the interface](ui-walkthrough.md).
 
-## Completed milestones
+## Completed demonstrations
 
-- PR #21 merged at `379d434`: Docker quickstart and manual n8n text/CSV demo.
-  One real two-host manual execution ingested both fixtures and returned the correct
-  ORION/NetworkOps answer with supporting citations. Shared services were preserved
-  and the isolated demo stopped. Post-merge base, document and Docker CI passed.
-- A separate bounded two-page PDF HTTP test at application `f20ac879` passed parsing,
-  page provenance, duplicate-free reingestion, two cited answers, a metered budget
-  of six embeddings/two chats and shutdown verification. The owner accepted both
-  answers and closed the smoke. Earlier failed attempts remain failed and preserved.
-  This private-packet result does not establish PDF support in the PR #21 image.
-- Earlier authenticated text HTTP and private development A/B evidence remains
-  historical. The deferred PDF follow-up is complete, not pending approval.
+| Demonstration | Observed outcome |
+| --- | --- |
+| Docker and n8n (PR #21, `379d434`) | One manual two-host run read the public TXT and CSV fixtures, ingested both through the legacy API, and returned ORION and NetworkOps with citations to both files. The isolated demo stopped. |
+| Separate two-page text-PDF HTTP smoke (`f20ac879`) | Parsing preserved pages, identical reingestion kept the point count stable, and David accepted both cited answers. The test metered six embedding calls and two chats and verified shutdown. Its scope was this HTTP stack and fixture. |
+| Real browser-folder workflow (attempt 3) | A browser upload ingested one TXT, one CSV and one two-page text PDF. Three documents yielded four indexed chunks. After refresh and reconnect, the saved job reopened. David accepted all four answers below. |
 
-## Folder UI implementation (merged PR #22)
+### What the real browser run answered
 
-The same-origin web interface adds browser-folder upload and bounded read-only
-server-root browsing, preview, SQLite-persisted jobs, real per-file progress,
-explicit retry/cancellation/restart recovery and citation inspection. TXT/CSV/text
-PDF parsing uses shared backend code with pinned pypdf in Docker, independent of
-optional legacy Unstructured parsing. Immutable vector revisions and a transactional
-active-revision registry preserve a usable document on replacement failure.
+The following are summaries of the retained real-model answers. The chat model was `qwen3:8b` and the embedding model was `nomic-embed-text:latest`.
 
-See [operating guide](folder-library.md) for the separate managed collection, limits,
-source identity semantics and n8n API integration. See [UI walkthrough](ui-walkthrough.md)
-for actual browser evidence and limitations. PR #22 merged at `fb1cb26`, including
-its three pre-merge fixes. All four post-merge checks passed: base Python tests,
-optional document tests, Docker integration and Chromium browser tests. This is
-not an image release or a claim of a real-model folder UI deployment on AiMiniRig.
+| Question about the live fixtures | Accepted result | Source shown |
+| --- | --- | --- |
+| What is ORION's recovery code? | LANTERN | `runbook.txt` |
+| Who owns ORION and where is it located? | NetworkOps, Room 7 | `inventory.csv` |
+| When does maintenance start, and what must be checked before it ends? | Start at 21:15 UTC. Verify the blue indicator before ending maintenance. | `procedure.pdf`, pages 1 and 2 respectively |
+| What is ORION's purchase price? | The supplied excerpts give no price. | Answer referred to all four retrieved excerpts. |
 
-The old API/n8n demo remains supported. The new Docker parser and UI passed their own isolated container and Chromium
-validation; historical PDF smoke results are not reused as proof for this
-implementation. See the walkthrough for exact test scope and CI evidence. Fixture tests do not prove broad retrieval quality,
-complex PDF layout support, production readiness or tenant isolation.
+**Formal attempt 3 outcome: `FAILED_INCOMPLETE`.** The harness captured only part of the required service logs. Shutdown was verified. David's acceptance closes the four answer reviews. Eight embeddings and four chats were expected; the run had no enforced budget or independently verified call totals.
 
-PRs #12 and #13 remain separate and outside this change. No retained data, private
-receipts, model assets or failed runs were deleted. No registry publication or
-shared-service deployment is included.
+The public quickstart uses different fixtures: ORION is the recovery **code** for `demo-router-01`. In the live test ORION was the **asset**. The [walkthrough screenshots](ui-walkthrough.md) illustrate the UI using synthetic responses.
 
-## Follow-up and next milestone
+## Implementation and test history
 
-The follow-up fixes stale job status responses, aligns actions with the displayed
-job, and distinguishes API authentication from bounded model/database metadata
-readiness. Mode is explicitly configured as synthetic, real or unknown; metadata
-success does not establish inference success. See the [live UI test plan](live-folder-ui-test-plan.md).
-That real-model folder run remains pending execution approval. Historical n8n and
-PDF smoke tests remain complete; they are not evidence of this new UI run.
+- PR #22 (`fb1cb26`) added the managed library, read-only server roots, shared TXT/CSV/text-PDF parsing, persistent jobs and revision-safe replacement. Post-merge Python, document, Docker and Chromium checks passed. The container and browser checks used synthetic model services. [Operating guide](folder-library.md)
+- PR #23 fixed out-of-order job selection, aligned actions with the displayed job, and separated API authentication from model and database readiness. A deployment label identifies configured mode. Model tags and database metadata can be checked before asking a question. [Historical live procedure](live-folder-ui-test-plan.md)
+- Earlier scoped API, parser and synthetic checks are described in the [developer reference](developer-reference.md).
 
-## Private provisional development pilot
+## Following task
+
+Test retrieval with a modest set of competing documents. Include plausible distractors so the result limit excludes some chunks, then inspect which supporting excerpts are retrieved and cited. This task is pending. The completed four-chunk live demo used `top_k=5`, so every chunk could reach the model.
+
+## Earlier development-set evaluation
+
 
 The completed A/B pilot used one exposed development set: 12 answerable and eight
 negative questions. Evidence and labels were AI-proposed development drafts;
-Claude supplied the agent judgments. All experimental launches are consumed and
-experiments are stopped. No variants, probes or reruns are authorized.
+Claude supplied the agent judgments. The pilot is closed.
 
 | Agent judgment, answerable questions | A | B |
 | --- | ---: | ---: |
@@ -73,10 +58,3 @@ with no new serious regressions**, alongside minor citation/precision regression
 This is a single-sample, agent-reviewed provisional result with a historical
 control and recomputed B query vectors. It is not blind, human-gold, a deterministic
 causal comparison, or a general benchmark.
-
-Review and owner acceptance are recorded in the private coordination repository.
-Private sources, prompts, labels, answers, local paths and holdout material are
-excluded from public Git. The synthetic CLI does not replay those artifacts.
-
-Preservation of the private pilot evidence passed an independent read-only audit.
-Supporting records remain private; that audit does not validate model quality.
