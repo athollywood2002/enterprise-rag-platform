@@ -1,4 +1,6 @@
-# Proposed real-model folder UI test — not executed
+# Historical procedure for the real-model folder UI test
+
+Attempt 3 has concluded. See the [observed answers, formal outcome and verified shutdown](CURRENT_STATUS.md#what-the-real-browser-run-answered). The following is the original test procedure.
 
 Purpose: one bounded, owner-observed mixed-folder UI demonstration after review of
 the job-status/readiness follow-up. This is separate from the already completed
@@ -214,6 +216,4 @@ launching a second attempt. Return partial evidence and the exact unresolved sta
 Return screenshots, hashes, job/results, all reached original answers, semantic
 judgments, actual/expected/unverified counts, and scoped stop verification. A pass
 demonstrates this fixture on these pins only, not broad retrieval quality, selective
-retrieval, OCR, DOCX/RTF, performance or production readiness. Concrete private
-host/configuration/capture/deadline review and separate owner execution approval
-are still required; no helpers or live services are prepared by this document.
+retrieval, OCR, DOCX/RTF, performance or production readiness.

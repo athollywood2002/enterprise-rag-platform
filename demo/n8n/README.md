@@ -2,7 +2,8 @@
 
 This workflow uses Read/Write Files from Disk, Extract from File, Code and HTTP
 Request nodes. It is inactive and has no schedule, webhook, credential ID or key.
-The JSON and Code-node tests do not establish an actual n8n import/execution.
+One manual two-host execution completed with the expected answer and both sources.
+The automated Code-node checks cover the export separately.
 Verify node availability in the installed n8n version before import. Read/Write
 Files from Disk v1.1 is required so a missing file raises an error rather than
 silently ending the workflow without output.
@@ -37,32 +38,11 @@ each for this two-chunk smoke. Editing documents can leave old chunks, so use a
 new dedicated demo volume/collection when changing fixtures, after review.
 The workflow does not install dependencies, manage containers, or run shell commands.
 
-## Two-host deployment review
+## Collections and network access
 
-From the Mac, `ssh agent` reaches ubuntu-agent/n8n; `ssh aiminirig` reaches the
-Docker/Ollama host. These aliases are not assumed to resolve inside containers.
-Before live execution record:
+This export calls the legacy `/ingest` and `/ask` routes. Its documents do not automatically appear in the browser's managed library. Import the files in the UI to use saved jobs and document replacement, or build a workflow against the [library job API](../../docs/folder-library.md#api--n8n-integration).
 
-| Item | Required observation |
-| --- | --- |
-| API listener | Unused port and exact private bind address on Docker host |
-| Ollama | Existing reachable endpoint and installed embedding/chat model tags |
-| n8n | Actual version, runtime/container, node availability and allowed demo path |
-| Route | API `/health` reachable from the actual n8n runtime; unauthenticated `/ask` returns 401 |
-| Qdrant | New Compose project volume and no published host ports |
-
-Compose defaults to loopback for local testing. After review, `RAG_BIND_IP` may be
-set to the verified private interface and `apiUrl` to that interface/port. This
-does not configure a firewall or TLS. Use only the reviewed trusted private
-network; do not expose it publicly. Do not change existing Ollama/Open WebUI
-listeners, firewall rules, or n8n settings to work around a failed route.
-
-During preflight, inspect only required container names, image versions, ports
-and mounts; do not dump container environments or credential stores. Copying
-fixtures, importing the workflow and running it are explicit live-demo steps
-after setup review. Retain the n8n execution output with the Compose/image
-identity. Stop only the newly created Compose project after the demo; leave
-Ollama, Open WebUI and n8n running.
+Compose binds the API to loopback by default. When n8n runs on another host, set `RAG_BIND_IP` to a trusted private interface, keep Qdrant internal and set `apiUrl` to an address reachable from the n8n runtime. Confirm it can reach the API's `/health` route. Use TLS before sending documents or keys across untrusted networks. For the local browser path, start with the [Docker quickstart](../../README.md#docker-browser-quickstart).
 
 References: [n8n file nodes](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/),
 [HTTP credentials](https://docs.n8n.io/integrations/builtin/credentials/httprequest/).

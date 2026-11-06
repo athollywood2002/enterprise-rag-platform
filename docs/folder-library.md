@@ -7,17 +7,9 @@ This is one trusted-user, single-instance workspace, not a multi-tenant service.
 Use localhost or a trusted private network; use a TLS reverse proxy before sending
 keys/documents over an untrusted network. No CORS access is enabled.
 
-## Start, use, stop
+## Running the workspace
 
-```sh
-# First use the README Start command to create .env.demo without overwriting it.
-# Edit .env.demo: set your Ollama endpoint and installed models.
-# Obtain the model names from your own Ollama installation; no model is downloaded by this app.
-docker compose --env-file .env.demo -f compose.demo.yaml up -d --build --wait
-# Open http://localhost:18000/
-# Stop without deleting either persistent volume:
-docker compose --env-file .env.demo -f compose.demo.yaml down
-```
+Use the [Docker browser quickstart](../README.md#docker-browser-quickstart) for setup, authentication, the sample folder and shutdown. The [illustrated walkthrough](ui-walkthrough.md) shows what to inspect in a completed job.
 
 The API runs as UID 10001, with a read-only image and `/data` backed by the
 `library-state` volume. That volume contains SQLite job/document records and staged
