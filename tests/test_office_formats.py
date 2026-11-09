@@ -47,7 +47,7 @@ def test_docx_order_locations_unicode_and_warning():
         "Policy — effective 2026-11-01",
         "Café policy",
         "Column 1: Name | Column 2: Amount USD",
-        "Column 1: Zoë | Column 2: 1250",
+        "Column 1 (Name): Zoë | Column 2 (Amount USD): 1250",
         "End of policy",
     ]
     assert blocks[3]["table"] == 1 and blocks[3]["row"] == 2
