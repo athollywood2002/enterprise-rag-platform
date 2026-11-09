@@ -799,7 +799,21 @@ class Installer:
         # Own running API may already hold this port. Other listeners are not adopted.
         _, raw = self.compose(["ps", "-q", "api"])
         if raw.strip():
-            return
+            _, inspected = self.runner.run(["docker", "inspect", *raw.split()])
+            for row in parse_json(inspected):
+                labels = row.get("Config", {}).get("Labels", {})
+                need(
+                    labels.get("com.docker.compose.project") == self.state["project"]
+                    and labels.get("com.docker.compose.project.working_dir") == str(self.root)
+                    and labels.get("com.docker.compose.service") == "api",
+                    "API container ownership mismatch; refusing to adopt it.",
+                )
+                bindings = row.get("NetworkSettings", {}).get("Ports", {}).get("8000/tcp") or []
+                if row.get("State", {}).get("Running") and any(
+                    b.get("HostIp") == "127.0.0.1" and b.get("HostPort") == str(self.state["port"])
+                    for b in bindings
+                ):
+                    return
         try:
             with socket.socket() as probe:
                 # A stopped installation can leave TIME_WAIT connections. Bind AND

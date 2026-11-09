@@ -179,10 +179,10 @@ $('ask-form').onsubmit = guarded(async e => {
     if ($('search-scope').value === 'job') { if (!currentJob) throw new Error('Choose a job first.'); question.job_id = currentJob; }
     const result = await post('/ask', question);
     const mode = ['unknown', 'synthetic', 'real'].includes(result.model_mode) ? result.model_mode : 'unknown';
-    $('answer').textContent = result.answer; $('generation').textContent = `Model mode: ${mode} (request-bound deployment label)${mode === 'synthetic' ? ' — simulated reply, not real inference' : ''}. Generation: ${result.generation?.status || 'No generation'}${result.generation?.eval_count != null ? ` · ${result.generation.eval_count} output tokens` : ''}. Mode is operator configuration, not evidence of inference. Inspect each claim against its excerpt.`;
+    $('answer').textContent = result.generation_notice || result.answer; $('generation').textContent = `Model mode: ${mode} (request-bound deployment label)${mode === 'synthetic' ? ' — simulated reply, not real inference' : ''}. Generation: ${result.generation?.status || 'No generation'}${result.generation?.eval_count != null ? ` · ${result.generation.eval_count} output tokens` : ''}. Mode is operator configuration, not evidence of inference. Inspect each claim against its excerpt.`;
     $('citations').replaceChildren(...result.sources.map((source, i) => { const box = node('div', '', 'citation'); box.append(node('strong', `[${i+1}] ${source.source}${source.page_number ? ` · page ${source.page_number}` : ''} · chunk ${source.chunk}`), node('p', source.text)); return box; }));
     $('answer-panel').hidden = false; $('ask-status').textContent = result.generation?.status === 'complete' ? 'Answer complete. Verify the citations below.' : 'Review required: generation is incomplete, unknown, or returned no sources.';
-  } finally { $('ask').disabled = false; if ($('answer-panel').hidden) $('ask-status').textContent = 'Question failed. See the error below.'; }
+  } catch (error) { $('ask-status').textContent = `Question failed: ${error.message}`; throw error; } finally { $('ask').disabled = false; }
 });
 setInterval(async () => {
   if (!key || !config || polling || document.hidden) return;

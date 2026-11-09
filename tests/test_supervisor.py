@@ -512,23 +512,38 @@ def test_failed_stop_is_reported_not_completed(config, monkeypatch):
 
 
 def test_watchdog_stop_does_not_wait_for_event_lock(config, monkeypatch):
-    config = replace(config, seconds=0.2, request_seconds=0.1)
+    # Startup is not the event under test. Arm the real watchdog only after the
+    # response holds the event lock and the owned child is registered/alive.
+    import threading
+
+    config = replace(config, seconds=10, request_seconds=5)
     run = Supervisor(config)
     original = run._event
+    entered = threading.Event()
+    child = None
 
     def event(name, **fields):
         if name == "response":
-            run._processes[0].wait(timeout=2)  # Simulate stalled evidence I/O under _lock.
+            assert child is not None and child.poll() is None
+            run._timer.cancel()
+            run._deadline = time.monotonic() + 0.1
+            run._timer = threading.Timer(0.1, run._stop, args=("deadline",))
+            run._timer.daemon = True
+            run._timer.start()
+            entered.set()
+            child.wait(timeout=2)  # Stall evidence I/O under _lock until killed.
         return original(name, **fields)
 
     monkeypatch.setattr(run, "_event", event)
-    with (
-        pytest.raises(SupervisorStopped),
-        run,
-        run.model_client(transport=httpx.MockTransport(lambda _: httpx.Response(200))) as client,
-    ):
-        embed(client)
-    assert run._processes[0].poll() == -9
+    with pytest.raises(SupervisorStopped), run:
+        assert len(run._processes) == 1
+        child = run._processes[0]
+        with run.model_client(
+            transport=httpx.MockTransport(lambda _: httpx.Response(200))
+        ) as client:
+            embed(client)
+    assert entered.wait(timeout=0.1)
+    assert child.poll() == -9
     assert events(config)[-1]["reason"] == "deadline"
 
 

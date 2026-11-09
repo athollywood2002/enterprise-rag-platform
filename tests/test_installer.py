@@ -142,10 +142,13 @@ class Docker:
                 self.images["sha256:" + str(self.builds) * 64] = "sha256:" + str(self.builds) * 64
                 return 0, ""
             if "ps" in args:
-                return 0, "container-id" if self.running else ""
+                return 0, "container-id" if self.running and getattr(
+                    self, "running_project", None
+                ) == self.owner.state["project"] else ""
             if "up" in args:
                 if args[-1] == "api":
                     self.running = True
+                    self.running_project = self.owner.state["project"]
                 return 0, ""
             if "down" in args:
                 self.running = False
@@ -908,3 +911,44 @@ def test_bad_public_ui_response_prevents_ready_report(installation, monkeypatch,
     installer.read()
     assert installer.state["phase"] == "provisioning"
     assert "Services ready" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("mapping", ["old-port", "wrong-address", "correct"])
+def test_owned_container_only_excuses_matching_published_port(installation, monkeypatch, mapping):
+    installer, _ = installation
+    installer.initialize(m.arguments([]))
+    installer.snapshot()
+    monkeypatch.setattr(installer, "compose", lambda *a, **k: (0, "owned-api"))
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        port = listener.getsockname()[1]
+        installer.state["port"] = port
+        inspected = [
+            {
+                "Config": {
+                    "Labels": {
+                        "com.docker.compose.project": installer.state["project"],
+                        "com.docker.compose.project.working_dir": str(installer.root),
+                        "com.docker.compose.service": "api",
+                    }
+                },
+                "State": {"Running": True},
+                "NetworkSettings": {
+                    "Ports": {
+                        "8000/tcp": [
+                            {
+                                "HostIp": "0.0.0.0" if mapping == "wrong-address" else "127.0.0.1",
+                                "HostPort": str(port + 1 if mapping == "old-port" else port),
+                            }
+                        ]
+                    }
+                },
+            }
+        ]
+        monkeypatch.setattr(installer.runner, "run", lambda *a, **k: (0, json.dumps(inspected)))
+        if mapping == "correct":
+            m.Installer.check_port(installer)
+        else:
+            with pytest.raises(m.InstallError, match="port is occupied"):
+                m.Installer.check_port(installer)

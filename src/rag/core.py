@@ -178,16 +178,40 @@ class RagEngine:
         # Recheck at dispatch too: unvalidated model_copy/model_construct must
         # not forward a boolean, negative sentinel or overflowing integer.
         cap = Settings.validate_generation_cap(self.config.ollama_num_predict)
+        think = self.config.ollama_think
+        if think not in {"default", "on", "off"}:
+            raise ValueError("OLLAMA_THINK must be default, on or off")
+        if think != "default":
+            # /api/show is metadata only; never dispatch an unsupported control.
+            with self._client(15) as client:
+                show = client.post(
+                    self.config.ollama_url.rstrip("/") + "/api/show",
+                    json={"model": self.config.ollama_chat_model},
+                )
+                show.raise_for_status()
+                info = show.json()
+            if "thinking" not in info.get("capabilities", []):
+                raise ValueError(
+                    "Selected model does not advertise thinking control; use OLLAMA_THINK=default"
+                )
         vector = self.embed(question)
         if not self.db.collection_exists(self.config.qdrant_collection):
             return {"answer": "I don't know based on the available documents.", "sources": []}
         result = self.db.query_points(
             collection_name=self.config.qdrant_collection,
             query=vector,
-            limit=top_k,
+            limit=max(20, top_k * 4) if query_filter is not None else top_k,
             with_payload=True,
             **({"query_filter": query_filter} if query_filter is not None else {}),
         )
+        points = result.points
+        retrieval = None
+        if query_filter is not None:
+            from .retrieval import managed_candidates
+
+            points, retrieval = managed_candidates(
+                self.db, self.config.qdrant_collection, question, points, query_filter, top_k
+            )
         sources = [
             {
                 "source": p.payload["source"],
@@ -197,7 +221,7 @@ class RagEngine:
                 "page_number": p.payload.get("page_number"),
                 **({"document_id": p.payload["document_id"]} if "document_id" in p.payload else {}),
             }
-            for p in result.points
+            for p in points
         ]
         if not sources:
             return {"answer": "I don't know based on the available documents.", "sources": []}
@@ -210,11 +234,23 @@ class RagEngine:
             "If insufficient, say you don't know. Cite excerpt numbers like [1].\n\n"
             f"Excerpts:\n{context}\n\nQuestion: {question}"
         )
+        if query_filter is not None:
+            prompt = (
+                "Give a concise direct answer. Every substantive claim must be supported by the exact "
+                "cited excerpt, not merely a matching document or valid citation number. Preserve material "
+                "conditions, exceptions, units and dates. Distinguish one numerical check from the whole "
+                "approval gate. Select the applicable version by effective date; if a rule is superseded "
+                "and its replacement is missing, say the replacement is unknown. Do not extrapolate "
+                "contract terms from internal policies or add unrelated facts. If the answer-bearing "
+                "passage is absent, abstain without inventing an explanation.\n\n" + prompt
+            )
         payload = {
             "model": self.config.ollama_chat_model,
             "stream": False,
             "messages": [{"role": "user", "content": prompt}],
         }
+        if think != "default":
+            payload["think"] = think == "on"
         if cap is not None:
             payload["options"] = {"num_predict": cap}
         with self._client(180) as client:
@@ -227,8 +263,15 @@ class RagEngine:
             answer = data["message"]["content"]
             if not isinstance(answer, str):
                 raise TypeError("Ollama returned non-text answer content")
-        return {
-            "answer": answer,
-            "sources": sources,
-            "generation": generation_evidence(data, answer, cap),
-        }
+        evidence = generation_evidence(data, answer, cap)
+        result = {"answer": answer, "sources": sources, "generation": evidence}
+        if retrieval is not None:
+            result["retrieval"] = retrieval
+        if evidence["visible_empty"]:
+            result["generation_notice"] = (
+                "No visible answer was produced. The model reached the configured generation limit. "
+                "Review the excerpts and generation settings; try a narrower question manually. No retry was made."
+                if evidence["status"] in {"limit", "budget_reached"}
+                else "The model returned no visible answer. Check model compatibility and generation settings. No retry was made."
+            )
+        return result

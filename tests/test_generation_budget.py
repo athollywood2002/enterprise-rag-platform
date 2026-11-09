@@ -338,3 +338,39 @@ def test_nontext_content_fails_without_retry(monkeypatch, content):
     with pytest.raises(TypeError, match="non-text"):
         engine.ask("Synthetic question?")
     assert len(sent) == 2
+
+
+def test_t15_empty_at_1536_has_actionable_notice_and_no_retry(monkeypatch):
+    reply = {
+        "message": {"content": "", "thinking": "PRIVATE_TRACE"},
+        "done": True,
+        "done_reason": "length",
+        "eval_count": 1536,
+    }
+    engine, sent = mocked_engine(monkeypatch, reply, 1536)
+    result = engine.ask("What is the vendor's annual cost?")
+    assert result["sources"] and result["answer"] == ""
+    assert result["generation"]["status"] == "limit"
+    assert result["generation"]["eval_count"] == 1536
+    assert "configured generation limit" in result["generation_notice"]
+    assert "PRIVATE_TRACE" not in json.dumps(result)
+    assert len(sent) == 2
+
+
+@pytest.mark.parametrize("mode", ["on", "off"])
+def test_thinking_control_checks_capability_before_inference(mode):
+    config = settings(ollama_think=mode)
+    sent = []
+
+    def service(request):
+        sent.append(request.url.path)
+        return httpx.Response(200, json={"capabilities": ["completion"]})
+
+    engine = core.RagEngine(
+        config,
+        qdrant=Mock(),
+        model_client=lambda _: httpx.Client(transport=httpx.MockTransport(service)),
+    )
+    with pytest.raises(ValueError, match="does not advertise thinking"):
+        engine.ask("Question")
+    assert sent == ["/api/show"]
