@@ -63,10 +63,24 @@ jobs:
           python -m demo.serve_ui_fixture > "$RUNNER_TEMP/ui-server.log" 2>&1 &
           UI_SERVER_PID=$!
           trap 'kill "$UI_SERVER_PID" || true' EXIT
-          python -c "import time,httpx; time.sleep(2); httpx.get('http://127.0.0.1:18890/health').raise_for_status()"
+          python - <<'PY'
+          import time
+          import httpx
+          deadline = time.monotonic() + 30
+          while time.monotonic() < deadline:
+              try:
+                  httpx.get('http://127.0.0.1:18890/health', timeout=2).raise_for_status()
+                  break
+              except httpx.HTTPError:
+                  time.sleep(0.2)
+          else:
+              raise SystemExit('Synthetic UI fixture did not become ready within 30 seconds')
+          PY
           python scripts/ui_browser_check.py
       - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: actual-ui-screenshots
-          path: docs/images/*.png
+          path: |
+            docs/images/*.png
+            ${{ runner.temp }}/ui-server.log
