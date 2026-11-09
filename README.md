@@ -9,15 +9,15 @@ behind each answer. The app uses a local model and a browser interface.
 
 ## System requirements
 
-- **Ubuntu 22.04 or 24.04, x86-64**, with Bash and Python 3.10+. These are installer
+- **Ubuntu 22.04 or 24.04, amd64 or ARM64**, with Bash and Python 3.10+. These are installer
   targets, not yet verified real-model platform support. Windows 11/WSL2 remains
-  unverified; Apple Silicon installation is deferred.
+  unverified. An Ubuntu ARM64 VM uses CPU only; native macOS and Metal are not supported.
 - **Docker Engine and Compose v2 or newer**, with Docker running.
   [Ubuntu Docker installation](https://docs.docker.com/engine/install/ubuntu/) ·
   [Windows WSL2 setup](https://docs.docker.com/desktop/features/wsl/)
-- Internet access for the first build and model downloads. An NVIDIA GPU is
-  strongly recommended. Setup checks access inside Docker; CPU mode is available
-  with a warning, but its real-model latency has not been validated.
+- Internet access for the first build and model downloads. On amd64 an NVIDIA GPU is
+  strongly recommended. Setup checks access inside Docker; ARM64 uses CPU mode
+  only. CPU real-model latency has not been validated.
 
 Setup starts the API/browser UI, Qdrant and Ollama in separate containers. You do
 not need to install Qdrant or Ollama separately. The defaults are chat model

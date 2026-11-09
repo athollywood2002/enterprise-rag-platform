@@ -135,6 +135,8 @@ def image_asset_regression(installer):
             [
                 "docker",
                 "run",
+                "--platform",
+                installer.docker_platform,
                 "--rm",
                 "--pull",
                 "never",
@@ -169,6 +171,12 @@ def main():
     m.need(not root.exists(), "Synthetic fixture directory must be fresh.")
     root.mkdir(mode=0o700, parents=True)
     source = Path(__file__).resolve().parents[1]
+    arch = m.native_architecture()
+    requested = os.getenv("EXPECTED_ARCHITECTURE")
+    m.need(
+        not requested or m.normalize_architecture(requested) == arch,
+        "Test runner architecture differs from requested native target; emulation is not validation.",
+    )
     for name in ("src", "demo", "docker", "scripts"):
         shutil.copytree(
             source / name, root / name, ignore=shutil.ignore_patterns("__pycache__", "*.pyc")
@@ -181,7 +189,6 @@ def main():
             "api": {"environment": {"NO_PROXY": "qdrant,ollama,localhost,127.0.0.1"}},
             "ollama": {
                 "image": tag,
-                "platform": "linux/amd64",
                 "entrypoint": ["python", "/app/demo/ollama_stub.py"],
                 "healthcheck": {
                     "test": [
@@ -202,7 +209,10 @@ def main():
     (root / "compose.install.yaml").write_text(json.dumps(overlay))
     installer = SyntheticInstaller(root)
     installer.ollama_image = tag
-    m.check_platform = lambda: None  # Test host only; not a support claim or production option.
+    # Local Docker Desktop development may bypass OS only. Native architecture is
+    # still enforced by preflight, image checks, API process checks and this driver.
+    if m.platform.system() != "Linux":
+        m.check_platform = m.native_architecture
     _, before = installer.runner.run(
         ["docker", "ps", "-a", "--no-trunc", "--format", "{{.ID}} {{.State}} {{.Ports}}"]
     )
@@ -210,7 +220,8 @@ def main():
         "synthetic_only": True,
         "real_model_calls": 0,
         "weights_downloaded": False,
-        "host_platform_check_bypassed_only_in_test_driver": True,
+        "host_OS_check_bypassed_only_in_test_driver": m.platform.system() != "Linux",
+        "host_architecture": arch,
     }
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
@@ -218,6 +229,40 @@ def main():
     try:
         installer.command(m.arguments(["--device", "cpu", "--port", str(port)]))
         image_asset_regression(installer)
+        _, raw = installer.runner.run(["docker", "info", "--format", "{{json .}}"])
+        daemon_arch = m.normalize_architecture(m.parse_json(raw)["Architecture"])
+        m.need(
+            daemon_arch == arch,
+            "Native test requires host and Docker daemon architecture agreement.",
+        )
+        result["docker_architecture"] = daemon_arch
+        result["images"] = {}
+        for service in ("api", "qdrant", "ollama"):
+            _, identifier = installer.compose(["ps", "-q", service])
+            _, image = installer.runner.run(
+                ["docker", "inspect", "--format", "{{.Image}}", identifier.strip()]
+            )
+            platform = m.image_platform(installer.runner, image.strip())
+            m.need(platform == "linux/" + arch, "Test service image is not native to runner.")
+            result["images"][service] = {"id": image.strip(), "platform": platform}
+        _, process_arch = installer.compose(
+            ["exec", "-T", "api", "python", "-c", "import platform; print(platform.machine())"]
+        )
+        m.need(m.normalize_architecture(process_arch.strip()) == arch, "API process is not native.")
+        result["api_process_architecture"] = process_arch.strip()
+        # Reuse the existing real-container parsing/citation/idempotency smoke.
+        _, smoke = installer.compose(
+            ["exec", "-T", "api", "python", "scripts/library_smoke.py"], timeout=180
+        )
+        parsed = m.parse_json(smoke)
+        m.need(
+            parsed.get("result") == "PASS" and parsed.get("formats") == ["txt", "csv", "text-pdf"],
+            "Native real-container parser/citation smoke failed.",
+        )
+        result["container_parser_smoke"] = {
+            "result": parsed["result"],
+            "formats": parsed["formats"],
+        }
         identity = installer.state["api_image"]
         key = installer.state["key"]
         browser_check(installer, root / "demo/fixtures", import_files=True)

@@ -11,7 +11,6 @@ services:
       - ollama-stub
   ollama-stub:
     image: enterprise-rag-platform:folder-ui-v1
-    platform: linux/amd64
     command: [python, /app/demo/ollama_stub.py]
     healthcheck:
       test: [CMD, python, -c, "import socket; socket.create_connection(('127.0.0.1',11434),2).close()"]

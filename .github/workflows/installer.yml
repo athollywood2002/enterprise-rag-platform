@@ -19,8 +19,21 @@ jobs:
           # The application still requires 3.11+; its conftest imports are not needed here.
           "$RUNNER_TEMP/installer-python310/bin/python" -m pytest --noconftest -q tests/test_installer.py
   installer:
-    runs-on: ubuntu-24.04
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: installer
+            runner: ubuntu-24.04
+            arch: amd64
+          - name: installer-arm64
+            runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
+    env:
+      EXPECTED_ARCHITECTURE: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-python@v7.1.0
@@ -37,5 +50,5 @@ jobs:
       - uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: installer-synthetic-result
+          name: installer-synthetic-result-${{ matrix.arch }}
           path: ~/rag-installer-fixture-*/result.json

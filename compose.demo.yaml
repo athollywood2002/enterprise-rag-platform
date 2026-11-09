@@ -2,7 +2,6 @@ name: rag-text-csv-demo
 services:
   api:
     image: enterprise-rag-platform:folder-ui-v1
-    platform: linux/amd64
     build: .
     init: true
     environment:

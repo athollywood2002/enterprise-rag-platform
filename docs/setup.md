@@ -7,7 +7,7 @@ running it. No image is published by this installer PR.
 
 ## Prerequisites
 
-Targets: Ubuntu 22.04/24.04 x86-64, Bash, Python 3.10+, Docker Engine with local
+Targets: Ubuntu 22.04/24.04 amd64 or ARM64, Bash, Python 3.10+, Docker Engine with local
 daemon access, and a modern Compose plugin (v2+). The script checks CLI, daemon,
 local Docker context and Compose config/wait/pull capabilities separately.
 The host helper works with Ubuntu 22.04's stock Python 3.10. The application keeps
@@ -36,7 +36,9 @@ From the project directory:
 bash setup.sh
 ```
 
-The default is managed Ollama, with NVIDIA detection inside Docker. Confirmed
+The default is managed Ollama. ARM64 uses CPU only; `--device nvidia` is rejected
+without probing a GPU. An Ubuntu VM on Apple Silicon has no validated Metal or
+Apple GPU path. On amd64, setup uses NVIDIA detection inside Docker. Confirmed
 unavailable GPU access selects CPU with a warning. Unknown probe/image/network
 errors stop setup instead of silently selecting CPU. A visible existing Ollama or
 GPU workload warns about contention and recommends external mode; a one-time
@@ -48,7 +50,7 @@ Useful explicit options:
 
 ```sh
 bash setup.sh --device cpu
-# Or require NVIDIA; never silently fall back:
+# On amd64 only, require NVIDIA; never silently fall back:
 bash setup.sh --device nvidia
 # Change only this installation's API listener:
 bash setup.sh --port 18001
@@ -126,6 +128,21 @@ a migration, not a repair flag.
 
 ## Durable state and recovery
 
+New records save `architecture` as `amd64` or `arm64`. Host aliases `x86_64` and
+`aarch64` are accepted. Docker must be local, Linux and the same architecture as
+the host. The installer pins every service to that native platform and checks
+pulled/built images and the API process; emulation is refused.
+
+Older records without `architecture` mean **amd64**, not the current host's
+architecture. A compatible amd64 resume adds the field after source checks pass,
+without changing the key, project, model digests or `.env.install` format. An
+incompatible ARM64 resume fails before rebuilding or converting saved state,
+even with `--rebuild`. Keep the original checkout, state and volumes. `--status`,
+`--stop` and `--show-key` remain available without the startup architecture check;
+status/stop still require the original local daemon and trusted saved inputs.
+Cross-architecture data migration is not automated. Use a separate durable
+installation or plan a migration rather than deleting state or editing its architecture.
+
 Each installation has an owned `0700` `.rag-install` directory and private `0600`
 `.env.install`. Both are ignored by Git. The state JSON also holds the key, model
 digests, image ID and saved Compose-input hashes; treat the whole directory as
@@ -164,6 +181,35 @@ resume does not refresh it. Established missing/changed model digests fail with
 repair guidance. Restore the saved model identity, or plan a deliberate model update.
 The installer does not currently provide a model-refresh or in-place backend-migration
 command. Do not delete state to bypass identity checks.
+
+### Updating an existing checkout after review and merge
+
+Wait until the ARM64 PR has been reviewed and merged into `main`. In the existing
+installation directory (for example `~/rag`), first check for local changes:
+
+```sh
+cd "$HOME/rag"
+git status --short
+```
+
+If anything is listed, preserve and review it before updating; do not reset or
+overwrite it. With a clean tracked working tree, review the fetched changes:
+
+```sh
+git fetch origin
+git diff HEAD..origin/main -- setup.sh scripts/install.py docker/requirements.lock compose.demo.yaml compose.install.yaml compose.gpu.yaml
+git merge --ff-only origin/main
+bash setup.sh --device cpu --rebuild
+bash setup.sh --show-key
+```
+
+This stays in the same checkout and retains `.rag-install`, `.env.install` and
+volumes. If the old ARM attempt stopped at the platform guard, no saved record
+was created and this is a first install, including the default model downloads.
+If it instead finds a legacy amd64 record, stop and follow the recovery rules
+above; do not delete it. Open the printed URL and paste the existing application
+key into **Connect**. These commands are owner instructions, not a claim that
+the owner's VM or real-model performance has been tested.
 
 ### Using different models
 
@@ -219,7 +265,7 @@ and actual GPU execution.
 | Ubuntu NVIDIA / VM | Real GPU probe plus accelerated embedding/chat and contention behavior remain unverified. |
 | Headless SSH route | Documented; installer-specific cross-host browser validation remains unverified. |
 | Windows 11 / WSL2 | End-to-end Windows browser/upload validation remains unverified. |
-| Apple Silicon | Deferred. The API image targets Linux amd64. No Metal acceleration claim. |
+| Ubuntu ARM64 / Apple Silicon VM | Native Linux ARM64 CPU path; synthetic validation only. No native macOS, Metal or Apple GPU acceleration claim. |
 
 The pinned Ollama version is 0.40.15 with a registry-verified image index digest in
 `compose.install.yaml`; its Ubuntu image provides `/bin/sh`. The NVIDIA utility is

@@ -25,6 +25,8 @@ class Docker:
         self.gpu = "absent"
         self.remote = False
         self.info_error = None
+        self.arch = "amd64"
+        self.image_arches = {}
 
     def config(self):
         state = self.owner.state
@@ -57,6 +59,7 @@ class Docker:
             targets["ollama"] = ("ollama-models", "/root/.ollama")
         for service, (source, target) in targets.items():
             services[service]["volumes"] = [{"type": "volume", "source": source, "target": target}]
+            services[service]["platform"] = self.owner.docker_platform
         return {
             "services": services,
             "volumes": {n: {"name": state["project"] + "_" + n} for n in volumes},
@@ -81,12 +84,23 @@ class Docker:
                 ]
             )
         if args[1] == "info":
-            return (1, self.info_error) if self.info_error else (0, '{"OSType":"linux"}')
+            return (
+                (1, self.info_error)
+                if self.info_error
+                else (0, json.dumps({"OSType": "linux", "Architecture": self.arch}))
+            )
         if args[1:3] == ["image", "inspect"]:
             value = self.images.get(args[-1])
+            if args[-2] == "{{.Os}}/{{.Architecture}}":
+                return (
+                    (0, "linux/" + self.image_arches.get(args[-1], self.arch))
+                    if value
+                    else (1, "No such image")
+                )
             return (0, value) if value else (1, "No such image")
         if args[1] == "pull":
             self.images[args[-1]] = "sha256:" + "a" * 64
+            self.image_arches[args[-1]] = args[args.index("--platform") + 1].split("/")[1]
             return 0, ""
         if args[1:3] == ["volume", "inspect"]:
             return 1, "No such volume"
@@ -112,6 +126,8 @@ class Docker:
         if args[1] == "inspect":
             return 0, self.owner.state["api_image"]
         if args[1] == "compose":
+            if "exec" in args and args[-1] == "import platform; print(platform.machine())":
+                return 0, "aarch64" if self.arch == "arm64" else "x86_64"
             if args[2:3] == ["version"]:
                 return 0, "2.40.3"
             if "--help" in args:
@@ -149,6 +165,7 @@ def installation(tmp_path, monkeypatch):
     # tmp_path is safe for disposable test fixtures ONLY, never real installer state.
     monkeypatch.setattr(m, "durable_root", lambda p: p.resolve())
     monkeypatch.setattr(m, "check_platform", lambda: None)
+    monkeypatch.setattr(m.platform, "machine", lambda: "x86_64")
     monkeypatch.setattr(m.shutil, "which", lambda name: "/bin/docker" if name == "docker" else None)
     monkeypatch.setattr(m, "source_identity", lambda root: m.sha((root / "source").read_bytes()))
 
@@ -206,6 +223,196 @@ def test_full_first_install_resume_stop_and_image_identity(installation, capsys)
     installer.command(m.arguments(["--stop"]))
     assert not docker.running and installer.state["key"] == first["key"]
     assert not any("--volumes" in call or "prune" in call for call in docker.calls)
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [("x86_64", "amd64"), ("amd64", "amd64"), ("aarch64", "arm64"), ("arm64", "arm64")],
+)
+def test_architecture_aliases(value, expected):
+    assert m.normalize_architecture(value) == expected
+
+
+@pytest.mark.parametrize("value", [None, "armv7l", "riscv64", "linux/arm64", ""])
+def test_unsupported_architecture(value):
+    with pytest.raises(m.InstallError, match="Unsupported architecture"):
+        m.normalize_architecture(value)
+
+
+def test_arm_install_cpu_platform_and_resume(installation, monkeypatch):
+    installer, docker = installation
+    monkeypatch.setattr(m.platform, "machine", lambda: "aarch64")
+    docker.arch = "arm64"
+    # A cached amd64 manifest must be replaced by the native pinned manifest.
+    docker.image_arches[m.QDRANT_IMAGE] = "amd64"
+    installer.command(m.arguments([]))
+    first = dict(installer.state)
+    env = installer.envfile.read_bytes()
+    assert first["architecture"] == "arm64" and first["device"] == "cpu"
+    assert all(s["platform"] == "linux/arm64" for s in docker.config()["services"].values())
+    pulls = [c for c in docker.calls if c[1] == "pull"]
+    assert pulls == [["docker", "pull", "--platform", "linux/arm64", m.QDRANT_IMAGE]]
+    assert not any(c[1] == "create" or "--gpus" in c for c in docker.calls)
+    installer.command(m.arguments(["--stop"]))
+    installer.command(m.arguments([]))
+    assert {k: v for k, v in installer.state.items() if k != "input_directory"} == {
+        k: v for k, v in first.items() if k != "input_directory"
+    }
+    assert installer.envfile.read_bytes() == env
+    assert docker.builds == 1
+
+
+def test_arm_nvidia_rejected_without_gpu_probe(installation, monkeypatch):
+    installer, docker = installation
+    monkeypatch.setattr(m.platform, "machine", lambda: "arm64")
+    docker.arch = "arm64"
+    with pytest.raises(m.InstallError, match="CPU mode only"):
+        installer.command(m.arguments(["--device", "nvidia"]))
+    assert not any(c[1] in ("create", "build", "pull") for c in docker.calls)
+    assert docker.builds == 0
+
+
+def test_daemon_mismatch_refused_before_creating_state(installation):
+    installer, docker = installation
+    docker.arch = "arm64"
+    with pytest.raises(m.InstallError, match="daemon architecture differs"):
+        installer.command(m.arguments([]))
+    assert not installer.record.exists()
+
+
+@pytest.mark.parametrize("legacy", [True, False])
+def test_incompatible_resume_preserves_identity_and_recovery(
+    installation, monkeypatch, capsys, legacy
+):
+    installer, docker = installation
+    installer.command(m.arguments(["--device", "cpu"]))
+    if legacy:
+        installer.state.pop("architecture")
+        installer.save()
+    record = installer.record.read_bytes()
+    env = installer.envfile.read_bytes()
+    monkeypatch.setattr(m.platform, "machine", lambda: "aarch64")
+    docker.arch = "arm64"
+    docker.calls.clear()
+    with pytest.raises(m.InstallError, match="Saved installation architecture"):
+        installer.command(m.arguments(["--rebuild"]))
+    assert installer.record.read_bytes() == record and installer.envfile.read_bytes() == env
+    installer.command(m.arguments(["--status"]))
+    assert "Saved architecture:" in capsys.readouterr().out
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    installer.command(m.arguments(["--show-key"]))
+    assert installer.state["key"] in capsys.readouterr().out
+    installer.command(m.arguments(["--stop"]))
+    assert not docker.running
+    assert installer.record.read_bytes() == record and installer.envfile.read_bytes() == env
+    assert not any(c[1] in ("pull", "run", "create") or "build" in c for c in docker.calls)
+
+
+def test_legacy_amd64_migration_only_after_source_review(installation):
+    installer, docker = installation
+    installer.command(m.arguments(["--device", "cpu"]))
+    installer.state.pop("architecture")
+    installer.save()
+    original = dict(installer.state)
+    env = installer.envfile.read_bytes()
+    (installer.root / "source").write_text("source-v2")
+    with pytest.raises(m.InstallError, match="Source changed"):
+        installer.command(m.arguments([]))
+    assert installer.state == original
+    (installer.root / "source").write_text("source-v1")
+    installer.command(m.arguments([]))
+    assert {k: v for k, v in installer.state.items() if k != "input_directory"} == {
+        k: v for k, v in {**original, "architecture": "amd64"}.items() if k != "input_directory"
+    }
+    assert installer.envfile.read_bytes() == env and docker.builds == 1
+
+
+def test_saved_image_architecture_mismatch_prevents_rebuild(installation):
+    installer, docker = installation
+    installer.command(m.arguments(["--device", "cpu"]))
+    original = installer.record.read_bytes()
+    docker.image_arches[installer.state["api_image"]] = "arm64"
+    with pytest.raises(m.InstallError, match="Saved API image architecture"):
+        installer.command(m.arguments(["--rebuild"]))
+    assert installer.record.read_bytes() == original and docker.builds == 1
+
+
+def test_api_process_architecture_mismatch(installation, monkeypatch):
+    installer, docker = installation
+    run = docker.run
+
+    def wrong_process(args, *positional, **kwargs):
+        if args[-1] == "import platform; print(platform.machine())":
+            return 0, "aarch64"
+        return run(args, *positional, **kwargs)
+
+    monkeypatch.setattr(docker, "run", wrong_process)
+    with pytest.raises(m.InstallError, match="API process architecture differs"):
+        installer.command(m.arguments(["--device", "cpu"]))
+    assert installer.state["phase"] == "provisioning"
+
+
+def test_compose_platform_override_rejected(installation, monkeypatch):
+    installer, docker = installation
+    config = docker.config
+
+    def override():
+        value = config()
+        value["services"]["qdrant"]["platform"] = "linux/arm64"
+        return value
+
+    monkeypatch.setattr(docker, "config", override)
+    with pytest.raises(m.InstallError, match="Every service must use"):
+        installer.command(m.arguments(["--device", "cpu"]))
+    assert docker.builds == 0
+
+
+@pytest.mark.parametrize("arch", ["x86_64", "amd64", "aarch64", "arm64"])
+def test_linux_platform_guard_accepts_native_aliases(monkeypatch, arch):
+    monkeypatch.setattr(m.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(m.platform, "machine", lambda: arch)
+    monkeypatch.setattr(
+        m.platform, "freedesktop_os_release", lambda: {"ID": "ubuntu", "VERSION_ID": "24.04"}
+    )
+    m.check_platform()
+
+
+def test_arm_external_mode_native_services_only(installation, monkeypatch):
+    installer, docker = installation
+    monkeypatch.setattr(m.platform, "machine", lambda: "arm64")
+    docker.arch = "arm64"
+    docker.models = {name: "digest-" + name for name in m.MODELS}
+    installer.command(m.arguments(["--ollama-url", "http://model-host:11434"]))
+    services = docker.config()["services"]
+    assert set(services) == {"api", "qdrant"}
+    assert all(s["platform"] == "linux/arm64" for s in services.values())
+    assert installer.state["device"] == "external"
+    assert not any("exec" in call and "pull" in call for call in docker.calls)
+
+
+@pytest.mark.parametrize("stage", ["build", "pull"])
+def test_non_native_image_result_is_refused(installation, monkeypatch, stage):
+    installer, docker = installation
+    original = m.image_platform
+    if stage == "pull":
+        docker.images.pop(m.QDRANT_IMAGE)
+
+    def wrong_result(runner, image):
+        if (stage == "build" and image.startswith("sha256:")) or (
+            stage == "pull" and image == m.QDRANT_IMAGE
+        ):
+            return "linux/arm64"
+        return original(runner, image)
+
+    monkeypatch.setattr(m, "image_platform", wrong_result)
+    with pytest.raises(m.InstallError, match="non-native API image|Pulled image does not match"):
+        installer.command(m.arguments(["--device", "cpu"]))
+    assert installer.state["phase"] == "provisioning"
+
+
+def test_default_platform_environment_is_not_inherited(monkeypatch):
+    monkeypatch.setenv("DOCKER_DEFAULT_PLATFORM", "linux/amd64")
+    assert "DOCKER_DEFAULT_PLATFORM" not in m.Runner().env
 
 
 def test_explicit_rebuild_and_missing_image(installation):
