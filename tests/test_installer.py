@@ -197,7 +197,7 @@ def installation(tmp_path, monkeypatch):
     runner = Docker()
     installer = m.Installer(tmp_path, runner)
     installer.directory.mkdir(mode=0o700)
-    monkeypatch.setattr(installer, "check_port", lambda: None)
+    monkeypatch.setattr(installer, "check_port", lambda *args: None)
     runner.owner = installer
     return installer, runner
 
@@ -952,3 +952,59 @@ def test_owned_container_only_excuses_matching_published_port(installation, monk
         else:
             with pytest.raises(m.InstallError, match="port is occupied"):
                 m.Installer.check_port(installer)
+
+
+@pytest.mark.parametrize("provisioned", [True, False])
+def test_occupied_new_port_keeps_saved_state_and_owned_running_container(
+    installation, monkeypatch, provisioned
+):
+    installer, docker = installation
+    if provisioned:
+        installer.command(m.arguments(["--device", "cpu"]))
+    else:
+        installer.initialize(m.arguments([]))
+    old_port = installer.state["port"]
+    state_before = installer.record.read_bytes()
+    env_before = installer.envfile.read_bytes()
+    original_run = docker.run
+
+    def run(args, *positional, **kwargs):
+        if args[1] == "inspect" and args[-1] == "container-id":
+            return 0, json.dumps(
+                [
+                    {
+                        "Config": {
+                            "Labels": {
+                                "com.docker.compose.project": installer.state["project"],
+                                "com.docker.compose.project.working_dir": str(installer.root),
+                                "com.docker.compose.service": "api",
+                            }
+                        },
+                        "State": {"Running": True},
+                        "NetworkSettings": {
+                            "Ports": {
+                                "8000/tcp": [{"HostIp": "127.0.0.1", "HostPort": str(old_port)}]
+                            }
+                        },
+                    }
+                ]
+            )
+        return original_run(args, *positional, **kwargs)
+
+    monkeypatch.setattr(docker, "run", run)
+    monkeypatch.setattr(
+        installer, "check_port", lambda port=None: m.Installer.check_port(installer, port)
+    )
+    docker.calls.clear()
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        with pytest.raises(m.InstallError, match="port is occupied"):
+            installer.command(m.arguments(["--port", str(listener.getsockname()[1])]))
+    assert installer.record.read_bytes() == state_before
+    assert installer.envfile.read_bytes() == env_before
+    assert installer.state["port"] == old_port and docker.running == provisioned
+    assert not any(
+        ("up" in call or "down" in call or "build" in call) and "--help" not in call
+        for call in docker.calls
+    )
