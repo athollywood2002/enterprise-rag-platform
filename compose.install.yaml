@@ -1,0 +1,19 @@
+# Managed Ollama. No model weights are baked into this image; only the API is public.
+services:
+  api:
+    environment:
+      RAG_MODEL_MODE: real
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_EMBED_MODEL: nomic-embed-text:latest
+      NO_PROXY: qdrant,ollama,localhost,127.0.0.1
+  ollama:
+    image: ollama/ollama:0.40.15@sha256:0e59999e0e8f9fd4e704bd788a89b7e4cad399367fb1365f8c102ac662288761
+    platform: linux/amd64
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      CUDA_VISIBLE_DEVICES: "-1"
+      NVIDIA_VISIBLE_DEVICES: void
+    volumes:
+      - ollama-models:/root/.ollama
+volumes:
+  ollama-models:

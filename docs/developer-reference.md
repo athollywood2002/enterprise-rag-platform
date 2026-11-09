@@ -7,7 +7,7 @@ For a first run, follow the [Docker browser quickstart](../README.md#docker-brow
 ```bash
 python3 -m unittest discover -s demo -p 'test_*.py' -v
 node --test demo/n8n/workflow.test.cjs
-# Create .env.demo as in the quickstart. Choose a free loopback port.
+# Create .env.demo using docs/setup.md's manual setup. Choose a free loopback port.
 # Generate once per invocation; reuse this name through down.
 SMOKE_PROJECT="rag-demo-ci-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
 # Fresh project and volumes; synthetic model, real API and Qdrant:
