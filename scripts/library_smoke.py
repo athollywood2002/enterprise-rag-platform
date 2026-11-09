@@ -57,6 +57,49 @@ def wait(job, target=None, timeout=90):
     raise AssertionError("Job did not reach expected state before deadline")
 
 
+def office_smoke():
+    from demo.office_fixtures import office_files
+
+    formats = request("GET", "/library/config")["formats"]
+    original = office_files(formats)
+    changed = office_files(formats, "replacement")
+    assert set(original) == {f[1:] for f in formats if f in {".docx", ".rtf", ".pptx", ".xlsx"}}
+    for extension, data in original.items():
+        source = "office-" + extension
+        path = "nested/same." + extension
+        job = stage({path: data}, source)
+        request("POST", f"/library/jobs/{job}/start")
+        assert wait(job)["counts"]["successful"] == 1
+        answer = request(
+            "POST",
+            "/library/ask",
+            json={
+                "question": "What is the recovery code and who owns it?",
+                "top_k": 10,
+                "job_id": job,
+            },
+        )
+        assert answer["sources"] and all(s.get("location") for s in answer["sources"])
+        assert all(s["page_number"] is None for s in answer["sources"])
+        if extension == "pptx":
+            assert all(s["slide_number"] == 1 for s in answer["sources"])
+        if extension == "xlsx":
+            assert all(s["sheet_name"] == "Assets" and s["cell_range"] for s in answer["sources"])
+        again = stage({path: data}, source)
+        request("POST", f"/library/jobs/{again}/start")
+        assert wait(again)["counts"]["skipped"] == 1
+        new = stage({path: changed[extension]}, source)
+        request("POST", f"/library/jobs/{new}/start")
+        assert wait(new)["counts"]["successful"] == 1
+        before = {d["id"]: d["revision"] for d in request("GET", "/library/documents")["documents"]}
+        bad = stage({path: b"corrupt"}, source)
+        request("POST", f"/library/jobs/{bad}/start")
+        assert wait(bad)["counts"]["failed"] == 1
+        after = {d["id"]: d["revision"] for d in request("GET", "/library/documents")["documents"]}
+        assert before == after
+    return sorted(original)
+
+
 def run():
     readiness = request("GET", "/library/readiness")
     assert readiness["mode"] == "synthetic"
@@ -133,9 +176,11 @@ def run():
     if "fixture-root" in config["roots"]:
         server = create_job({"mode": "server", "source": "fixture-root"})
         assert wait(server["id"])["counts"]["successful"] == 2
+    office_formats = office_smoke()
     print(
         json.dumps(
             {
+                "office_formats": office_formats,
                 "result": "PASS",
                 "scope": "real container/API/parsers/Qdrant; synthetic model responses",
                 "formats": ["txt", "csv", "text-pdf"],
