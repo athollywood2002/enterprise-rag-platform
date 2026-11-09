@@ -98,3 +98,18 @@ for(const mode of [undefined,'unknown','invalid']) {
     assert.doesNotMatch(f.$('generation').textContent,/simulated reply/);
   });
 }
+test('empty length-limited answer shows action and preserves generation evidence',async()=>{
+ const f=fixture(), pending=ask(f);
+ f.calls.at(-1).reply({...answer('real'),answer:'',generation_notice:'No visible answer. Narrow the question or review the generation limit.',generation:{status:'truncated',done_reason:'length',eval_count:1536}});
+ await pending;
+ assert.match(f.$('answer').textContent,/Narrow the question/);
+ assert.match(f.$('generation').textContent,/1536 output tokens/);
+ assert.match(f.$('ask-status').textContent,/Review required/);
+ assert.equal(f.calls.length,1);
+ assert.equal(f.$('citations').children.length,1);
+});
+test('question error is actionable next to the submit button',async()=>{
+ const f=fixture(),pending=ask(f);f.calls.at(-1).fail();await pending;
+ assert.match(f.$('ask-status').textContent,/Question failed: offline/);
+ assert.equal(f.$('ask').disabled,false);
+});

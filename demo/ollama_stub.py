@@ -39,7 +39,7 @@ class Handler(BaseHTTPRequestHandler):
             excerpts = re.findall(
                 r"\[(\d+)\] (.*?) \((.*?), chunk \d+\): (.*?)(?=\n\n\[\d+\] |\n\nQuestion:|\Z)",
                 prompt,
-                re.S,
+                re.DOTALL,
             )
             if "How many brass telescopes" in prompt:
                 ref = next(

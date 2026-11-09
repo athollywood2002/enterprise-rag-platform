@@ -293,7 +293,9 @@ class RagEngine:
                 raise TypeError("Ollama returned non-text answer content")
         # Older/custom templates can put tagged reasoning in content. Remove it
         # before any response/UI consumer sees it, including an unfinished tag.
-        answer = re.sub(r"<think\b[^>]*>.*?(?:</think>|\Z)", "", answer, flags=re.S | re.I).strip()
+        answer = re.sub(
+            r"<think\b[^>]*>.*?(?:</think>|\Z)", "", answer, flags=re.DOTALL | re.IGNORECASE
+        ).strip()
         evidence = generation_evidence(data, answer, cap)
         result = {"answer": answer, "sources": sources, "generation": evidence}
         if retrieval is not None:

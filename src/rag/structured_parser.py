@@ -144,6 +144,7 @@ def docx_blocks(data, max_chars):
                 raise DocumentError(
                     "nested_table", "Nested Word tables require flattening or text/PDF export."
                 )
+            headers = [cell.text for cell in element.rows[0].cells] if element.rows else []
             for rn, row in enumerate(element.rows, 1):
                 cells, seen = [], set()
                 for cn, cell in enumerate(row.cells, 1):
@@ -151,7 +152,10 @@ def docx_blocks(data, max_chars):
                         continue
                     seen.add(cell._tc)
                     texts = [p.text for p in cell.paragraphs]
-                    cells.append(f"Column {cn}: " + "\n".join(texts))
+                    label = f"Column {cn}"
+                    if rn > 1 and cn <= len(headers) and headers[cn - 1]:
+                        label += f" ({headers[cn - 1]})"
+                    cells.append(label + ": " + "\n".join(texts))
                 out.add(
                     " | ".join(cells),
                     f"Section {section or '(untitled)'} · table {table} · row {rn}",
@@ -170,7 +174,7 @@ def rtf_blocks(data, max_chars):
         raise DocumentError("malformed_rtf", "Not a valid RTF document. Export a fresh RTF file.")
     # Fail closed for content the text converter cannot represent completely.
     if re.search(
-        r"\\(?:object|pict|field|annotation|header\w*|footer\w*|revised|deleted|trowd|footnote)\b",
+        r"\\(?:object|pict|field|annotation|header\w*|footer\w*|revised|deleted|trowd|footnote|bin)\b",
         raw,
     ):
         raise DocumentError(
