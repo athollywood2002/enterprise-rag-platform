@@ -795,9 +795,12 @@ class Installer:
                     "A volume with this name has different ownership; refusing to adopt it.",
                 )
 
-    def check_port(self):
+    def check_port(self, requested_port=None):
+        port = self.state["port"] if requested_port is None else requested_port
         # Own running API may already hold this port. Other listeners are not adopted.
-        _, raw = self.compose(["ps", "-q", "api"])
+        raw = ""
+        if self.state.get("snapshots"):
+            _, raw = self.compose(["ps", "-q", "api"])
         if raw.strip():
             _, inspected = self.runner.run(["docker", "inspect", *raw.split()])
             for row in parse_json(inspected):
@@ -810,7 +813,7 @@ class Installer:
                 )
                 bindings = row.get("NetworkSettings", {}).get("Ports", {}).get("8000/tcp") or []
                 if row.get("State", {}).get("Running") and any(
-                    b.get("HostIp") == "127.0.0.1" and b.get("HostPort") == str(self.state["port"])
+                    b.get("HostIp") == "127.0.0.1" and b.get("HostPort") == str(port)
                     for b in bindings
                 ):
                     return
@@ -819,7 +822,7 @@ class Installer:
                 # A stopped installation can leave TIME_WAIT connections. Bind AND
                 # listen with reuse accepts those, but not another active listener.
                 probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                probe.bind(("127.0.0.1", self.state["port"]))
+                probe.bind(("127.0.0.1", port))
                 probe.listen(1)
         except OSError:
             raise InstallError("API port is occupied. Choose another with --port 18001.") from None
@@ -1082,6 +1085,8 @@ class Installer:
             self.state["architecture"] = "amd64"
             self.save()
         if args.port and args.port != self.state["port"]:
+            # Reject an occupied destination before changing even saved settings.
+            self.check_port(args.port)
             # Changing port is explicit, atomic state+derived-env repair on resume.
             self.state["env_previous_sha"] = sha(self.env_bytes())
             self.state["port"] = args.port
