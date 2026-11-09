@@ -113,3 +113,12 @@ test('question error is actionable next to the submit button',async()=>{
  assert.match(f.$('ask-status').textContent,/Question failed: offline/);
  assert.equal(f.$('ask').disabled,false);
 });
+test('format locations and extraction warnings render as text without invented pages',async()=>{
+ const f=fixture(),pending=ask(f);
+ f.calls.at(-1).reply({...answer('synthetic'),sources:[{source:'nested/costs.xlsx',text:'row values',chunk:2,location:'Sheet Costs · row 2 · A2:C2',page_number:null,warnings:['Hidden sheet excluded.']}]});
+ await pending;
+ const citation=f.$('citations').children[0];
+ assert.match(citation.children[0].textContent,/Sheet Costs · row 2 · A2:C2/);
+ assert.doesNotMatch(citation.children[0].textContent,/page/);
+ assert.equal(citation.children[2].textContent,'Hidden sheet excluded.');
+});

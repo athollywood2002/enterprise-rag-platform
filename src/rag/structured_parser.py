@@ -270,6 +270,10 @@ def parse_structured(data, name, max_chars, max_pages=200):
             return rtf_blocks(data, max_chars)
         if suffix == ".pptx":
             return pptx_blocks(data, max_chars, max_pages)
+        if suffix == ".xlsx":
+            from .tabular_parser import xlsx_blocks
+
+            return xlsx_blocks(data, max_chars)
         raise DocumentError("unsupported", "Unsupported structured format.")
     except DocumentError:
         raise
@@ -284,6 +288,16 @@ def chunks_from_blocks(document, size=900, overlap=150, max_chunks=3000):
         raise ValueError("Require size > overlap >= 0")
     chunks = []
     for block in document["blocks"]:
+        if "cells" in block:
+            from .tabular_parser import row_chunks
+
+            for chunk in row_chunks(block, document.get("warnings", []), size):
+                chunks.append({**chunk, "chunk": len(chunks)})
+                if len(chunks) > max_chunks:
+                    raise DocumentError(
+                        "chunk_limit", "Document exceeds the configured chunk limit."
+                    )
+            continue
         text = block["text"].strip()
         context = block.get("section", "")
         if block.get("table_header") and len(block["table_header"]) <= 150:

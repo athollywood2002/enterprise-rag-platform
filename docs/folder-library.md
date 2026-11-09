@@ -52,7 +52,7 @@ configure `API_KEY` through the process environment or `.env`.
    staged, not searchable. **Completed** means its revision is committed and
    searchable. **Skipped / unchanged** means compatible vector IDs were verified.
 5. Ask a question using the selected job or all committed library documents.
-   Inspect citations, relative paths, PDF pages, excerpts and generation status.
+   Inspect citations, relative paths, format-specific locations, extraction warnings and generation status.
    A completed generation alone does not prove an answer is correct.
 
 Refreshing restores jobs after reconnecting. After all uploads finish, the browser
@@ -116,17 +116,11 @@ on macOS/Windows). Direct macOS ingestion returns `parser_platform` with Docker
 guidance; it does not silently run an unbounded parser. The child-dependent tests
 explicitly skip off Linux; pure parser, API boundary and containment tests still run.
 
-| Format | Behavior |
-| --- | --- |
-| TXT | UTF-8 (optional BOM), whitespace-normalized, bounded overlapping chunks. |
-| CSV | UTF-8, comma-delimited, unique nonempty header row. Rows become quoted, labeled field/value text before chunking. Quoted commas/newlines are retained as escaped values. Wrong column counts or malformed quoting fail. |
-| PDF | Embedded text extracted per physical page with pypdf; chunks never cross pages. Encrypted, malformed, textless/scanned or mixed text/textless PDFs fail explicitly. No OCR/layout/table reconstruction guarantee. |
+The [format support matrix](office-formats.md) defines all seven formats and their extraction policies: TXT, CSV, text-based PDF, DOCX, RTF, PPTX and XLSX. Office libraries are installed and hash-locked for native amd64 and ARM64 images; no Office suite or conversion service is required.
 
-Empty, binary-text, unsupported and oversized files receive actionable results.
-A blank PDF page is conservatively treated like a scanned page and rejected; export
-a text-only copy with blank pages removed. Complex column/table order is not
-validated by this first implementation. CSV rows longer than the chunk size may
-span overlapping chunks, so this is not a structured SQL/table query engine.
+TXT preserves paragraph/Markdown section boundaries. CSV/XLSX keep ordinary rows intact and label oversized cell continuations with repeated row/header context. DOCX citations identify sections, paragraphs and table rows; RTF identifies paragraphs; PPTX identifies slides; XLSX identifies sheets and cell ranges. Word/RTF do not receive invented physical page numbers.
+
+Empty, binary-text, unsupported and oversized files receive actionable results. A blank PDF page is conservatively treated like a scanned page and rejected; export a text-only copy with blank pages removed. No OCR or complex PDF layout/table reconstruction is provided. Review extraction warnings for excluded Office content and follow the [safe reindex instructions](office-formats.md#existing-data) to adopt new chunks without resetting the library.
 
 Legacy `/ingest`, `/ask`, and optional Unstructured `/ingest/document` retain their
 existing semantics and collection. The merged n8n text/CSV workflow remains valid.
@@ -221,7 +215,7 @@ the API container, not the machine running n8n.
 - `GET /library/readiness`: authenticated metadata snapshot; no inference or writes.
 - `POST /library/jobs/{job}/retry` / `cancel`: explicit retry or cooperative cancellation.
 - `GET /library/documents`: committed document metadata and cleanup backlog.
-- `POST /library/ask`: `{ "question":"…", "top_k":5, "job_id":"optional job ID" }`; returns answer/sources/generation with relative paths/PDF pages plus request-bound `model_mode`. Legacy `/ask` and the existing n8n contract are unchanged.
+- `POST /library/ask`: `{ "question":"…", "top_k":5, "job_id":"optional job ID" }`; returns answer/sources/generation with relative paths and format-specific locations plus request-bound `model_mode`. Legacy `/ask` and the existing n8n contract are unchanged.
 
 A minimal n8n flow is Manual Trigger → preview server selection → create server job
 (including the returned digest) → bounded polling of job

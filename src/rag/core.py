@@ -239,6 +239,11 @@ class RagEngine:
                     for key in (
                         "location",
                         "slide_number",
+                        "sheet_name",
+                        "cell_range",
+                        "cell",
+                        "value_start",
+                        "value_end",
                         "section",
                         "paragraph",
                         "table",

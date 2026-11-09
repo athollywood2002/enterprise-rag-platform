@@ -5,12 +5,13 @@ These formats apply to browser uploads, configured read-only server folders and 
 | Format | Extracted content | Citation location | Important limitations |
 | --- | --- | --- | --- |
 | TXT | UTF-8 paragraphs and Markdown sections | section / paragraph | No inferred layout or pages |
-| CSV | UTF-8 labeled values | chunk | Structured row improvements follow separately |
+| CSV | UTF-8 comma-delimited records with unique nonempty headers; quoted field/value associations | record, column and continuation offsets | Ordinary records stay together; oversized records repeat identifying/header context. No SQL or type inference. |
 | PDF | Text on every physical page | PDF page | No OCR; encrypted or textless pages fail |
 | DOCX | Body headings, paragraphs and table rows in order | section, paragraph, table / row | Tracked changes fail: accept/reject them first. Nested tables, text boxes, content controls and fields fail with export guidance. Headers, footers, comments, foot/endnotes, images and embedded objects are excluded with warnings. No page numbers or OCR. Merged table cells are emitted once per row; layout is not reconstructed. |
 | RTF | Readable text, Unicode, paragraph boundaries | paragraph | Objects, images, fields, revisions, tables, comments and header/footer content fail with export guidance. Export to DOCX or plain text; no inferred pages. |
-
 | PPTX | Slide titles, text shapes, grouped text and tables in shape-tree order | slide / shape / table row | Speaker notes excluded with warnings. Hidden slides included with warnings. Images, charts and embedded objects excluded with warnings; no OCR or layout reading-order inference. Image-only decks fail. |
+
+| XLSX | Visible worksheets, labeled rows, stored cell values, ISO dates and number formats | sheet / row / cell range; cell and offsets for continuations | First nonempty visible row is the header. Hidden sheets, rows and columns excluded with warnings. Merged cells use anchor values only. Cached formula results may be stale; missing results are unavailable. Images, charts, comments and embedded objects are excluded. |
 
 Legacy `.doc`, `.xls`, `.ppt`, macros, OCR and LibreOffice conversion are outside this milestone. Never rename a legacy extension to bypass preview: content signatures are checked.
 
@@ -19,6 +20,14 @@ Legacy `.doc`, `.xls`, `.ppt`, macros, OCR and LibreOffice conversion are outsid
 Use the existing [installer quickstart](../README.md#install-and-open). Dependencies are in the application and hash-locked Docker image; no Office installation is needed. Select a small folder, preview eligibility, ingest, and inspect the completed file's warnings and returned excerpt locations. Preview validates names/sizes, not complete document structure; corrupt/encrypted/unsupported content fails during the bounded parser step. Export a simpler file and reselect it when instructed.
 
 Parsing and chunking run in a Linux child with a wall deadline, 512 MiB address-space and 32 MiB output-file ceilings. Office packages additionally allow at most 4096 parts, 64 MiB total expanded bytes, 32 MiB per part and a 200:1 per-part expansion ratio. DTD/entity declarations and macro parts are rejected. Extraction is bounded by configured characters/chunks and 10,000 text blocks. Oversized prose is split into labeled character continuations with bounded repeated section context; no text value is silently truncated. External relationships are never fetched or executed.
+
+## Spreadsheet policy and limits
+
+CSV and XLSX use the same row-preserving chunk contract. Normal rows stay in one chunk. Oversized rows split into cell continuations with full column labels, row coordinates and short identifying values repeated; `value_start`/`value_end` identify the complete value's character spans. No indexed value is silently shortened. A context too large to fit produces an explicit error. Names, amounts and units stay paired with their column labels; this is retrieval over text, not a calculation engine.
+
+XLSX opens two read-only-in-purpose workbook representations: formulas and supplied cached values. It never evaluates formulas. An existing cached result is labeled **not recalculated**; an absent cache is **unavailable**, never zero. External-reference formulas are unavailable and external links are never fetched. Formula expressions are not indexed. Number-format strings are retained as context, not interpreted as new calculations. Save/recalculate in your spreadsheet application before export when fresh formula results are needed.
+
+Limits are 32 worksheets, 10,000 row indices per sheet/CSV, 256 columns, 100,000 cells per workbook/CSV, 100,000 characters per cell and 200 characters per header label, plus package, text, child-memory and chunk limits. Hidden content counts toward safety limits. Layouts with multiple tables/header regions on one sheet should be exported as separate sheets or CSV files. Empty or image/chart-only workbooks fail explicitly. Password-protected/encrypted files and macro-bearing packages fail; `.xlsm`, `.xls`, `.doc` and `.ppt` remain ineligible.
 
 ## Existing data
 

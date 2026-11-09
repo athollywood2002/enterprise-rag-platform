@@ -273,3 +273,7 @@ supplied by the NVIDIA container runtime, not assumed from host GPU presence.
 Actual NVIDIA execution is still a required later validation. No minimum hardware
 guarantee is established: the discussed 16–32 GB RAM, ~30 GB disk and 12–16 GB VRAM
 are preliminary planning estimates, not measured support requirements.
+
+## Managed document formats
+
+Browser uploads and configured server folders support TXT, CSV, text-based PDF, DOCX, RTF, PPTX and XLSX through the same bounded parser. See the [support matrix](office-formats.md) for exclusions, formula/hidden-content policies and limits. Existing installations must explicitly rebuild the API to install new dependencies; keep the installation directory and volumes. Follow [reindex guidance](office-formats.md#existing-data) to adopt new chunks while preserving the prior searchable revision until replacement succeeds.

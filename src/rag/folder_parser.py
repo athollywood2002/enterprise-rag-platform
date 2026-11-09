@@ -7,13 +7,14 @@ import re
 import sys
 from pathlib import Path
 
-PARSER_VERSION = "folder-v3-pptx-locations"
+PARSER_VERSION = "folder-v4-structured-rows"
 COMPATIBLE_PARSERS = (
     "folder-v1-pypdf-text-csv-labels",
     "folder-v2-docx-rtf-locations",
+    "folder-v3-pptx-locations",
     PARSER_VERSION,
 )
-FORMATS = {".txt", ".csv", ".pdf", ".docx", ".rtf", ".pptx"}
+FORMATS = {".txt", ".csv", ".pdf", ".docx", ".rtf", ".pptx", ".xlsx"}
 
 
 class DocumentError(ValueError):
@@ -26,7 +27,7 @@ def parse_pages(data: bytes, name: str, max_pages=200, max_chars=2_000_000):
     """Return (text, physical PDF page or None), without crossing PDF pages."""
     suffix = Path(name).suffix.lower()
     if suffix not in FORMATS:
-        raise DocumentError("unsupported", "Use TXT, CSV, text PDF, DOCX, RTF or PPTX.")
+        raise DocumentError("unsupported", "Use TXT, CSV, text PDF, DOCX, RTF, PPTX or XLSX.")
     if not data:
         raise DocumentError("empty", "The file is empty.")
     pages = []
@@ -125,10 +126,14 @@ def chunks_from_pages(pages, size=900, overlap=150, max_chunks=3000):
 
 
 def parse_managed(data, name, max_pages=200, max_chars=2_000_000):
-    if Path(name).suffix.lower() in {".docx", ".rtf", ".pptx"}:
+    if Path(name).suffix.lower() in {".docx", ".rtf", ".pptx", ".xlsx"}:
         from .structured_parser import parse_structured
 
         return parse_structured(data, name, max_chars, max_pages)
+    if Path(name).suffix.lower() == ".csv":
+        from .tabular_parser import csv_blocks
+
+        return csv_blocks(data, max_chars)
     pages = parse_pages(data, name, max_pages, max_chars)
     if Path(name).suffix.lower() == ".txt":
         from .structured_parser import Blocks

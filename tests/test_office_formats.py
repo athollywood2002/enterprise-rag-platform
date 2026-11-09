@@ -188,3 +188,227 @@ def test_pptx_managed_replacement_and_corruption(library):
     assert finish(lib, upload(lib, {"nested/deck.pptx": b"bad"}))["counts"]["failed"] == 1
     assert lib.documents()["documents"][0]["revision"] == previous
     assert all(s["slide_number"] == 1 for s in lib.ask("title")["sources"])
+
+
+def xlsx_bytes(value="Café", *, formula=False, hidden=False, oversized=False):
+    from openpyxl import Workbook
+
+    book = Workbook()
+    sheet = book.active
+    sheet.title = "Costs — Europe"
+    sheet.append(["Vendor ID", "Name", "Amount USD", "Effective date"])
+    import datetime
+
+    sheet.append(["VEN-011", value, 2500, datetime.date(2026, 11, 9)])
+    sheet["C2"].number_format = "$#,##0.00"
+    if formula:
+        sheet["C2"] = "=1000+1500"
+    if oversized:
+        sheet["B2"] = "é🚀" * 1200 + "END"
+    if hidden:
+        sheet.append(["SECRET", "Excluded", 99, None])
+        sheet.row_dimensions[3].hidden = True
+        other = book.create_sheet("Hidden")
+        other.sheet_state = "hidden"
+        other.append(["HIDDEN_SECRET"])
+    out = io.BytesIO()
+    book.save(out)
+    return out.getvalue()
+
+
+def test_xlsx_headers_values_dates_locations_and_hidden_policy():
+    result = parse_structured(xlsx_bytes(hidden=True), "a.xlsx", 10000)
+    assert len(result["blocks"]) == 2
+    row = result["blocks"][1]
+    assert row["cell_range"] == "A2:D2" and row["sheet_name"] == "Costs — Europe"
+    assert all(
+        word in row["text"]
+        for word in ["VEN-011", "2500", "Amount USD", "2026-11-09", "number format"]
+    )
+    assert "SECRET" not in str(result["blocks"])
+    assert any("hidden sheet" in w for w in result["warnings"])
+    assert any("hidden rows" in w for w in result["warnings"])
+    assert len(chunks_from_pages(result)) == 2
+
+
+def test_xlsx_missing_formula_cache_is_unavailable_not_zero():
+    result = parse_structured(xlsx_bytes(formula=True), "a.xlsx", 10000)
+    assert "unavailable: no cached formula result" in result["blocks"][1]["text"]
+    # Replace only the saved cache, without evaluating any formula in this test.
+    data = modified_package(
+        xlsx_bytes(formula=True),
+        "xl/worksheets/sheet1.xml",
+        lambda b: b.replace(b"<f>1000+1500</f><v></v>", b"<f>1000+1500</f><v>2500</v>"),
+    )
+    cached = parse_structured(data, "a.xlsx", 10000)
+    assert "[cached formula result, not recalculated] 2500" in cached["blocks"][1]["text"]
+
+
+def test_long_xlsx_and_csv_rows_keep_identity_headers_and_every_value():
+    import json
+
+    from rag.folder_parser import parse_managed
+
+    value = "é🚀" * 1200 + "END"
+    docs = [
+        parse_structured(xlsx_bytes(oversized=True), "a.xlsx", 20000),
+        parse_managed(
+            ("ID,Name,Amount\nVEN-011," + value + ",2500\n").encode(), "a.csv", max_chars=20000
+        ),
+    ]
+    for document in docs:
+        chunks = chunks_from_pages(document)
+        continuation = [
+            c for c in chunks if c.get("continuation") and "Name" in c.get("cell_label", "")
+        ]
+        assert continuation
+        assert all("VEN-011" in c["text"] and len(c["text"]) <= 900 for c in continuation)
+        recovered = "".join(json.loads(c["text"].split(": ", 1)[1]) for c in continuation)
+        assert recovered == value
+        assert any("2500" in c["text"] for c in chunks)
+
+
+def test_xlsx_limits_and_corruption(monkeypatch):
+    from rag import tabular_parser
+
+    with pytest.raises(DocumentError):
+        parse_structured(b"bad", "a.xlsx", 10000)
+    with pytest.raises(DocumentError, match="Encrypted Office"):
+        parse_structured(b"\xd0\xcf\x11\xe0bad", "a.xlsx", 10000)
+    monkeypatch.setattr(tabular_parser, "MAX_CELLS", 2)
+    with pytest.raises(DocumentError, match="total-cell"):
+        parse_structured(xlsx_bytes(), "a.xlsx", 10000)
+
+
+def test_xlsx_managed_replacement_retention_and_search(library):
+    lib = library
+    data = xlsx_bytes()
+    first = finish(lib, upload(lib, {"one/book.xlsx": data, "two/book.xlsx": data}))
+    assert first["counts"]["successful"] == 2, first
+    assert finish(lib, upload(lib, {"one/book.xlsx": data}))["counts"]["skipped"] == 1
+    assert (
+        finish(lib, upload(lib, {"one/book.xlsx": xlsx_bytes("Replacement")}))["counts"][
+            "successful"
+        ]
+        == 1
+    )
+    stable = {d["id"]: d["revision"] for d in lib.documents()["documents"]}
+    assert finish(lib, upload(lib, {"one/book.xlsx": b"corrupt"}))["counts"]["failed"] == 1
+    assert {d["id"]: d["revision"] for d in lib.documents()["documents"]} == stable
+    sources = lib.ask("Vendor amount")["sources"]
+    assert all(s["sheet_name"] == "Costs — Europe" and s["cell_range"] for s in sources)
+
+
+def test_all_formats_server_folder_http_and_citation_contract(library, monkeypatch):
+    from pathlib import Path
+
+    from fastapi.testclient import TestClient
+    from test_library import create_job
+
+    from demo.office_fixtures import office_files
+    from rag import api
+
+    root = Path(library.source_root("shared"))
+    files = {
+        "fixture." + ext: data
+        for ext, data in office_files({".docx", ".rtf", ".pptx", ".xlsx"}).items()
+    }
+    assert {Path(n).suffix for n in files} == {".docx", ".rtf", ".pptx", ".xlsx"}
+    for folder in ("one", "two"):
+        (root / folder).mkdir()
+        for name, data in files.items():
+            (root / folder / name).write_bytes(data)
+    job = create_job(library, "server", "shared")
+    assert finish(library, job["id"])["counts"]["successful"] == 8
+    assert len(library.documents()["documents"]) == 8
+    assert finish(library, create_job(library, "server", "shared")["id"])["counts"]["skipped"] == 8
+    monkeypatch.setattr(api, "settings", lambda: library.config)
+    monkeypatch.setattr(api, "library", lambda: library)
+    api.app.state.library = library
+    try:
+        with TestClient(api.app) as client:
+            headers = {"x-api-key": library.config.api_key}
+            assert client.post("/library/ask", json={"question": "ORION"}).status_code == 401
+            config = client.get("/library/config", headers=headers).json()
+            assert all(ext in config["formats"] for ext in (".docx", ".rtf", ".pptx", ".xlsx"))
+            response = client.post(
+                "/library/ask", headers=headers, json={"question": "ORION NetworkOps", "top_k": 10}
+            )
+            assert response.status_code == 200
+            sources = response.json()["sources"]
+            assert {Path(s["source"]).suffix for s in sources} == {
+                ".docx",
+                ".rtf",
+                ".pptx",
+                ".xlsx",
+            }
+            assert all(s["location"] and s["page_number"] is None for s in sources)
+            assert all(s["slide_number"] == 1 for s in sources if s["source"].endswith(".pptx"))
+            assert all(
+                s["sheet_name"] and s["cell_range"]
+                for s in sources
+                if s["source"].endswith(".xlsx")
+            )
+    finally:
+        api.app.state.library = None
+
+
+def test_image_only_presentation_fails_without_claiming_complete_extraction():
+    from PIL import Image
+    from pptx import Presentation
+    from pptx.util import Inches
+
+    deck = Presentation()
+    slide = deck.slides.add_slide(deck.slide_layouts[6])
+    png = io.BytesIO()
+    Image.new("RGB", (2, 2)).save(png, format="PNG")
+    png.seek(0)
+    slide.shapes.add_picture(png, 0, 0, width=Inches(1))
+    out = io.BytesIO()
+    deck.save(out)
+    with pytest.raises(DocumentError, match="No usable text"):
+        parse_structured(out.getvalue(), "image.pptx", 10000)
+
+
+def test_xlsx_hidden_columns_and_oversized_merge():
+    from openpyxl import Workbook
+
+    book = Workbook()
+    sheet = book.active
+    sheet.append(["ID", "Private", "Amount"])
+    sheet.append(["A1", "DO_NOT_INDEX", 100])
+    sheet.column_dimensions["B"].hidden = True
+    out = io.BytesIO()
+    book.save(out)
+    result = parse_structured(out.getvalue(), "hidden.xlsx", 10000)
+    assert "DO_NOT_INDEX" not in str(result["blocks"])
+    assert any("hidden columns excluded" in warning for warning in result["warnings"])
+    oversized = modified_package(
+        out.getvalue(),
+        "xl/worksheets/sheet1.xml",
+        lambda b: b.replace(
+            b"</worksheet>",
+            b'<mergeCells><mergeCell ref="A1:XFD1048576"/></mergeCells></worksheet>',
+        ),
+    )
+    with pytest.raises(DocumentError, match="Merged range"):
+        parse_structured(oversized, "large.xlsx", 10000)
+
+
+@pytest.mark.parametrize(
+    "expression,available", [("SUM(Table1[Amount])", True), ("'[1]Sheet1'!A1", False)]
+)
+def test_formula_cache_distinguishes_table_reference_from_external_link(expression, available):
+    data = modified_package(
+        xlsx_bytes(formula=True),
+        "xl/worksheets/sheet1.xml",
+        lambda b: b.replace(
+            b"<f>1000+1500</f><v></v>", ("<f>" + expression + "</f><v>2500</v>").encode()
+        ),
+    )
+    text = parse_structured(data, "a.xlsx", 10000)["blocks"][1]["text"]
+    if available:
+        assert "[cached formula result, not recalculated] 2500" in text
+    else:
+        assert "[unavailable: external formula links excluded]" in text
+        assert "2500" not in text
