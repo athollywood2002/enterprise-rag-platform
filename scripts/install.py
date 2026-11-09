@@ -104,12 +104,26 @@ def durable_root(root):
     return root
 
 
+def normalize_architecture(value):
+    aliases = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}
+    need(
+        isinstance(value, str) and value.lower() in aliases,
+        "Unsupported architecture. Use Linux amd64 or ARM64; no emulation fallback is provided.",
+    )
+    return aliases[value.lower()]
+
+
+def native_architecture():
+    return normalize_architecture(platform.machine())
+
+
 def check_platform():
     need(sys.version_info >= (3, 10), "Python 3.10+ is required.")
     need(
-        platform.system() == "Linux" and platform.machine() in ("x86_64", "amd64"),
-        "This installer targets Ubuntu x86-64. macOS/ARM are not validated installer targets.",
+        platform.system() == "Linux",
+        "This installer targets Ubuntu Linux, not native macOS. Use a supported Linux amd64 or ARM64 host.",
     )
+    native_architecture()
     try:
         release = platform.freedesktop_os_release()
     except OSError:
@@ -130,6 +144,7 @@ class Runner:
             k: v
             for k, v in os.environ.items()
             if not k.startswith(("COMPOSE_", "RAG_", "OLLAMA_", "INGEST_"))
+            and k != "DOCKER_DEFAULT_PLATFORM"
         }
 
     def run(self, args, timeout=30, check=True, progress=False):
@@ -266,6 +281,11 @@ def docker_preflight(runner, *, need_start=True):
         raise InstallError("Cannot reach the local Docker daemon. Start Docker, then rerun setup.")
     info = parse_json(raw)
     need(info.get("OSType") == "linux", "Docker must run Linux containers.")
+    if need_start:
+        need(
+            normalize_architecture(info.get("Architecture")) == native_architecture(),
+            "Docker daemon architecture differs from this host. Use its native local Docker daemon; emulated installs are refused. Status/stop remain available.",
+        )
     code, version = runner.run(["docker", "compose", "version", "--short"], check=False)
     match = re.match(r"v?(\d+)\.", version.strip())
     need(
@@ -339,6 +359,20 @@ def image_id(runner, image):
     value = raw.strip()
     need(re.fullmatch(r"sha256:[0-9a-f]{64}", value), "Invalid Docker image identity.")
     return value
+
+
+def image_platform(runner, image):
+    code, raw = runner.run(
+        ["docker", "image", "inspect", "--format", "{{.Os}}/{{.Architecture}}", image], check=False
+    )
+    if code:
+        return None
+    parts = raw.strip().split("/")
+    need(
+        len(parts) == 2 and parts[0] == "linux",
+        "Expected a Linux image with explicit architecture metadata.",
+    )
+    return "linux/" + normalize_architecture(parts[1])
 
 
 def model_digests(value):
@@ -529,6 +563,7 @@ class Installer:
         url = validate_ollama_url(url)
         self.state = {
             "schema": 1,
+            "architecture": native_architecture(),
             "root": str(self.root),
             "project": "rag-install-" + uuid.uuid4().hex,
             "key": secrets.token_urlsafe(32),
@@ -546,6 +581,30 @@ class Installer:
         }
         self.save()  # Authority exists before the recoverable .env view is written.
         self.ensure_env()
+
+    @property
+    def docker_platform(self):
+        # Old installer records could only be amd64. Recovery commands do not
+        # call the startup architecture gate and never silently rewrite them.
+        arch = self.state.get("architecture", "amd64")
+        need(
+            arch in ("amd64", "arm64"),
+            "Saved architecture is invalid. Restore the backup; use --status/--stop for recovery.",
+        )
+        return "linux/" + arch
+
+    def check_architecture(self):
+        expected = self.docker_platform
+        need(
+            expected == "linux/" + native_architecture(),
+            "Saved installation architecture (legacy records are amd64) differs from this host. Do not emulate or delete state. Use --status/--stop on the original Docker host and plan a migration or separate installation.",
+        )
+        image = self.state.get("api_image")
+        if image and image_id(self.runner, image) is not None:
+            need(
+                image_platform(self.runner, image) == expected,
+                "Saved API image architecture differs from the installation. Use --status/--stop, restore its native image or plan a migration.",
+            )
 
     def base_command(self, files=None):
         command = [
@@ -600,6 +659,7 @@ class Installer:
             "services": {
                 "api": {
                     "image": image,
+                    "platform": self.docker_platform,
                     "build": {"context": str(self.root)},
                     "environment": {
                         "OLLAMA_URL": self.state["url"],
@@ -608,6 +668,9 @@ class Installer:
                 }
             }
         }
+        runtime["services"]["qdrant"] = {"platform": self.docker_platform}
+        if self.state["mode"] == "managed":
+            runtime["services"]["ollama"] = {"platform": self.docker_platform}
         files["runtime.json"] = json.dumps(runtime).encode()
         # Revisioned snapshot directory updates would need a transaction. Here each
         # config change is staged to new names under a private generation directory.
@@ -628,6 +691,10 @@ class Installer:
             {"api", "qdrant", "ollama"} if self.state["mode"] == "managed" else {"api", "qdrant"}
         )
         need(set(services) == expected, "Unexpected services in effective Compose configuration.")
+        need(
+            all(service.get("platform") == self.docker_platform for service in services.values()),
+            "Every service must use the saved native Docker platform; emulation overrides are refused.",
+        )
         api = services["api"]
         ports = api.get("ports", [])
         need(
@@ -694,7 +761,8 @@ class Installer:
             )
             if devices:
                 need(
-                    len(devices) == 1
+                    self.state.get("architecture", "amd64") == "amd64"
+                    and len(devices) == 1
                     and devices[0].get("driver") == "nvidia"
                     and devices[0].get("count") in ("all", -1)
                     and devices[0].get("capabilities") == ["gpu"],
@@ -743,12 +811,21 @@ class Installer:
             raise InstallError("API port is occupied. Choose another with --port 18001.") from None
 
     def ensure_image(self, image):
-        if image_id(self.runner, image) is None:
+        if (
+            image_id(self.runner, image) is None
+            or image_platform(self.runner, image) != self.docker_platform
+        ):
             need(
                 self.state["phase"] == "provisioning",
                 "Saved upstream image is missing. Restore its pinned image explicitly; resume never refreshes images.",
             )
-            self.runner.run(["docker", "pull", "--platform", "linux/amd64", image], timeout=900)
+            self.runner.run(
+                ["docker", "pull", "--platform", self.docker_platform, image], timeout=900
+            )
+        need(
+            image_platform(self.runner, image) == self.docker_platform,
+            "Pulled image does not match the saved native platform. No emulation fallback is allowed.",
+        )
 
     def contention(self):
         if self.state.get("contention_checked"):
@@ -783,6 +860,15 @@ class Installer:
         self.save()
 
     def select_device(self, requested):
+        if self.state.get("architecture", "amd64") == "arm64":
+            need(
+                requested in ("auto", "cpu"),
+                "Linux ARM64 currently supports CPU mode only. NVIDIA/Metal in an ARM VM has not been demonstrated; use --device cpu.",
+            )
+            print(
+                "Linux ARM64: using CPU only. Real-model latency is unvalidated; no Metal/GPU-in-VM support is claimed."
+            )
+            return "cpu"
         if requested == "cpu":
             print("CPU mode selected. Real-model CPU latency/support has not been validated.")
             return "cpu"
@@ -793,6 +879,8 @@ class Installer:
             [
                 "docker",
                 "create",
+                "--platform",
+                self.docker_platform,
                 "--pull",
                 "never",
                 "--network",
@@ -926,12 +1014,24 @@ class Installer:
             raw.strip() == self.state["api_image"],
             "Running API image differs from saved identity; stop and repair.",
         )
+        need(
+            image_platform(self.runner, self.state["api_image"]) == self.docker_platform,
+            "Running API image is not native to the saved platform; stop and repair.",
+        )
+        _, machine = self.compose(
+            ["exec", "-T", "api", "python", "-c", "import platform; print(platform.machine())"]
+        )
+        need(
+            "linux/" + normalize_architecture(machine.strip()) == self.docker_platform,
+            "API process architecture differs from the saved native platform; emulation is refused.",
+        )
 
     def start(self, args):
         self.read()
         if self.state is None:
             self.initialize(args)
-        elif args.ollama_url:
+        self.check_architecture()
+        if args.ollama_url:
             url = validate_ollama_url(args.ollama_url)
             if self.state["mode"] == "managed":
                 need(
@@ -963,6 +1063,10 @@ class Installer:
             identity == self.state["source"] or args.rebuild,
             "Source changed. Review the update, then explicitly run --rebuild; --stop remains available.",
         )
+        if "architecture" not in self.state:
+            # Only after host/daemon/image/source checks. Identity and env stay intact.
+            self.state["architecture"] = "amd64"
+            self.save()
         if args.port and args.port != self.state["port"]:
             # Changing port is explicit, atomic state+derived-env repair on resume.
             self.state["env_previous_sha"] = sha(self.env_bytes())
@@ -1003,6 +1107,10 @@ class Installer:
                 self.compose(["build", "api"], timeout=1800)
                 value = image_id(self.runner, "enterprise-rag-install:" + self.state["project"])
                 need(value, "Build produced no image. Retry --rebuild.")
+                need(
+                    image_platform(self.runner, value) == self.docker_platform,
+                    "Build produced a non-native API image. Check Docker/build configuration; no emulation fallback.",
+                )
             except InstallError:
                 self.state["api_image"] = previous
                 self.save()
@@ -1024,6 +1132,8 @@ class Installer:
                 [
                     "docker",
                     "run",
+                    "--platform",
+                    self.docker_platform,
                     "--rm",
                     "--pull",
                     "never",
@@ -1088,6 +1198,7 @@ class Installer:
         self.save()
         print("Services ready (metadata only; answer generation is not yet tested).")
         print("Browser: " + url + "\nDevice: " + self.state["device"])
+        print("Architecture: " + self.docker_platform)
         print("Models: " + ", ".join(MODELS))
         print(
             "Get the application key: bash setup.sh --show-key\nStop, retaining data: bash setup.sh --stop"
@@ -1156,6 +1267,15 @@ class Installer:
                             )
                             print(row["Service"] + ": " + status)
                     print("Configured models: " + ", ".join(MODELS))
+                    saved_arch = self.state.get("architecture", "legacy amd64")
+                    print(
+                        "Saved architecture: "
+                        + (
+                            saved_arch
+                            if saved_arch in ("amd64", "arm64", "legacy amd64")
+                            else "unknown"
+                        )
+                    )
                     try:
                         ready = http_json(
                             "http://127.0.0.1:" + str(self.state["port"]) + "/library/readiness",
