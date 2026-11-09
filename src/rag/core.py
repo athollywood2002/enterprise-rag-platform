@@ -174,7 +174,9 @@ class RagEngine:
         self.db.upsert(collection_name=name, points=points, wait=True)
         return len(points)
 
-    def ask(self, question: str, top_k: int = 5, *, query_filter=None) -> dict:
+    def ask(
+        self, question: str, top_k: int = 5, *, query_filter=None, collection_names=None
+    ) -> dict:
         # Recheck at dispatch too: unvalidated model_copy/model_construct must
         # not forward a boolean, negative sentinel or overflowing integer.
         cap = Settings.validate_generation_cap(self.config.ollama_num_predict)
@@ -196,23 +198,30 @@ class RagEngine:
                     "Selected model does not advertise the requested thinking control; use OLLAMA_THINK=default"
                 )
         vector = self.embed(question)
-        if not self.db.collection_exists(self.config.qdrant_collection):
-            return {"answer": "I don't know based on the available documents.", "sources": []}
-        result = self.db.query_points(
-            collection_name=self.config.qdrant_collection,
-            query=vector,
-            limit=max(20, top_k * 4) if query_filter is not None else top_k,
-            with_payload=True,
-            **({"query_filter": query_filter} if query_filter is not None else {}),
-        )
-        points = result.points
+        collections = collection_names or [self.config.qdrant_collection]
+        active_collections, points = [], []
+        for collection in sorted(set(collections)):
+            if not self.db.collection_exists(collection):
+                continue
+            active_collections.append(collection)
+            result = self.db.query_points(
+                collection_name=collection,
+                query=vector,
+                limit=max(20, top_k * 4) if query_filter is not None else top_k,
+                with_payload=True,
+                **({"query_filter": query_filter} if query_filter is not None else {}),
+            )
+            points.extend(result.points)
         retrieval = None
         if query_filter is not None:
             from .retrieval import managed_candidates
 
             points, retrieval = managed_candidates(
-                self.db, self.config.qdrant_collection, question, points, query_filter, top_k
+                self.db, active_collections, question, points, query_filter, top_k
             )
+        else:
+            points.sort(key=lambda p: -p.score)
+            points = points[:top_k]
         sources = [
             {
                 "source": p.payload["source"],

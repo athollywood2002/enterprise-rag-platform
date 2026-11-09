@@ -38,22 +38,42 @@ def lexical_rank(question, points):
 
 
 def managed_candidates(db, collection, question, dense, query_filter, top_k):
-    candidates, offset = [], None
-    while len(candidates) < SCAN_LIMIT:
-        page, offset = db.scroll(
-            collection_name=collection,
-            scroll_filter=query_filter,
-            limit=min(256, SCAN_LIMIT - len(candidates)),
-            offset=offset,
-            with_payload=True,
-            with_vectors=False,
+    # A managed point ID identifies a revision/chunk globally, independent of its
+    # parser collection. Never compare fusion scores calculated in separate pools.
+    collections = [collection] if isinstance(collection, str) else sorted(set(collection))
+    candidates, reports = {}, []
+    for name in collections:
+        scanned, offset = 0, None
+        while scanned < SCAN_LIMIT:
+            page, offset = db.scroll(
+                collection_name=name,
+                scroll_filter=query_filter,
+                limit=min(256, SCAN_LIMIT - scanned),
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            scanned += len(page)
+            candidates.update((str(p.id), p) for p in page)
+            if offset is None:
+                break
+        reports.append(
+            {
+                "collection": name,
+                "lexical_scanned": scanned,
+                "lexical_scan_limit": SCAN_LIMIT,
+                "lexical_scan_truncated": offset is not None,
+            }
         )
-        candidates.extend(page)
-        if offset is None:
-            break
-    lexical = lexical_rank(question, candidates)[: max(20, top_k * 4)]
+    width = max(20, top_k * 4)
+    # Scores are comparable here because managed collections share the same
+    # embedding identity and distance configuration. Rank once after pooling.
+    dense = sorted(dense, key=lambda p: (-getattr(p, "score", 0), str(p.id)))
+    dense = list({str(p.id): p for p in reversed(dense)}.values())
+    dense.sort(key=lambda p: (-getattr(p, "score", 0), str(p.id)))
+    lexical = lexical_rank(question, list(candidates.values()))[:width]
     ranks, objects = {}, {}
-    for ranking in (dense, lexical):
+    for ranking in (dense[:width], lexical):
         for rank, point in enumerate(ranking, 1):
             key = str(point.id)
             objects[key] = point
@@ -61,8 +81,9 @@ def managed_candidates(db, collection, question, dense, query_filter, top_k):
     ordered = sorted(ranks, key=lambda key: (-ranks[key], key))[:top_k]
     return [SimpleNamespace(payload=objects[k].payload, score=ranks[k]) for k in ordered], {
         "method": "dense-bm25-rrf",
-        "lexical_scanned": len(candidates),
-        "lexical_scan_limit": SCAN_LIMIT,
-        "lexical_scan_truncated": offset is not None,
+        "collections": reports,
+        "lexical_scanned": sum(r["lexical_scanned"] for r in reports),
+        "lexical_scan_limit": SCAN_LIMIT * len(collections),
+        "lexical_scan_truncated": any(r["lexical_scan_truncated"] for r in reports),
         "claim_support_verified": False,
     }
