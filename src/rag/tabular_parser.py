@@ -4,6 +4,7 @@ import csv
 import datetime
 import io
 import json
+import posixpath
 import re
 import xml.etree.ElementTree as ET
 
@@ -82,6 +83,12 @@ def csv_blocks(data, max_chars):
     return out.result()
 
 
+def xml_boolean(value):
+    if value not in {"0", "1", "false", "true"}:
+        raise DocumentError("malformed_office", "Worksheet visibility contains an invalid boolean.")
+    return value in {"1", "true"}
+
+
 def xlsx_blocks(data, max_chars):
     from openpyxl import load_workbook
     from openpyxl.utils.cell import coordinate_to_tuple, get_column_letter, range_boundaries
@@ -94,6 +101,7 @@ def xlsx_blocks(data, max_chars):
         raise DocumentError("sheet_limit", "Workbook exceeds 32 worksheets.")
     ns = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
     count = 0
+    visibility = {}
     # Bound actual cell coordinates before constructing two workbook models.
     for name in sheets:
         root = ET.fromstring(archive.read(name))
@@ -102,9 +110,15 @@ def xlsx_blocks(data, max_chars):
             rn, cn = coordinate_to_tuple(cell.attrib["r"])
             if rn > MAX_ROWS or cn > MAX_COLUMNS or count > MAX_CELLS:
                 raise DocumentError("table_limit", "Workbook exceeds row/column/total-cell limits.")
+        defaults = root.find(ns + "sheetFormatPr")
+        default_hidden = defaults is not None and xml_boolean(defaults.get("zeroHeight", "0"))
+        overrides = {}
         for row in root.iter(ns + "row"):
+            if "hidden" in row.attrib:
+                overrides[int(row.attrib["r"])] = xml_boolean(row.attrib["hidden"])
             if int(row.attrib.get("r", "0")) > MAX_ROWS:
                 raise DocumentError("table_limit", "Workbook row index exceeds the limit.")
+        visibility[name] = (default_hidden, overrides)
         for merged in root.iter(ns + "mergeCell"):
             left, top, right, bottom = range_boundaries(merged.attrib["ref"])
             if (
@@ -113,6 +127,25 @@ def xlsx_blocks(data, max_chars):
                 or (right - left + 1) * (bottom - top + 1) > MAX_CELLS
             ):
                 raise DocumentError("table_limit", "Merged range exceeds worksheet limits.")
+    # Resolve actual worksheet parts through relationships, not sheet order or
+    # guessed sheetN.xml names. openpyxl drops the absent-vs-explicit-false detail.
+    rel_ns = "{http://schemas.openxmlformats.org/package/2006/relationships}"
+    rels = ET.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
+    targets = {}
+    for rel in rels.findall(rel_ns + "Relationship"):
+        if rel.get("TargetMode") == "External":
+            continue
+        target = rel.attrib["Target"]
+        targets[rel.attrib["Id"]] = posixpath.normpath(
+            target.lstrip("/") if target.startswith("/") else "xl/" + target
+        )
+    workbook = ET.fromstring(archive.read("xl/workbook.xml"))
+    rid = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+    visibility_by_name = {
+        sheet.attrib["name"]: visibility[targets[sheet.attrib[rid]]]
+        for sheet in workbook.findall(ns + "sheets/" + ns + "sheet")
+        if targets.get(sheet.get(rid)) in visibility
+    }
     values_book = load_workbook(io.BytesIO(data), data_only=True, keep_links=False)
     formulas_book = load_workbook(io.BytesIO(data), data_only=False, keep_links=False)
     out = Blocks(max_chars)
@@ -134,8 +167,7 @@ def xlsx_blocks(data, max_chars):
                     hidden_columns.update(range(dimension.min, dimension.max + 1))
             if hidden_columns:
                 out.warnings.add(f"Sheet {name}: hidden columns excluded.")
-            if any(d.hidden for d in value_sheet.row_dimensions.values()):
-                out.warnings.add(f"Sheet {name}: hidden rows excluded.")
+            default_hidden, overrides = visibility_by_name[name]
             if value_sheet.merged_cells.ranges:
                 out.warnings.add(
                     f"Sheet {name}: merged cells use anchor values only; blank cells are not filled."
@@ -144,7 +176,8 @@ def xlsx_blocks(data, max_chars):
                 out.warnings.add(f"Sheet {name}: charts/images excluded; no OCR.")
             headers = None
             for rn in range(1, value_sheet.max_row + 1):
-                if value_sheet.row_dimensions[rn].hidden:
+                if overrides.get(rn, default_hidden):
+                    out.warnings.add(f"Sheet {name}: hidden rows excluded.")
                     continue
                 values, coords = [], []
                 for cn in range(1, value_sheet.max_column + 1):

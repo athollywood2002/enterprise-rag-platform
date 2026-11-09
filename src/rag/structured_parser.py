@@ -144,18 +144,32 @@ def docx_blocks(data, max_chars):
                 raise DocumentError(
                     "nested_table", "Nested Word tables require flattening or text/PDF export."
                 )
-            headers = [cell.text for cell in element.rows[0].cells] if element.rows else []
+            width = len(element.columns)
+            headers = {}
             for rn, row in enumerate(element.rows, 1):
-                cells, seen = [], set()
-                for cn, cell in enumerate(row.cells, 1):
-                    if cell._tc in seen:
-                        continue
-                    seen.add(cell._tc)
-                    texts = [p.text for p in cell.paragraphs]
-                    label = f"Column {cn}"
-                    if rn > 1 and cn <= len(headers) and headers[cn - 1]:
-                        label += f" ({headers[cn - 1]})"
-                    cells.append(label + ": " + "\n".join(texts))
+                grid = row.cells
+                before, after = row.grid_cols_before, row.grid_cols_after
+                if before + len(grid) + after != width:
+                    raise DocumentError(
+                        "table_grid", "Word table grid is inconsistent; export a fresh DOCX."
+                    )
+                if rn == 1:
+                    headers = {before + i + 1: cell.text for i, cell in enumerate(grid)}
+                cells = []
+                index = 0
+                while index < len(grid):
+                    cell = grid[index]
+                    end = index + 1
+                    while end < len(grid) and grid[end]._tc is cell._tc:
+                        end += 1
+                    first, last = before + index + 1, before + end
+                    label = f"Column {first}" if first == last else f"Columns {first}–{last}"
+                    names = list(dict.fromkeys(headers.get(c, "") for c in range(first, last + 1)))
+                    names = [name for name in names if name]
+                    if rn > 1 and names:
+                        label += " (" + " / ".join(names) + ")"
+                    cells.append(label + ": " + "\n".join(p.text for p in cell.paragraphs))
+                    index = end
                 out.add(
                     " | ".join(cells),
                     f"Section {section or '(untitled)'} · table {table} · row {rn}",
@@ -164,6 +178,43 @@ def docx_blocks(data, max_chars):
                     row=rn,
                 )
     return out.result()
+
+
+def rtf_encoding(raw):
+    """One ANSI code page only; striprtf cannot safely restore mixed font encodings.
+
+    Tokenize controls so an escaped backslash is never mistaken for a declaration.
+    Convert literal high bytes to hex escapes, preserving Unicode fallback counts.
+    """
+    controls = list(re.finditer(r"\\(?:[a-zA-Z]+-?\d* ?|'[0-9a-fA-F]{2}|[^a-zA-Z])", raw))
+    words = []
+    for match in controls:
+        word = re.fullmatch(r"\\([a-zA-Z]+)(-?\d*) ?", match.group())
+        if word:
+            words.append((match, word[1], word[2]))
+    pages = {value for _, word, value in words if word == "ansicpg"}
+    page = next(iter(pages)) if pages else "1252"
+    charset = {"1252": "0", "1251": "204"}.get(page)
+    invalid = len(pages) > 1 or charset is None
+    for _, word, value in words:
+        if word in {"mac", "pc", "pca"}:
+            invalid = True
+        if word == "fcharset" and value not in {"0", "1", charset}:
+            invalid = True
+        if word == "cpg" and value != page:
+            invalid = True
+    if invalid:
+        raise DocumentError(
+            "unsupported_rtf_encoding",
+            "RTF supports a single Windows-1252 or Windows-1251 code page. Mixed/font-specific or other encodings require Unicode TXT or DOCX export.",
+        )
+    # All font declarations now agree with the selected page. Remove charset
+    # controls because striprtf otherwise hardcodes fcharset0 to cp1252.
+    for match, word, _ in reversed(words):
+        if word in {"fcharset", "cpg"}:
+            raw = raw[: match.start()] + raw[match.end() :]
+    raw = "".join(f"\\'{ord(c):02x}" if ord(c) >= 128 else c for c in raw)
+    return raw, "cp" + page
 
 
 def rtf_blocks(data, max_chars):
@@ -192,9 +243,12 @@ def rtf_blocks(data, max_chars):
     if depth:
         raise DocumentError("malformed_rtf", "RTF contains unclosed groups.")
     try:
-        text = rtf_to_text(raw, errors="strict")
+        raw, encoding = rtf_encoding(raw)
+        text = rtf_to_text(raw, encoding=encoding, errors="strict")
         # striprtf emits signed UTF-16 code units; join valid surrogate pairs.
         text = text.encode("utf-16-le", "surrogatepass").decode("utf-16-le")
+    except DocumentError:
+        raise
     except (UnicodeError, ValueError, LookupError) as error:
         raise DocumentError("malformed_rtf", "RTF text encoding is invalid.") from error
     out = Blocks(max_chars)
