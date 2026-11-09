@@ -38,7 +38,7 @@ function renderPreview(preview) {
 $('connect-form').addEventListener('submit', guarded(async e => {
   e.preventDefault(); key = $('api-key').value; config = await api('/config'); $('api-key').value = '';
   $('connection').textContent = 'API authenticated'; $('connect-panel').hidden = true; $('workspace').hidden = false;
-  $('formats').textContent = `TXT · CSV · Text PDF — up to ${config.max_files} files, ${bytes(config.max_file_bytes)} per file, ${bytes(config.max_batch_bytes)} per selection. PDF limit: ${config.max_pages} pages.`;
+  $('formats').textContent = `${config.formats.map(f => f.slice(1).toUpperCase()).join(" · ")} — up to ${config.max_files} files, ${bytes(config.max_file_bytes)} per file, ${bytes(config.max_batch_bytes)} per selection. PDF limit: ${config.max_pages} pages.`;
   $('destination').textContent = `Destination: ${config.destination}`;
   $('root-select').replaceChildren(...config.roots.map(root => { const o = node('option', root); o.value = root; return o; }));
   await refreshReadiness(); await refreshJobs(); await refreshDocuments(); say('API authenticated. Select a folder or reopen a saved job.');
@@ -180,7 +180,7 @@ $('ask-form').onsubmit = guarded(async e => {
     const result = await post('/ask', question);
     const mode = ['unknown', 'synthetic', 'real'].includes(result.model_mode) ? result.model_mode : 'unknown';
     $('answer').textContent = result.generation_notice || result.answer; $('generation').textContent = `Model mode: ${mode} (request-bound deployment label)${mode === 'synthetic' ? ' — simulated reply, not real inference' : ''}. Generation: ${result.generation?.status || 'No generation'}${result.generation?.eval_count != null ? ` · ${result.generation.eval_count} output tokens` : ''}. Mode is operator configuration, not evidence of inference. Inspect each claim against its excerpt.`;
-    $('citations').replaceChildren(...result.sources.map((source, i) => { const box = node('div', '', 'citation'); box.append(node('strong', `[${i+1}] ${source.source}${source.page_number ? ` · page ${source.page_number}` : ''} · chunk ${source.chunk}`), node('p', source.text)); return box; }));
+    $('citations').replaceChildren(...result.sources.map((source, i) => { const box = node('div', '', 'citation'); box.append(node('strong', `[${i+1}] ${source.source}${source.location ? ` · ${source.location}` : source.page_number ? ` · page ${source.page_number}` : ''} · chunk ${source.chunk}`), node('p', source.text)); if (source.warnings?.length) box.append(node('p', source.warnings.join(' '), 'muted')); return box; }));
     $('answer-panel').hidden = false; $('ask-status').textContent = result.generation?.status === 'complete' ? 'Answer complete. Verify the citations below.' : 'Review required: generation is incomplete, unknown, or returned no sources.';
   } catch (error) { $('ask-status').textContent = `Question failed: ${error.message}`; throw error; } finally { $('ask').disabled = false; }
 });

@@ -22,7 +22,12 @@ from qdrant_client import models
 
 from .collection_safety import validate_writable_collection_name
 from .core import RagEngine
-from .folder_parser import FORMATS, PARSER_VERSION, DocumentError, chunks_from_pages
+from .folder_parser import (
+    COMPATIBLE_PARSERS,
+    FORMATS,
+    PARSER_VERSION,
+    DocumentError,
+)
 from .source_roots import inventory, open_beneath, relative_path
 
 TERMINAL = {"completed", "failed", "skipped", "cancelled"}
@@ -453,7 +458,7 @@ class Library:
                 self.engines[config.qdrant_collection] = self.engine_factory(config)
             return self.engines[config.qdrant_collection]
 
-    def model_context(self):
+    def model_context(self, parser_version=PARSER_VERSION):
         # Ollama tags identify model bytes, not just mutable names. Fail closed on missing identity.
         base = self.get_engine(self.config)
         with base._client(15) as client:
@@ -471,7 +476,7 @@ class Library:
                 "Embedding model identity unavailable. Check Ollama and the installed model.",
             )
         signature = {
-            "parser": PARSER_VERSION,
+            "parser": parser_version,
             "model": name,
             "digest": model["digest"],
             "chunk_size": 900,
@@ -505,6 +510,7 @@ class Library:
                     str(output),
                     str(self.config.ingest_max_pages),
                     str(self.config.ingest_max_chars),
+                    str(self.config.ingest_max_chunks),
                 ],
                 timeout=self.config.ingest_parse_seconds,
                 check=True,
@@ -514,7 +520,7 @@ class Library:
             result = json.loads(output.read_text(encoding="utf-8"))
             if "error" in result:
                 raise DocumentError(result["error"], result["message"])
-            return result["pages"]
+            return result
         except (subprocess.SubprocessError, OSError, ValueError) as error:
             if isinstance(error, DocumentError):
                 raise
@@ -611,7 +617,7 @@ class Library:
             pages = self.parse(path, row["path"])
             self.checkpoint(job_id, deadline)
             self.set_file(file_id, "chunking")
-            chunks = chunks_from_pages(pages, max_chunks=self.config.ingest_max_chunks)
+            chunks = pages["chunks"]
             revision = uuid.uuid4().hex
             ids = [
                 str(uuid.uuid5(uuid.NAMESPACE_URL, revision + ":" + str(i)))
@@ -692,8 +698,14 @@ class Library:
                         ),
                     )
                     db.execute(
-                        "UPDATE files SET status='completed',done=total,error='',code='' WHERE id=?",
-                        (file_id,),
+                        "UPDATE files SET status='completed',done=total,error=?,code=? WHERE id=?",
+                        (
+                            " ".join(pages.get("warnings", [])) if isinstance(pages, dict) else "",
+                            "extraction_warning"
+                            if isinstance(pages, dict) and pages.get("warnings")
+                            else "",
+                            file_id,
+                        ),
                     )
             # Deletion is after visibility commits. Cleanup failure is explicit and retriable,
             # never roll back a successfully committed usable revision.
@@ -779,11 +791,16 @@ class Library:
         return {"documents": rows, "cleanup_pending": pending}
 
     def ask(self, question, top_k=5, job_id=None):
-        fingerprint, engine = self.model_context()
+        contexts = [self.model_context(version) for version in COMPATIBLE_PARSERS]
+        _fingerprint, engine = contexts[-1]
+        compatible = {fp: eng.config.qdrant_collection for fp, eng in contexts}
         with self.index_lock:
             with self.db() as db:
                 rows = db.execute(
-                    "SELECT id,revision FROM documents WHERE fingerprint=?", (fingerprint,)
+                    "SELECT id,revision,fingerprint,collection FROM documents WHERE fingerprint IN ("
+                    + ",".join("?" for _ in compatible)
+                    + ")",
+                    tuple(compatible),
                 ).fetchall()
                 if job_id:
                     allowed = {
@@ -803,4 +820,9 @@ class Library:
                     )
                 ]
             )
-            return engine.ask(question, top_k, query_filter=query_filter)
+            return engine.ask(
+                question,
+                top_k,
+                query_filter=query_filter,
+                collection_names=sorted({r["collection"] for r in rows}),
+            )

@@ -112,3 +112,6 @@ was verified and model-call totals were unverified. [Accepted results and scope]
 [Setup, options and troubleshooting](docs/setup.md) ·
 [Operating guide](docs/folder-library.md) ·
 [Developer reference](docs/developer-reference.md) · [MIT license](LICENSE)
+
+Managed DOCX and RTF support, extraction exclusions, citation locations and safe
+reindexing are documented in the [format support matrix](docs/office-formats.md).

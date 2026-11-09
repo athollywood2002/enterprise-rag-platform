@@ -174,7 +174,9 @@ class RagEngine:
         self.db.upsert(collection_name=name, points=points, wait=True)
         return len(points)
 
-    def ask(self, question: str, top_k: int = 5, *, query_filter=None) -> dict:
+    def ask(
+        self, question: str, top_k: int = 5, *, query_filter=None, collection_names=None
+    ) -> dict:
         # Recheck at dispatch too: unvalidated model_copy/model_construct must
         # not forward a boolean, negative sentinel or overflowing integer.
         cap = Settings.validate_generation_cap(self.config.ollama_num_predict)
@@ -195,23 +197,35 @@ class RagEngine:
                     "Selected model does not advertise thinking control; use OLLAMA_THINK=default"
                 )
         vector = self.embed(question)
-        if not self.db.collection_exists(self.config.qdrant_collection):
-            return {"answer": "I don't know based on the available documents.", "sources": []}
-        result = self.db.query_points(
-            collection_name=self.config.qdrant_collection,
-            query=vector,
-            limit=max(20, top_k * 4) if query_filter is not None else top_k,
-            with_payload=True,
-            **({"query_filter": query_filter} if query_filter is not None else {}),
-        )
-        points = result.points
+        collections = collection_names or [self.config.qdrant_collection]
+        points = []
         retrieval = None
-        if query_filter is not None:
-            from .retrieval import managed_candidates
-
-            points, retrieval = managed_candidates(
-                self.db, self.config.qdrant_collection, question, points, query_filter, top_k
+        for collection in collections:
+            if not self.db.collection_exists(collection):
+                continue
+            result = self.db.query_points(
+                collection_name=collection,
+                query=vector,
+                limit=max(20, top_k * 4) if query_filter is not None else top_k,
+                with_payload=True,
+                **({"query_filter": query_filter} if query_filter is not None else {}),
             )
+            selected = result.points
+            if query_filter is not None:
+                from .retrieval import managed_candidates
+
+                selected, report = managed_candidates(
+                    self.db, collection, question, selected, query_filter, top_k
+                )
+                retrieval = retrieval or {
+                    "method": "dense-bm25-rrf",
+                    "collections": [],
+                    "claim_support_verified": False,
+                }
+                retrieval["collections"].append(report)
+            points.extend(selected)
+        points.sort(key=lambda p: -p.score)
+        points = points[:top_k]
         sources = [
             {
                 "source": p.payload["source"],
@@ -219,6 +233,19 @@ class RagEngine:
                 "score": round(float(p.score), 4),
                 "text": p.payload["text"],
                 "page_number": p.payload.get("page_number"),
+                **{
+                    key: p.payload[key]
+                    for key in (
+                        "location",
+                        "section",
+                        "paragraph",
+                        "table",
+                        "row",
+                        "warnings",
+                        "continuation",
+                    )
+                    if key in p.payload
+                },
                 **({"document_id": p.payload["document_id"]} if "document_id" in p.payload else {}),
             }
             for p in points
@@ -226,7 +253,7 @@ class RagEngine:
         if not sources:
             return {"answer": "I don't know based on the available documents.", "sources": []}
         context = "\n\n".join(
-            f"[{i}] {s['source']} (page {s['page_number']}, chunk {s['chunk']}): {s['text']}"
+            f"[{i}] {s['source']} ({s.get('location') or 'page ' + str(s['page_number'])}, chunk {s['chunk']}): {s['text']}"
             for i, s in enumerate(sources, 1)
         )
         prompt = (
