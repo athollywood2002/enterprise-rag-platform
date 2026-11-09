@@ -73,6 +73,7 @@ def test_rtf_unicode_paragraphs_and_surrogate_pair():
         ("a.rtf", b"not rtf", "malformed_rtf"),
         ("a.rtf", rb"{\rtf1 broken", "malformed_rtf"),
         ("a.rtf", rb"{\rtf1 {\object hidden}}", "unsupported_rtf_content"),
+        ("a.rtf", rb"{\rtf1 \bin3 abc}", "unsupported_rtf_content"),
     ],
 )
 def test_bad_office(name, data, code):
