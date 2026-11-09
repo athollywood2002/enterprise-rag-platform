@@ -371,6 +371,49 @@ def test_thinking_control_checks_capability_before_inference(mode):
         qdrant=Mock(),
         model_client=lambda _: httpx.Client(transport=httpx.MockTransport(service)),
     )
-    with pytest.raises(ValueError, match="does not advertise thinking"):
+    with pytest.raises(ValueError, match="does not advertise the requested thinking"):
         engine.ask("Question")
     assert sent == ["/api/show"]
+
+
+@pytest.mark.parametrize(
+    "values,mode,accepted",
+    [
+        ([True, False], "off", True),
+        ([True, False], "on", True),
+        (["low", "high"], "off", False),
+        ([False], "on", False),
+    ],
+)
+def test_exact_advertised_thinking_values(monkeypatch, values, mode, accepted):
+    engine, _ = mocked_engine(monkeypatch, completed_reply())
+    engine.config.ollama_think = mode
+    sent = []
+
+    def service(request):
+        payload = json.loads(request.content)
+        sent.append((request.url.path, payload))
+        if request.url.path == "/api/show":
+            return httpx.Response(200, json={"thinking": {"values": values}})
+        if request.url.path == "/api/embed":
+            return httpx.Response(200, json={"embeddings": [[1.0, 0.0]]})
+        return httpx.Response(200, json=completed_reply())
+
+    engine._model_client = lambda _: httpx.Client(transport=httpx.MockTransport(service))
+    if accepted:
+        engine.ask("Question")
+        assert sent[-1][1]["think"] is (mode == "on")
+    else:
+        with pytest.raises(ValueError, match="does not advertise"):
+            engine.ask("Question")
+        assert len(sent) == 1
+
+
+@pytest.mark.parametrize(
+    "content", ["<think>PRIVATE_TRACE</think>Visible [1]", "<think>PRIVATE_TRACE"]
+)
+def test_tagged_reasoning_is_never_returned(monkeypatch, content):
+    engine, _ = mocked_engine(monkeypatch, completed_reply() | {"message": {"content": content}})
+    result = engine.ask("Question")
+    assert "PRIVATE_TRACE" not in json.dumps(result)
+    assert result["answer"] in {"Visible [1]", ""}

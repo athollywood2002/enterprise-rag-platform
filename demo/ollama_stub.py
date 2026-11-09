@@ -37,7 +37,9 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/chat":
             prompt = data["messages"][0]["content"]
             excerpts = re.findall(
-                r"\[(\d+)\] ([^\n]+) \(page ([^,]+), chunk [^:]+: ([^\n]+)", prompt
+                r"\[(\d+)\] (.*?) \((.*?), chunk \d+\): (.*?)(?=\n\n\[\d+\] |\n\nQuestion:|\Z)",
+                prompt,
+                re.S,
             )
             if "How many brass telescopes" in prompt:
                 ref = next(

@@ -458,7 +458,7 @@ class Library:
                 self.engines[config.qdrant_collection] = self.engine_factory(config)
             return self.engines[config.qdrant_collection]
 
-    def model_context(self, parser_version=PARSER_VERSION):
+    def model_context(self, parser_version=PARSER_VERSION, *, parser_versions=None):
         # Ollama tags identify model bytes, not just mutable names. Fail closed on missing identity.
         base = self.get_engine(self.config)
         with base._client(15) as client:
@@ -485,12 +485,21 @@ class Library:
             "destination": self.config.qdrant_collection,
             "database": self.config.qdrant_url,
         }
-        fingerprint = digest(json.dumps(signature, sort_keys=True).encode())
-        collection = self.config.qdrant_collection[:100] + "_ui_" + fingerprint[:16]
-        validate_writable_collection_name(collection)
-        return fingerprint, self.get_engine(
-            self.config.model_copy(update={"qdrant_collection": collection})
-        )
+        contexts = []
+        for version in parser_versions or (parser_version,):
+            signature["parser"] = version
+            fingerprint = digest(json.dumps(signature, sort_keys=True).encode())
+            collection = self.config.qdrant_collection[:100] + "_ui_" + fingerprint[:16]
+            validate_writable_collection_name(collection)
+            contexts.append(
+                (
+                    fingerprint,
+                    self.get_engine(
+                        self.config.model_copy(update={"qdrant_collection": collection})
+                    ),
+                )
+            )
+        return contexts if parser_versions is not None else contexts[0]
 
     def parse(self, path, name):
         if sys.platform != "linux":
@@ -791,7 +800,7 @@ class Library:
         return {"documents": rows, "cleanup_pending": pending}
 
     def ask(self, question, top_k=5, job_id=None):
-        contexts = [self.model_context(version) for version in COMPATIBLE_PARSERS]
+        contexts = self.model_context(parser_versions=COMPATIBLE_PARSERS)
         _fingerprint, engine = contexts[-1]
         compatible = {fp: eng.config.qdrant_collection for fp, eng in contexts}
         with self.index_lock:
