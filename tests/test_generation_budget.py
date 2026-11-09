@@ -348,10 +348,15 @@ def test_t15_empty_at_1536_has_actionable_notice_and_no_retry(monkeypatch):
         "eval_count": 1536,
     }
     engine, sent = mocked_engine(monkeypatch, reply, 1536)
+    engine.db.query_points.return_value.points[0].payload["text"] = (
+        "Vendor VEN-011 annual cost: USD 24000; renewal requires Finance approval."
+    )
     result = engine.ask("What is the vendor's annual cost?")
     assert result["sources"] and result["answer"] == ""
     assert result["generation"]["status"] == "limit"
     assert result["generation"]["eval_count"] == 1536
+    assert result["generation"]["done_reason"] == "length"
+    assert "annual cost: USD 24000" in sent[-1][1]["messages"][0]["content"]
     assert "configured generation limit" in result["generation_notice"]
     assert "PRIVATE_TRACE" not in json.dumps(result)
     assert len(sent) == 2
@@ -417,3 +422,64 @@ def test_tagged_reasoning_is_never_returned(monkeypatch, content):
     result = engine.ask("Question")
     assert "PRIVATE_TRACE" not in json.dumps(result)
     assert result["answer"] in {"Visible [1]", ""}
+
+
+@pytest.mark.parametrize(
+    "case,excerpts,bad_answer,required_instruction",
+    [
+        (
+            "T06",
+            ["Security reviews access.", "The learning budget is USD 1200 with manager approval."],
+            "The learning budget is USD 1200 [1].",
+            "exact cited excerpt",
+        ),
+        (
+            "T18",
+            [
+                "Internal policy permits quarterly review.",
+                "The customer contract contains no unilateral termination clause.",
+            ],
+            "The contract permits quarterly termination [1].",
+            "Do not extrapolate contract terms",
+        ),
+        (
+            "T20",
+            [
+                "Version 1 required 48 hours. This rule is superseded; the replacement deadline is not in this excerpt."
+            ],
+            "The current deadline is 48 hours [1].",
+            "replacement is unknown",
+        ),
+        (
+            "T25",
+            [
+                "Release requires both the numerical threshold and written Security approval; exceptions need director approval."
+            ],
+            "Meeting the threshold authorizes release [1].",
+            "Preserve material conditions",
+        ),
+    ],
+)
+def test_grounding_adversaries_never_gain_semantic_credit_from_valid_numbers(
+    monkeypatch, case, excerpts, bad_answer, required_instruction
+):
+    # Deliberately wrong mock replies test the evidence boundary, not model quality.
+    engine, sent = mocked_engine(
+        monkeypatch, completed_reply() | {"message": {"content": bad_answer}}
+    )
+    points = [
+        SimpleNamespace(
+            id=i,
+            score=1.0,
+            payload={"source": case + ".txt", "chunk": i, "page_number": None, "text": text},
+        )
+        for i, text in enumerate(excerpts)
+    ]
+    engine.db.query_points.return_value = SimpleNamespace(points=points)
+    engine.db.scroll.return_value = (points, None)
+    result = engine.ask("What is the applicable requirement?", query_filter="committed-only")
+    assert is_completed_generation(result)  # Protocol completion is not grounding.
+    assert result["retrieval"]["claim_support_verified"] is False
+    assert result["answer"] == bad_answer
+    assert required_instruction in sent[-1][1]["messages"][0]["content"]
+    assert "[1]" in result["answer"] and result["sources"]
