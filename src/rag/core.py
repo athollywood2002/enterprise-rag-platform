@@ -190,9 +190,10 @@ class RagEngine:
                 )
                 show.raise_for_status()
                 info = show.json()
-            if "thinking" not in info.get("capabilities", []):
+            supported = (info.get("thinking") or {}).get("values", [])
+            if not any(type(value) is bool and value == (think == "on") for value in supported):
                 raise ValueError(
-                    "Selected model does not advertise thinking control; use OLLAMA_THINK=default"
+                    "Selected model does not advertise the requested thinking control; use OLLAMA_THINK=default"
                 )
         vector = self.embed(question)
         if not self.db.collection_exists(self.config.qdrant_collection):
@@ -263,6 +264,9 @@ class RagEngine:
             answer = data["message"]["content"]
             if not isinstance(answer, str):
                 raise TypeError("Ollama returned non-text answer content")
+        # Older/custom templates can put tagged reasoning in content. Remove it
+        # before any response/UI consumer sees it, including an unfinished tag.
+        answer = re.sub(r"<think\b[^>]*>.*?(?:</think>|\Z)", "", answer, flags=re.S | re.I).strip()
         evidence = generation_evidence(data, answer, cap)
         result = {"answer": answer, "sources": sources, "generation": evidence}
         if retrieval is not None:
