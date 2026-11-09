@@ -174,7 +174,7 @@ def rtf_blocks(data, max_chars):
         raise DocumentError("malformed_rtf", "Not a valid RTF document. Export a fresh RTF file.")
     # Fail closed for content the text converter cannot represent completely.
     if re.search(
-        r"\\(?:object|pict|field|annotation|header\w*|footer\w*|revised|deleted|trowd|footnote|bin(?:-?\d+)?)\b",
+        r"\\(?:object|pict|field|annotation|header\w*|footer\w*|revised|deleted|trowd|footnote|bin)(?:-?\d+)?\b",
         raw,
     ):
         raise DocumentError(
