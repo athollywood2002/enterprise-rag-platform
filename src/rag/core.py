@@ -199,11 +199,11 @@ class RagEngine:
                 )
         vector = self.embed(question)
         collections = collection_names or [self.config.qdrant_collection]
-        points = []
-        retrieval = None
-        for collection in collections:
+        active_collections, points = [], []
+        for collection in sorted(set(collections)):
             if not self.db.collection_exists(collection):
                 continue
+            active_collections.append(collection)
             result = self.db.query_points(
                 collection_name=collection,
                 query=vector,
@@ -211,22 +211,17 @@ class RagEngine:
                 with_payload=True,
                 **({"query_filter": query_filter} if query_filter is not None else {}),
             )
-            selected = result.points
-            if query_filter is not None:
-                from .retrieval import managed_candidates
+            points.extend(result.points)
+        retrieval = None
+        if query_filter is not None:
+            from .retrieval import managed_candidates
 
-                selected, report = managed_candidates(
-                    self.db, collection, question, selected, query_filter, top_k
-                )
-                retrieval = retrieval or {
-                    "method": "dense-bm25-rrf",
-                    "collections": [],
-                    "claim_support_verified": False,
-                }
-                retrieval["collections"].append(report)
-            points.extend(selected)
-        points.sort(key=lambda p: -p.score)
-        points = points[:top_k]
+            points, retrieval = managed_candidates(
+                self.db, active_collections, question, points, query_filter, top_k
+            )
+        else:
+            points.sort(key=lambda p: -p.score)
+            points = points[:top_k]
         sources = [
             {
                 "source": p.payload["source"],
