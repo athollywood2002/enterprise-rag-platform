@@ -15,6 +15,7 @@ behind each answer. The app uses a local model and a browser interface.
 - **Docker Engine and Compose v2 or newer**, with Docker running.
   [Ubuntu Docker installation](https://docs.docker.com/engine/install/ubuntu/) ·
   [Windows WSL2 setup](https://docs.docker.com/desktop/features/wsl/)
+- **Git** to download the project (installation commands below).
 - Internet access for the first build and model downloads. An NVIDIA GPU is
   strongly recommended. Setup checks access inside Docker; CPU mode is available
   with a warning, but its real-model latency has not been validated.
@@ -28,9 +29,35 @@ live test. An existing Ollama server is an [advanced option](docs/setup.md#exter
 
 ## Install and open
 
-Obtain this project version and put it in a durable directory, such as `~/rag`.
-Open that directory in a terminal, read `setup.sh` and its helper
-`scripts/install.py`, then run:
+Open a terminal on the Ubuntu machine that will run the application. First check
+that Git, the tool used to download the project, is installed:
+
+```sh
+git --version
+```
+
+If this reports `command not found`, install Git, then continue:
+
+```sh
+sudo apt update
+sudo apt install git
+```
+
+Download (clone) the project and enter its folder:
+
+```sh
+git clone https://github.com/athollywood2002/enterprise-rag-platform.git "$HOME/rag" &&
+  cd "$HOME/rag"
+```
+
+This creates a `rag` folder in your home directory (`~/rag`). No GitHub account or
+access token is needed for this public repository. If that folder already exists
+and is not empty, stop and use a different new folder name in both commands; do not
+delete an existing installation. Keep this folder: it holds the setup files and
+installation configuration used for stopping and resuming the application.
+
+Once the download succeeds, read `setup.sh` and its helper `scripts/install.py`
+in that folder, then start setup from the same terminal:
 
 ```sh
 bash setup.sh
