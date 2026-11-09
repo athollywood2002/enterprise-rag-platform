@@ -162,9 +162,22 @@ def installation(tmp_path, monkeypatch):
     root = Path(__file__).resolve().parents[1]
     for name in ["compose.demo.yaml", "compose.install.yaml", "compose.gpu.yaml"]:
         (tmp_path / name).write_bytes((root / name).read_bytes())
+    web = tmp_path / "src/rag/web"
+    web.mkdir(parents=True)
+    for name in ("index.html", "app.js", "style.css"):
+        (web / name).write_bytes((root / "src/rag/web" / name).read_bytes())
+
+    def asset(url, key=None):
+        path = {"/": "index.html", "/ui/app.js": "app.js", "/ui/style.css": "style.css"}[
+            m.urllib.parse.urlsplit(url).path
+        ]
+        return (web / path).read_bytes()
+
+    monkeypatch.setattr(m, "http_bytes", asset)
     runner = Docker()
     installer = m.Installer(tmp_path, runner)
     installer.directory.mkdir(mode=0o700)
+    monkeypatch.setattr(installer, "check_port", lambda: None)
     runner.owner = installer
     return installer, runner
 
@@ -497,6 +510,9 @@ def test_independent_installation_build_cannot_retag_first_saved_image(installat
     (other / "source").write_text("different-source")
     for name in ["compose.demo.yaml", "compose.install.yaml", "compose.gpu.yaml"]:
         (other / name).write_bytes((first.root / name).read_bytes())
+    (other / "src/rag/web").mkdir(parents=True)
+    for name in ("index.html", "app.js", "style.css"):
+        (other / "src/rag/web" / name).write_bytes((first.root / "src/rag/web" / name).read_bytes())
     second = m.Installer(other, docker)
     docker.owner = second
     second.command(m.arguments(["--device", "cpu"]))
@@ -612,7 +628,7 @@ def test_port_probe_rejects_real_active_listener(installation):
         listener.listen(1)
         installer.state["port"] = listener.getsockname()[1]
         with pytest.raises(m.InstallError, match="port is occupied"):
-            installer.check_port()
+            m.Installer.check_port(installer)
 
 
 def test_port_probe_accepts_real_time_wait_in_isolated_process():
@@ -637,3 +653,51 @@ installer.check_port()
         [sys.executable, "-c", code], capture_output=True, timeout=10, check=False
     )
     assert result.returncode == 0, result.stderr.decode()
+
+
+@pytest.mark.parametrize("version,accepted", [((3, 9), False), ((3, 10), True), ((3, 12), True)])
+def test_ubuntu2204_stock_python_floor(monkeypatch, version, accepted):
+    monkeypatch.setattr(m.sys, "version_info", version)
+    monkeypatch.setattr(m.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(m.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(
+        m.platform, "freedesktop_os_release", lambda: {"ID": "ubuntu", "VERSION_ID": "22.04"}
+    )
+    monkeypatch.setattr(m.platform, "release", lambda: "generic")
+    if accepted:
+        m.check_platform()
+    else:
+        with pytest.raises(m.InstallError, match="Python 3.10"):
+            m.check_platform()
+
+
+def test_unreadable_web_asset_never_marks_image_verified_or_starts_services(
+    installation, monkeypatch, capsys
+):
+    installer, docker = installation
+    original = docker.run
+
+    def unreadable(args, *a, **kw):
+        if args[1] == "run" and args[-1] == m.image_readability_probe():
+            assert all(name in args[-1] for name in ["index.html", "app.js", "style.css"])
+            assert "chmod" not in args[-1]
+            raise m.InstallError("Unreadable web asset")
+        return original(args, *a, **kw)
+
+    monkeypatch.setattr(docker, "run", unreadable)
+    with pytest.raises(m.InstallError, match="Unreadable"):
+        installer.command(m.arguments(["--device", "cpu"]))
+    installer.read()
+    assert installer.state["api_verified"] is False
+    assert not any("up" in call and "--help" not in call for call in docker.calls)
+    assert "Services ready" not in capsys.readouterr().out
+
+
+def test_bad_public_ui_response_prevents_ready_report(installation, monkeypatch, capsys):
+    installer, _ = installation
+    monkeypatch.setattr(m, "http_bytes", lambda *a, **kw: b"wrong asset")
+    with pytest.raises(m.InstallError, match="Browser UI"):
+        installer.command(m.arguments(["--device", "cpu"]))
+    installer.read()
+    assert installer.state["phase"] == "provisioning"
+    assert "Services ready" not in capsys.readouterr().out

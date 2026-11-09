@@ -7,9 +7,11 @@ running it. No image is published by this installer PR.
 
 ## Prerequisites
 
-Targets: Ubuntu 22.04/24.04 x86-64, Bash, Python 3.11+, Docker Engine with local
+Targets: Ubuntu 22.04/24.04 x86-64, Bash, Python 3.10+, Docker Engine with local
 daemon access, and a modern Compose plugin (v2+). The script checks CLI, daemon,
 local Docker context and Compose config/wait/pull capabilities separately.
+The host helper works with Ubuntu 22.04's stock Python 3.10. The application keeps
+its separate Python 3.11+ development requirement and Python 3.12 container runtime.
 The isolated synthetic check used Docker Desktop/Compose 5.5.1, not an Ubuntu
 real-model deployment. The validation matrix below lists the remaining work.
 
@@ -39,6 +41,8 @@ unavailable GPU access selects CPU with a warning. Unknown probe/image/network
 errors stop setup instead of silently selecting CPU. A visible existing Ollama or
 GPU workload warns about contention and recommends external mode; a one-time
 interactive choice is required before continuing managed mode.
+This is a first-install check: starting another host Ollama/GPU workload later does
+not automatically repeat the warning. Avoid contention or use external mode.
 
 Useful explicit options:
 

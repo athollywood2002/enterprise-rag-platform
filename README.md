@@ -9,7 +9,7 @@ behind each answer. The app uses a local model and a browser interface.
 
 ## System requirements
 
-- **Ubuntu 22.04 or 24.04, x86-64**, with Bash and Python 3.11+. These are installer
+- **Ubuntu 22.04 or 24.04, x86-64**, with Bash and Python 3.10+. These are installer
   targets, not yet verified real-model platform support. Windows 11/WSL2 remains
   unverified; Apple Silicon installation is deferred.
 - **Docker Engine and Compose v2 or newer**, with Docker running.

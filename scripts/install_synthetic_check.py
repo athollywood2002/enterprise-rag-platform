@@ -45,7 +45,19 @@ def browser_check(installer, folder, *, import_files):
         context = browser.new_context()
         page = context.new_page()
         page.set_default_timeout(60000)
-        page.goto("http://127.0.0.1:" + str(installer.state["port"]))
+        origin = "http://127.0.0.1:" + str(installer.state["port"])
+        response = page.goto(origin)
+        assert response is not None and response.status == 200
+        for route, filename in [
+            ("/", "index.html"),
+            ("/ui/app.js", "app.js"),
+            ("/ui/style.css", "style.css"),
+        ]:
+            asset = page.request.get(origin + route)
+            assert asset.status == 200
+            assert m.sha(asset.body()) == m.sha(
+                (installer.root / "src/rag/web" / filename).read_bytes()
+            )
 
         def connect():
             page.locator("#api-key").fill(installer.state["key"])
@@ -93,6 +105,62 @@ def browser_check(installer, folder, *, import_files):
         assert page.evaluate("localStorage.length + sessionStorage.length") == 0
         context.close()
         browser.close()
+
+
+def image_asset_regression(installer):
+    """A disposable container creates a fixture, drops to UID10001, then probes.
+
+    No mounts, network or model calls. The source checkout/image is not chmodded.
+    The negative case has readable Python but an owner-only root-owned HTML asset.
+    """
+    for readable in (True, False):
+        probe = m.image_readability_probe("/tmp/readability-fixture")
+        code = (
+            "from pathlib import Path; import os; "
+            "root=Path('/tmp/readability-fixture'); web=root/'rag/web'; "
+            "web.mkdir(parents=True); "
+            "[(p.chmod(0o755)) for p in (root,root/'rag',web)]; "
+            "py=root/'rag/module.py'; py.write_text('value=1'); py.chmod(0o644); "
+            "[(p.write_text('fixture'),p.chmod(0o644)) for p in "
+            "[web/name for name in ('index.html','app.js','style.css')]]; "
+            f"(web/'index.html').chmod({0o644 if readable else 0o600}); "
+            "os.setgroups([]); os.setgid(10001); os.setuid(10001)\n"
+            "try:\n"
+            f" exec({probe!r})\n"
+            "except PermissionError as error:\n"
+            " assert str(error.filename).endswith('/index.html')\n"
+            " raise SystemExit(42)\n"
+        )
+        status, _ = installer.runner.run(
+            [
+                "docker",
+                "run",
+                "--rm",
+                "--pull",
+                "never",
+                "--network",
+                "none",
+                "--user",
+                "0:0",
+                "--cap-drop",
+                "ALL",
+                "--cap-add",
+                "SETUID",
+                "--cap-add",
+                "SETGID",
+                "--entrypoint",
+                "python",
+                installer.state["api_image"],
+                "-c",
+                code,
+            ],
+            timeout=30,
+            check=False,
+        )
+        m.need(
+            status == (0 if readable else 42),
+            "Real UID10001 web-asset readability regression failed.",
+        )
 
 
 def main():
@@ -149,6 +217,7 @@ def main():
         port = probe.getsockname()[1]
     try:
         installer.command(m.arguments(["--device", "cpu", "--port", str(port)]))
+        image_asset_regression(installer)
         identity = installer.state["api_image"]
         key = installer.state["key"]
         browser_check(installer, root / "demo/fixtures", import_files=True)
@@ -167,6 +236,8 @@ def main():
             browser_refresh_and_cited_synthetic_answer=True,
             unchanged_reimport=True,
             stop_start_saved_job=True,
+            real_UID10001_readable_and_unreadable_web_asset=True,
+            public_UI_entry_and_asset_requests_verified=True,
         )
     except Exception as error:
         # Do not serialize raw browser fill errors (can contain the synthetic key).

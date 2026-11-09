@@ -105,7 +105,7 @@ def durable_root(root):
 
 
 def check_platform():
-    need(sys.version_info >= (3, 11), "Python 3.11+ is required.")
+    need(sys.version_info >= (3, 10), "Python 3.10+ is required.")
     need(
         platform.system() == "Linux" and platform.machine() in ("x86_64", "amd64"),
         "This installer targets Ubuntu x86-64. macOS/ARM are not validated installer targets.",
@@ -379,7 +379,17 @@ def validate_ollama_url(url):
     return url.rstrip("/")
 
 
-def http_json(url, key=None):
+def image_readability_probe(source="/app/src"):
+    """Read as the image user; never chmod source to make a failing image pass."""
+    return (
+        "from pathlib import Path; import os; assert os.getuid()==10001; "
+        f"root=Path({source!r}); files=list(root.rglob('*.py')); assert files; "
+        "required=[root/'rag/web'/name for name in ('index.html','app.js','style.css')]; "
+        "[p.read_bytes() for p in files+required]"
+    )
+
+
+def http_bytes(url, key=None):
     # Only metadata GET; external redirects/proxies never receive the application key.
     class NoRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, *args, **kwargs):
@@ -392,11 +402,15 @@ def http_json(url, key=None):
         ) as response:
             raw = response.read(1024 * 1024 + 1)
             need(len(raw) <= 1024 * 1024, "Metadata response too large.")
-            return parse_json(raw)
+            return raw
     except (urllib.error.URLError, TimeoutError, OSError):
         raise InstallError(
             "Service metadata unavailable. Check --status; setup has not tested inference."
         ) from None
+
+
+def http_json(url, key=None):
+    return parse_json(http_bytes(url, key))
 
 
 class Installer:
@@ -1019,11 +1033,7 @@ class Installer:
                     "python",
                     self.state["api_image"],
                     "-c",
-                    (
-                        "from pathlib import Path; assert __import__('os').getuid()==10001; "
-                        "files=list(Path('/app/src').rglob('*.py')); assert files; "
-                        "[p.read_bytes() for p in files]"
-                    ),
+                    image_readability_probe(),
                 ],
                 timeout=30,
             )
@@ -1064,6 +1074,16 @@ class Installer:
             metadata.get("metadata_ready") is True and metadata.get("inference_tested") is False,
             "Services started but metadata readiness failed. Use --status; no inference was attempted.",
         )
+        for route, filename in [
+            ("/", "index.html"),
+            ("/ui/app.js", "app.js"),
+            ("/ui/style.css", "style.css"),
+        ]:
+            expected = (self.root / "src/rag/web" / filename).read_bytes()
+            need(
+                sha(http_bytes(url + route)) == sha(expected),
+                "Browser UI entry or required asset is unavailable/changed. The installation is not ready; use --stop and review --rebuild.",
+            )
         self.state["phase"] = "ready"
         self.save()
         print("Services ready (metadata only; answer generation is not yet tested).")

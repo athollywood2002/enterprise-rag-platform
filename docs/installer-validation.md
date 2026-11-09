@@ -6,16 +6,20 @@ platform release.
 
 ## Checks performed
 
-- **72 focused offline installer tests passed.** They cover credential permissions,
+- **77 focused offline installer tests passed.** They cover credential permissions,
   redirection refusal, locks, interrupted writes at 25 commit points, image/model
   identity, independent installation rebuilds, external mode, GPU error classes,
   ownership checks, unsafe Compose inputs, status and scoped stop.
-- **846 base tests passed; 62 skipped; 4 subtests passed.** The skips include optional
+- **851 base tests passed; 62 skipped; 4 subtests passed.** The skips include optional
   parser coverage. One third-party Starlette/httpx deprecation warning was reported.
 - Ruff check and format check passed. All 28 existing JavaScript checks passed.
 - The 18 shell blocks in README/setup/developer/validation documentation passed shell syntax
   checks; 24 relative links/anchors in those files resolved. The normal installer
   refused macOS startup before creating installation state.
+- A separate Ubuntu 22.04 CI job uses stock `/usr/bin/python3` (3.10), checks the
+  platform guard and wrapper, and runs the installer module's tests without the
+  application's conftest/dependencies. This does not lower the application's
+  Python requirement or establish real-model Ubuntu support.
 - Actual Compose rendering passed for managed CPU, managed NVIDIA and external
   Ollama configurations. This checked service/volume sets, private ports, GPU
   reservation normalization and ownership. Rendering is not a GPU execution test.
@@ -38,6 +42,14 @@ Apple Silicon (Linux amd64 API under emulation), headless Chrome verified:
 4. Installer resume using the same API image ID and key, without a rebuild.
 5. Scoped stop/start, retained volumes and recovered saved job.
 6. Final scoped stop with the pre-existing container inventory unchanged.
+
+The web-asset follow-up extends the image's UID10001 probe beyond Python files to
+`index.html`, `app.js` and `style.css`. A disposable no-network container creates a
+root-owned fixture, drops to the real UID10001 and verifies that readable Python
+plus owner-only HTML fails specifically with PermissionError; the readable control
+passes. Neither the checkout nor the application image is chmodded. The installer
+also requests and hash-checks the public UI entry and assets before reporting ready,
+and the browser driver independently verifies their actual HTTP responses.
 
 The generated synthetic key did not appear in the retained run log. Test images,
 volumes and state were retained. Earlier failed synthetic iterations were also

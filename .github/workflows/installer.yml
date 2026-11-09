@@ -3,6 +3,21 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  installer-python310:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Stock Ubuntu interpreter and wrapper (no Docker or model startup)
+        run: |
+          /usr/bin/python3 -c "import sys; assert sys.version_info[:2] == (3, 10); from scripts.install import check_platform; check_platform()"
+          PATH=/usr/bin:/bin bash setup.sh --help
+      - name: Standalone stdlib installer tests under Python 3.10
+        run: |
+          /usr/bin/python3 -m venv "$RUNNER_TEMP/installer-python310"
+          "$RUNNER_TEMP/installer-python310/bin/python" -m pip install 'pytest>=8,<10'
+          # The application still requires 3.11+; its conftest imports are not needed here.
+          "$RUNNER_TEMP/installer-python310/bin/python" -m pytest --noconftest -q tests/test_installer.py
   installer:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
