@@ -1,89 +1,87 @@
 # Enterprise RAG Platform
 
-Ask a question about a folder of documents and inspect the passages behind the answer. FastAPI serves the browser UI, Ollama embeds text and generates answers, and Qdrant stores the vectors. The managed library keeps jobs and document revisions in SQLite. You can try the browser workflow without installing n8n.
+Select a folder, ask questions about its documents, and inspect the source passages
+behind each answer. The app uses a local model and a browser interface.
 
-## Docker browser quickstart
+![Folder preview in the actual browser UI, using synthetic example documents](docs/images/folder-preview.png)
 
-**What you need:** Git, Python 3 (to create a local key), curl, a POSIX shell such as bash, a desktop browser with a folder picker, and Docker Engine or Desktop with Compose v2 supporting `up --wait`. The API builds locally for Linux amd64 (emulated on Apple Silicon). Allow network access for the first build and the pinned Qdrant image. Have an Ollama server reachable **from the API container**, with a chat model and an embedding model already installed. The example uses `qwen3:8b` and `nomic-embed-text`. Run `ollama list` on the Ollama host to see your tags.
+*Example content from a synthetic test, not a screenshot of real-model answers.*
 
-### 1. Configure and start
+## System requirements
 
-Clone into Documents so the demo folder is easy to find in the browser picker. Run the remaining commands from the clone. If you already have a checkout, use that directory instead.
+- **Ubuntu 22.04 or 24.04, x86-64**, with Bash and Python 3.11+. These are installer
+  targets, not yet verified real-model platform support. Windows 11/WSL2 remains
+  unverified; Apple Silicon installation is deferred.
+- **Docker Engine and Compose v2 or newer**, with Docker running.
+  [Ubuntu Docker installation](https://docs.docker.com/engine/install/ubuntu/) ·
+  [Windows WSL2 setup](https://docs.docker.com/desktop/features/wsl/)
+- Internet access for the first build and model downloads. An NVIDIA GPU is
+  strongly recommended. Setup checks access inside Docker; CPU mode is available
+  with a warning, but its real-model latency has not been validated.
 
-```sh
-mkdir -p "$HOME/Documents"
-cd "$HOME/Documents"
-git clone https://github.com/athollywood2002/enterprise-rag-platform.git
-cd enterprise-rag-platform
-```
+Setup starts the API/browser UI, Qdrant and Ollama in separate containers. You do
+not need to install Qdrant or Ollama separately. The defaults are chat model
+`qwen3:8b` and embedding model `nomic-embed-text:latest`, used in the earlier small
+live test. An existing Ollama server is an [advanced option](docs/setup.md#external-ollama).
 
-Create the configuration once. This generates a key for your installation and refuses to overwrite an existing file.
+<a id="docker-browser-quickstart"></a>
 
-```sh
-(
-umask 077
-python3 - <<'PY'
-from pathlib import Path
-import secrets
-config = Path(".env.demo.example").read_text()
-config = config.replace("RAG_API_KEY=\n", f"RAG_API_KEY={secrets.token_urlsafe(32)}\n")
-config = config.replace("RAG_MODEL_MODE=unknown", "RAG_MODEL_MODE=real")
-with open(".env.demo", "x") as output:
-    output.write(config)
-PY
-)
-```
+## Install and open
 
-Open `.env.demo` in your local editor. Keep `OLLAMA_URL=http://host.docker.internal:11434` for an Ollama service reachable at the Docker host gateway, or enter the URL of your own reachable Ollama server. Set `OLLAMA_CHAT_MODEL` and `OLLAMA_EMBED_MODEL` to your installed tags. Keep the generated `RAG_API_KEY` handy for **Connect**. This file is ignored by Git and excluded from the image.
+Obtain this project version and put it in a durable directory, such as `~/rag`.
+Open that directory in a terminal, read `setup.sh` and its helper
+`scripts/install.py`, then run:
 
 ```sh
-docker compose --env-file .env.demo -f compose.demo.yaml config --quiet
-docker compose --env-file .env.demo -f compose.demo.yaml up -d --build --wait --wait-timeout 90
-curl -fsS http://127.0.0.1:18000/health
+bash setup.sh
 ```
 
-The default Compose project is `rag-text-csv-demo`. Use a fresh project for a clean library or resume your own existing project. The API binds to loopback by default. Qdrant has a project volume and no published port.
-
-### 2. Select, preview and ingest
-
-1. Open [the local UI](http://127.0.0.1:18000/). Paste **only the value** after `RAG_API_KEY=` from your local file into **API key**, then click **Connect**. Under **Models and services**, click **Check readiness** to check the model tags and Qdrant connection.
-2. Choose **Folder on this computer**. Set **Source name** to `router-demo`. Click **Select a folder**, open **Documents → enterprise-rag-platform → demo**, select **fixtures** and confirm the browser picker. The service receives files from that folder, including subfolders.
-3. Under **Review selection**, look for `runbook.txt` and `inventory.csv`, both eligible. Check the destination, byte count and any exclusions before clicking **Start ingestion**.
-4. On the first import, wait for both files to show **completed** under **Ingestion progress**. Uploading stages bytes; completion means the file is indexed. If you reimport the same `router-demo` source and unchanged files on retained volumes, they may instead show **skipped** with an unchanged-file detail: their compatible index is verified and they remain searchable, so proceed to Ask. An unsupported-file skip does not mean that file was indexed; check the per-file detail. To check recovery, reload the browser, connect again with the same key and select the same **Saved job**.
-
-### 3. Ask and inspect citations
-
-Choose **Documents from the selected job**. Ask **“What is the recovery code for demo-router-01 and which team owns it?”** Click **Ask the library**. For these public fixtures, look for **ORION** in the cited runbook excerpt and **NetworkOps** in the inventory row. Check the filenames, text and citation numbers even when the answer sounds right.
-
-The managed library accepts UTF-8 TXT, UTF-8 CSV with headers, and text-based PDFs. CSV rows retain their column labels. For a PDF, check the physical page number beside each cited excerpt. The [illustrated walkthrough](docs/ui-walkthrough.md) shows the interface and gives the results of a separate three-file live test.
-
-### 4. Stop and retain the library
+The first run builds the API and downloads missing models into this installation's
+own volume. When services are ready, open the printed browser URL. Setup checks
+metadata, not answer generation. To get the application key for **Connect**, run:
 
 ```sh
-docker compose --env-file .env.demo -f compose.demo.yaml down
+bash setup.sh --show-key
 ```
 
-This removes the project's containers and network. The named volumes `library-state` (SQLite and staged uploads) and `demo-qdrant` (vectors) persist. Keep the same project name and configuration when restarting. Omit volume-removal flags. Ollama is managed separately.
+This prints the existing key only to a terminal. Copy it into **API key**, then click
+**Connect**. Do not include the key in screenshots or troubleshooting output.
+For a headless server, use the [SSH tunnel instructions](docs/setup.md#headless-server).
 
-### If something goes wrong
+## Try a small folder
 
-| Symptom | What to check |
-| --- | --- |
-| UI won't open | Run `docker compose --env-file .env.demo -f compose.demo.yaml ps`. If port 18000 is occupied, set a free `RAG_PORT` in the file, run the start command again, and use that port in the browser and health URL. |
-| Connect returns 401 | Use the value of `RAG_API_KEY` from the file used to start this project. After a refresh the UI asks again. If you edited the key, run the start command to apply it. |
-| Authenticated, but models or Qdrant unavailable | Use **Check readiness**. Match the model tags to `ollama list`. Inside the API container, localhost is the API itself. On Linux a host-loopback-only Ollama listener may be unreachable via the gateway. Use a privately reachable endpoint. Check the Qdrant service with the Compose `ps` command above. |
-| Preview excludes a file or parsing fails | Read the per-file detail. Use UTF-8 text, CSV with unique nonempty headers and consistent rows, or an unencrypted PDF with extractable text on every page. Scans need OCR before import. Blank PDF pages can also cause rejection. The default per-file limit is 10 MiB. |
+1. Choose **Folder on this computer**, enter a source name, and select a folder of
+   TXT, CSV or text-based PDF files. `demo/fixtures` is a small example.
+2. Review the filenames, sizes and exclusions. Click **Start ingestion**.
+3. Wait for the files to complete. On a repeat import, **skipped / unchanged** means
+   the existing index was verified. Read the detail for other skips or failures.
+4. Choose **Documents from the selected job**, ask something you can check in the
+   files, and inspect **Cited sources**, including PDF page numbers.
 
-## Use n8n for automation
+You can refresh, reconnect with the same key and reopen the saved job. Scans need
+OCR before import. See the [illustrated walkthrough](docs/ui-walkthrough.md).
 
-[Import the manual workflow](demo/n8n/text-csv-demo.json) and follow the [n8n setup steps](demo/n8n/README.md). n8n reads the two demo files from its own runtime, labels the CSV fields, calls `/ingest` twice and then `/ask`. Set its API URL and select an **HTTP Header Auth** credential on the three HTTP nodes. Set its header name to `x-api-key` and its value to your API key.
+<a id="4-stop-and-retain-the-library"></a>
 
-**The workflow writes to the legacy collection. Its documents do not automatically appear in the browser’s managed library.** To search those files in the UI, ingest the folder there. For a new automation targeting the managed library, use the [library job API](docs/folder-library.md#api--n8n-integration).
+## Stop and resume
 
-## Demonstrated scope and limits
+```sh
+bash setup.sh --stop
+```
 
-The Docker/n8n text-and-CSV demo and the separate two-page PDF HTTP smoke both completed. In a later real browser run, three files produced four indexed chunks, the saved job reopened after refresh, and the maintainer accepted four answers and their citations. Attempt 3 formally remains `FAILED_INCOMPLETE` because the harness kept partial service logs. Shutdown was verified. The expected embedding/chat counts were not independently verified. [Results and development history](docs/CURRENT_STATUS.md)
+Documents, job history and downloaded models remain in this installation's volumes.
+Run `bash setup.sh` to resume without refreshing models or rebuilding the API.
 
-This is a local, single-instance prototype with a shared API key. OCR, tenant isolation and broad retrieval-quality evaluation are outside its demonstrated scope. Four chunks fit within the live test's five-result retrieval limit. The next task is a modest test with competing documents.
+## Automation and limits
 
-[Operating guide and limits](docs/folder-library.md) · [Architecture](docs/architecture.md) · [Developer setup and tests](docs/developer-reference.md) · [Collection safety](docs/collection-safety.md) · [MIT license](LICENSE)
+The [manual n8n workflow](demo/n8n/README.md) uses the legacy collection. Its files
+do not automatically appear in the browser library; import them in the UI too.
+
+This is a single-instance, shared-key prototype, without OCR or tenant isolation.
+The accepted live demo had four chunks with `top_k=5`, not a retrieval-selectivity
+test. Its mechanical result remains `FAILED_INCOMPLETE` for partial logs; shutdown
+was verified and model-call totals were unverified. [Accepted results and scope](docs/CURRENT_STATUS.md)
+
+[Setup, options and troubleshooting](docs/setup.md) ·
+[Operating guide](docs/folder-library.md) ·
+[Developer reference](docs/developer-reference.md) · [MIT license](LICENSE)
