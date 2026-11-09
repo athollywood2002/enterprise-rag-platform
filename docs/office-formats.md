@@ -10,6 +10,8 @@ These formats apply to browser uploads, configured read-only server folders and 
 | DOCX | Body headings, paragraphs and table rows in order | section, paragraph, table / row | Tracked changes fail: accept/reject them first. Nested tables, text boxes, content controls and fields fail with export guidance. Headers, footers, comments, foot/endnotes, images and embedded objects are excluded with warnings. No page numbers or OCR. Merged table cells are emitted once per row; layout is not reconstructed. |
 | RTF | Readable text, Unicode, paragraph boundaries | paragraph | Objects, images, fields, revisions, tables, comments and header/footer content fail with export guidance. Export to DOCX or plain text; no inferred pages. |
 
+| PPTX | Slide titles, text shapes, grouped text and tables in shape-tree order | slide / shape / table row | Speaker notes excluded with warnings. Hidden slides included with warnings. Images, charts and embedded objects excluded with warnings; no OCR or layout reading-order inference. Image-only decks fail. |
+
 Legacy `.doc`, `.xls`, `.ppt`, macros, OCR and LibreOffice conversion are outside this milestone. Never rename a legacy extension to bypass preview: content signatures are checked.
 
 ## Operation

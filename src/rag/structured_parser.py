@@ -199,6 +199,64 @@ def rtf_blocks(data, max_chars):
     return out.result()
 
 
+def pptx_blocks(data, max_chars, max_slides):
+    from pptx import Presentation
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+
+    package(data, "ppt/presentation.xml")
+    deck = Presentation(io.BytesIO(data))
+    if len(deck.slides) > max_slides:
+        raise DocumentError("slide_limit", "Presentation exceeds the configured slide limit.")
+    out = Blocks(max_chars)
+    for sn, slide in enumerate(deck.slides, 1):
+        title = slide.shapes.title.text if slide.shapes.title is not None else ""
+        if slide._element.get("show") == "0":
+            out.warnings.add(f"Slide {sn}: hidden slide text is included.")
+        if (
+            slide.has_notes_slide
+            and slide.notes_slide.notes_text_frame is not None
+            and slide.notes_slide.notes_text_frame.text.strip()
+        ):
+            out.warnings.add(f"Slide {sn}: speaker notes are excluded.")
+
+        def shapes(items, path="", sn=sn, title=title):
+            for number, shape in enumerate(items, 1):
+                identifier = path + str(number)
+                location = f"Slide {sn} · shape {identifier}"
+                if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                    shapes(shape.shapes, identifier + ".")
+                elif shape.has_table:
+                    table = shape.table
+                    header = " | ".join(cell.text for cell in table.rows[0].cells)
+                    for rn, row in enumerate(table.rows, 1):
+                        cells = [
+                            f"Column {cn} ({table.cell(0, cn - 1).text}): {cell.text}"
+                            for cn, cell in enumerate(row.cells, 1)
+                            if not cell.is_spanned
+                        ]
+                        out.add(
+                            " | ".join(cells),
+                            location + f" · table row {rn}",
+                            slide_number=sn,
+                            section=title,
+                            table=identifier,
+                            row=rn,
+                            table_header=header,
+                        )
+                elif shape.has_text_frame:
+                    out.add(shape.text, location, slide_number=sn, section=title)
+                else:
+                    out.warnings.add(
+                        f"{location}: non-text content (image/chart/object) is excluded; no OCR."
+                    )
+
+        before = len(out.items)
+        shapes(slide.shapes)
+        if len(out.items) == before:
+            out.warnings.add(f"Slide {sn}: no extractable text.")
+    return out.result()
+
+
 def parse_structured(data, name, max_chars, max_pages=200):
     try:
         suffix = Path(name).suffix.lower()
@@ -206,6 +264,8 @@ def parse_structured(data, name, max_chars, max_pages=200):
             return docx_blocks(data, max_chars)
         if suffix == ".rtf":
             return rtf_blocks(data, max_chars)
+        if suffix == ".pptx":
+            return pptx_blocks(data, max_chars, max_pages)
         raise DocumentError("unsupported", "Unsupported structured format.")
     except DocumentError:
         raise
@@ -222,6 +282,8 @@ def chunks_from_blocks(document, size=900, overlap=150, max_chunks=3000):
     for block in document["blocks"]:
         text = block["text"].strip()
         context = block.get("section", "")
+        if block.get("table_header") and len(block["table_header"]) <= 150:
+            context += "\nTable headers: " + block["table_header"]
         # Long headings remain indexed as text, but are not repeated without bound.
         prefix = (context + "\n") if context and len(context) <= 200 and text != context else ""
         width = size - len(prefix)

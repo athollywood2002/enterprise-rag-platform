@@ -140,3 +140,51 @@ def test_old_parser_index_remains_searchable(library, monkeypatch):
     assert finish(lib, upload(lib, {"old.txt": b"Old retained fact"}))["counts"]["successful"] == 1
     monkeypatch.setattr(lib, "model_context", current)
     assert lib.ask("retained")["sources"][0]["text"] == "Old retained fact"
+
+
+def pptx_bytes(value="Café launch", *, notes=False):
+    from pptx import Presentation
+    from pptx.util import Inches
+
+    deck = Presentation()
+    slide = deck.slides.add_slide(deck.slide_layouts[5])
+    slide.shapes.title.text = value
+    group = slide.shapes.add_group_shape()
+    group.shapes.add_textbox(0, 0, Inches(2), Inches(1)).text = "Grouped Unicode — Zoë"
+    table = slide.shapes.add_table(2, 2, 0, Inches(2), Inches(4), Inches(2)).table
+    for row, values in zip(table.rows, [("Product", "Budget USD"), ("Atlas", "3200")], strict=True):
+        for cell, text in zip(row.cells, values, strict=True):
+            cell.text = text
+    if notes:
+        slide.notes_slide.notes_text_frame.text = "Private speaker notes"
+    out = io.BytesIO()
+    deck.save(out)
+    return out.getvalue()
+
+
+def test_pptx_group_tables_notes_and_slide_locations():
+    result = parse_structured(pptx_bytes(notes=True), "a.pptx", 10000)
+    assert all(b["slide_number"] == 1 and b["page_number"] is None for b in result["blocks"])
+    assert any("Grouped Unicode" in b["text"] for b in result["blocks"])
+    assert any("Atlas" in b["text"] and "3200" in b["text"] for b in result["blocks"])
+    assert result["warnings"] == ["Slide 1: speaker notes are excluded."]
+    assert "Private speaker notes" not in str(result["blocks"])
+    with pytest.raises(DocumentError, match="slide limit"):
+        parse_structured(pptx_bytes(), "a.pptx", 10000, max_pages=0)
+
+
+def test_pptx_managed_replacement_and_corruption(library):
+    lib = library
+    data = pptx_bytes()
+    assert finish(lib, upload(lib, {"nested/deck.pptx": data}))["counts"]["successful"] == 1
+    assert finish(lib, upload(lib, {"nested/deck.pptx": data}))["counts"]["skipped"] == 1
+    assert (
+        finish(lib, upload(lib, {"nested/deck.pptx": pptx_bytes("New title")}))["counts"][
+            "successful"
+        ]
+        == 1
+    )
+    previous = lib.documents()["documents"][0]["revision"]
+    assert finish(lib, upload(lib, {"nested/deck.pptx": b"bad"}))["counts"]["failed"] == 1
+    assert lib.documents()["documents"][0]["revision"] == previous
+    assert all(s["slide_number"] == 1 for s in lib.ask("title")["sources"])
