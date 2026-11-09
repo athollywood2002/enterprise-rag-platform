@@ -7,8 +7,12 @@ import re
 import sys
 from pathlib import Path
 
-PARSER_VERSION = "folder-v2-docx-rtf-locations"
-COMPATIBLE_PARSERS = ("folder-v1-pypdf-text-csv-labels", PARSER_VERSION)
+PARSER_VERSION = "folder-v2.1-docx-grid-rtf-codepages"
+COMPATIBLE_PARSERS = (
+    "folder-v1-pypdf-text-csv-labels",
+    "folder-v2-docx-rtf-locations",
+    PARSER_VERSION,
+)
 FORMATS = {".txt", ".csv", ".pdf", ".docx", ".rtf"}
 
 
