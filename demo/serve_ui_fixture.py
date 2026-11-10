@@ -27,7 +27,8 @@ def main():
 
     def model(request):
         import json
-        import re
+
+        from demo.ollama_stub import request_excerpts
 
         if request.url.path == "/api/tags":
             return httpx.Response(
@@ -39,10 +40,7 @@ def main():
         if request.url.path == "/api/embed":
             return httpx.Response(200, json={"embeddings": [[1.0, 0.0, 0.0]]})
         data = json.loads(request.content)
-        excerpts = re.findall(
-            r"\[(\d+)\] ([^\n]+) \(page ([^,]+), chunk [^:]+: ([^\n]+)",
-            data["messages"][0]["content"],
-        )
+        _, excerpts = request_excerpts(data["messages"])
         code = next(n for n, source, page, text in excerpts if "ORION" in text)
         owner = next(n for n, source, page, text in excerpts if "NetworkOps" in text)
         return httpx.Response(
