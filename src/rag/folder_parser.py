@@ -7,8 +7,13 @@ import re
 import sys
 from pathlib import Path
 
-PARSER_VERSION = "folder-v1-pypdf-text-csv-labels"
-FORMATS = {".txt", ".csv", ".pdf"}
+PARSER_VERSION = "folder-v2.1-docx-grid-rtf-codepages"
+COMPATIBLE_PARSERS = (
+    "folder-v1-pypdf-text-csv-labels",
+    "folder-v2-docx-rtf-locations",
+    PARSER_VERSION,
+)
+FORMATS = {".txt", ".csv", ".pdf", ".docx", ".rtf"}
 
 
 class DocumentError(ValueError):
@@ -21,7 +26,7 @@ def parse_pages(data: bytes, name: str, max_pages=200, max_chars=2_000_000):
     """Return (text, physical PDF page or None), without crossing PDF pages."""
     suffix = Path(name).suffix.lower()
     if suffix not in FORMATS:
-        raise DocumentError("unsupported", "Use TXT, CSV, or a text-based PDF.")
+        raise DocumentError("unsupported", "Use TXT, CSV, text PDF, DOCX or RTF.")
     if not data:
         raise DocumentError("empty", "The file is empty.")
     pages = []
@@ -101,6 +106,10 @@ def parse_pages(data: bytes, name: str, max_pages=200, max_chars=2_000_000):
 
 
 def chunks_from_pages(pages, size=900, overlap=150, max_chunks=3000):
+    if isinstance(pages, dict):
+        from .structured_parser import chunks_from_blocks
+
+        return chunks_from_blocks(pages, size, overlap, max_chunks)
     chunks = []
     for text, page in pages:
         text = re.sub(r"\s+", " ", text).strip()
@@ -115,6 +124,34 @@ def chunks_from_pages(pages, size=900, overlap=150, max_chunks=3000):
     return chunks
 
 
+def parse_managed(data, name, max_pages=200, max_chars=2_000_000):
+    if Path(name).suffix.lower() in {".docx", ".rtf"}:
+        from .structured_parser import parse_structured
+
+        return parse_structured(data, name, max_chars, max_pages)
+    pages = parse_pages(data, name, max_pages, max_chars)
+    if Path(name).suffix.lower() == ".txt":
+        from .structured_parser import Blocks
+
+        out = Blocks(max_chars)
+        section = ""
+        # Keep paragraphs and Markdown headings intact instead of flattening first.
+        for number, paragraph in enumerate(
+            re.split(r"\n\s*\n|(?=^#{1,6} )", pages[0][0], flags=re.MULTILINE), 1
+        ):
+            lines = paragraph.strip().splitlines()
+            if lines and re.match(r"^#{1,6} ", lines[0]):
+                section = re.sub(r"^#{1,6} +", "", lines[0])
+            out.add(
+                paragraph,
+                f"Section {section or '(untitled)'} · paragraph {number}",
+                section=section,
+                paragraph=number,
+            )
+        return out.result()
+    return pages
+
+
 def main():
     # The worker starts this child with a wall deadline. OS limits bound hostile PDF expansion.
     if sys.platform != "linux":
@@ -124,10 +161,12 @@ def main():
     resource.setrlimit(resource.RLIMIT_AS, (512 * 1024**2, 512 * 1024**2))
     resource.setrlimit(resource.RLIMIT_FSIZE, (32 * 1024**2, 32 * 1024**2))
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-    path, name, output, max_pages, max_chars = sys.argv[1:]
+    path, name, output, max_pages, max_chars, max_chunks = sys.argv[1:]
     try:
+        pages = parse_managed(Path(path).read_bytes(), name, int(max_pages), int(max_chars))
         result = {
-            "pages": parse_pages(Path(path).read_bytes(), name, int(max_pages), int(max_chars))
+            "chunks": chunks_from_pages(pages, max_chunks=int(max_chunks)),
+            "warnings": pages.get("warnings", []) if isinstance(pages, dict) else [],
         }
     except DocumentError as error:
         result = {"error": error.code, "message": str(error)}

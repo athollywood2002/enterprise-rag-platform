@@ -1,0 +1,302 @@
+"""Bounded text-only Office extraction. Never executes embedded content."""
+
+import io
+import re
+import zipfile
+from pathlib import Path
+
+from .folder_parser import DocumentError
+
+MAX_PARTS = 4096
+MAX_EXPANDED = 64 * 1024**2
+MAX_BLOCKS = 10000
+
+
+def package(data, expected):
+    if data.startswith(b"\xd0\xcf\x11\xe0"):
+        raise DocumentError(
+            "encrypted_or_legacy",
+            "Encrypted Office or legacy binary file. Export an unencrypted modern Office file.",
+        )
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(data))
+        parts = archive.infolist()
+        if len(parts) > MAX_PARTS or sum(p.file_size for p in parts) > MAX_EXPANDED:
+            raise DocumentError(
+                "expansion_limit", "Office package exceeds part/expanded-byte limits."
+            )
+        if len({p.filename for p in parts}) != len(parts):
+            raise DocumentError("malformed_office", "Office package contains duplicate parts.")
+        for p in parts:
+            if p.flag_bits & 1:
+                raise DocumentError("encrypted", "Encrypted Office packages are unsupported.")
+            if p.file_size > 32 * 1024**2 or p.file_size > max(p.compress_size, 1) * 200:
+                raise DocumentError(
+                    "expansion_limit", "Office package expansion exceeds safe limits."
+                )
+            if p.filename.endswith((".xml", ".rels")):
+                xml = archive.read(p).replace(b"\x00", b"")
+                if b"<!DOCTYPE" in xml.upper() or b"<!ENTITY" in xml.upper():
+                    raise DocumentError("unsafe_xml", "DTD/entity declarations are unsupported.")
+            if "vbaproject" in p.filename.lower():
+                raise DocumentError(
+                    "macros", "Macro-enabled content is unsupported. Export a macro-free file."
+                )
+        if expected not in archive.namelist():
+            raise DocumentError(
+                "malformed_office", "File contents do not match its Office extension."
+            )
+        return archive
+    except DocumentError:
+        raise
+    except (zipfile.BadZipFile, OSError, RuntimeError, ValueError) as error:
+        raise DocumentError(
+            "malformed_office", "Invalid Office package. Export a fresh unencrypted file."
+        ) from error
+
+
+class Blocks:
+    def __init__(self, max_chars):
+        self.items = []
+        self.warnings = set()
+        self.count = 0
+        self.max_chars = max_chars
+
+    def add(self, text, location, **metadata):
+        if not text.strip():
+            return
+        self.count += len(text)
+        if self.count > self.max_chars or len(self.items) >= MAX_BLOCKS:
+            raise DocumentError("text_limit", "Document exceeds extracted text/block limits.")
+        self.items.append({"text": text, "page_number": None, "location": location, **metadata})
+
+    def result(self):
+        if not self.items:
+            raise DocumentError(
+                "empty",
+                "No usable text found; image-only content requires OCR, which is not provided.",
+            )
+        return {"blocks": self.items, "warnings": sorted(self.warnings)}
+
+
+def docx_blocks(data, max_chars):
+    from docx import Document
+    from docx.table import Table
+    from docx.text.paragraph import Paragraph
+
+    archive = package(data, "word/document.xml")
+    body = archive.read("word/document.xml")
+    # Reject revisions rather than silently choosing between inserted/deleted text.
+    if re.search(rb"<w:(?:ins|del|moveFrom|moveTo)\b", body):
+        raise DocumentError(
+            "tracked_changes", "Accept or reject tracked changes in Word, then save and reimport."
+        )
+    doc = Document(io.BytesIO(data))
+    local_names = {element.tag.rsplit("}", 1)[-1] for element in doc.element.body.iter()}
+    if local_names & {"ins", "del", "moveFrom", "moveTo"} or any(
+        n.endswith("PrChange") for n in local_names
+    ):
+        raise DocumentError(
+            "tracked_changes", "Accept or reject tracked changes in Word, then save and reimport."
+        )
+    if local_names & {"txbxContent", "altChunk", "sdt", "fldSimple", "instrText"}:
+        raise DocumentError(
+            "unsupported_word_content",
+            "Text boxes, content controls, linked content or fields require text/PDF export.",
+        )
+    out = Blocks(max_chars)
+    names = archive.namelist()
+    for marker, warning in [
+        ("word/comments", "Comments are excluded."),
+        ("word/header", "Headers are excluded."),
+        ("word/footer", "Footers are excluded."),
+        ("word/footnotes", "Footnotes are excluded."),
+        ("word/endnotes", "Endnotes are excluded."),
+        ("word/embeddings/", "Embedded objects are excluded; no object is executed."),
+        ("word/media/", "Images are excluded; no OCR."),
+    ]:
+        if any(n.startswith(marker) for n in names):
+            out.warnings.add(warning)
+    if re.search(rb"<w:(?:txbxContent|altChunk|sdt|fldSimple)\b", body) or b"<w:instrText" in body:
+        raise DocumentError(
+            "unsupported_word_content",
+            "Text boxes, content controls, linked content or fields require export to plain text/PDF for complete extraction.",
+        )
+    section = ""
+    paragraph = 0
+    table = 0
+    for element in doc.iter_inner_content():
+        if isinstance(element, Paragraph):
+            paragraph += 1
+            text = element.text
+            if element.style and element.style.name.startswith("Heading"):
+                section = text
+            out.add(
+                text,
+                f"Section {section or '(untitled)'} · paragraph {paragraph}",
+                section=section,
+                paragraph=paragraph,
+            )
+        elif isinstance(element, Table):
+            table += 1
+            # Nested tables require explicit export rather than silently dropping their values.
+            if any(cell.tables for row in element.rows for cell in row.cells):
+                raise DocumentError(
+                    "nested_table", "Nested Word tables require flattening or text/PDF export."
+                )
+            width = len(element.columns)
+            headers = {}
+            for rn, row in enumerate(element.rows, 1):
+                grid = row.cells
+                before, after = row.grid_cols_before, row.grid_cols_after
+                if before + len(grid) + after != width:
+                    raise DocumentError(
+                        "table_grid", "Word table grid is inconsistent; export a fresh DOCX."
+                    )
+                if rn == 1:
+                    headers = {before + i + 1: cell.text for i, cell in enumerate(grid)}
+                cells = []
+                index = 0
+                while index < len(grid):
+                    cell = grid[index]
+                    end = index + 1
+                    while end < len(grid) and grid[end]._tc is cell._tc:
+                        end += 1
+                    first, last = before + index + 1, before + end
+                    label = f"Column {first}" if first == last else f"Columns {first}–{last}"
+                    names = list(dict.fromkeys(headers.get(c, "") for c in range(first, last + 1)))
+                    names = [name for name in names if name]
+                    if rn > 1 and names:
+                        label += " (" + " / ".join(names) + ")"
+                    cells.append(label + ": " + "\n".join(p.text for p in cell.paragraphs))
+                    index = end
+                out.add(
+                    " | ".join(cells),
+                    f"Section {section or '(untitled)'} · table {table} · row {rn}",
+                    section=section,
+                    table=table,
+                    row=rn,
+                )
+    return out.result()
+
+
+def rtf_encoding(raw):
+    """One ANSI code page only; striprtf cannot safely restore mixed font encodings.
+
+    Tokenize controls so an escaped backslash is never mistaken for a declaration.
+    Convert literal high bytes to hex escapes, preserving Unicode fallback counts.
+    """
+    controls = list(re.finditer(r"\\(?:[a-zA-Z]+-?\d* ?|'[0-9a-fA-F]{2}|[^a-zA-Z])", raw))
+    words = []
+    for match in controls:
+        word = re.fullmatch(r"\\([a-zA-Z]+)(-?\d*) ?", match.group())
+        if word:
+            words.append((match, word[1], word[2]))
+    pages = {value for _, word, value in words if word == "ansicpg"}
+    page = next(iter(pages)) if pages else "1252"
+    charset = {"1252": "0", "1251": "204"}.get(page)
+    invalid = len(pages) > 1 or charset is None
+    for _, word, value in words:
+        if word in {"mac", "pc", "pca"}:
+            invalid = True
+        if word == "fcharset" and value not in {"0", "1", charset}:
+            invalid = True
+        if word == "cpg" and value != page:
+            invalid = True
+    if invalid:
+        raise DocumentError(
+            "unsupported_rtf_encoding",
+            "RTF supports a single Windows-1252 or Windows-1251 code page. Mixed/font-specific or other encodings require Unicode TXT or DOCX export.",
+        )
+    # All font declarations now agree with the selected page. Remove charset
+    # controls because striprtf otherwise hardcodes fcharset0 to cp1252.
+    for match, word, _ in reversed(words):
+        if word in {"fcharset", "cpg"}:
+            raw = raw[: match.start()] + raw[match.end() :]
+    raw = "".join(f"\\'{ord(c):02x}" if ord(c) >= 128 else c for c in raw)
+    return raw, "cp" + page
+
+
+def rtf_blocks(data, max_chars):
+    from striprtf.striprtf import rtf_to_text
+
+    raw = data.decode("latin-1")
+    if not re.match(r"\s*\{\\rtf1\b", raw):
+        raise DocumentError("malformed_rtf", "Not a valid RTF document. Export a fresh RTF file.")
+    # Fail closed for content the text converter cannot represent completely.
+    if re.search(
+        r"\\(?:object|pict|field|annotation|header\w*|footer\w*|revised|deleted|trowd|footnote|bin)(?:-?\d+)?\b",
+        raw,
+    ):
+        raise DocumentError(
+            "unsupported_rtf_content",
+            "RTF objects, images, fields, comments, headers/footers, revisions and tables require plain text or DOCX export.",
+        )
+    depth = 0
+    for token in re.finditer(r"\\[\\{}]|[{}]", raw):
+        if token.group() == "{":
+            depth += 1
+        if token.group() == "}":
+            depth -= 1
+        if depth < 0 or depth > 256:
+            raise DocumentError("malformed_rtf", "RTF group nesting is invalid or too deep.")
+    if depth:
+        raise DocumentError("malformed_rtf", "RTF contains unclosed groups.")
+    try:
+        raw, encoding = rtf_encoding(raw)
+        text = rtf_to_text(raw, encoding=encoding, errors="strict")
+        # striprtf emits signed UTF-16 code units; join valid surrogate pairs.
+        text = text.encode("utf-16-le", "surrogatepass").decode("utf-16-le")
+    except DocumentError:
+        raise
+    except (UnicodeError, ValueError, LookupError) as error:
+        raise DocumentError("malformed_rtf", "RTF text encoding is invalid.") from error
+    out = Blocks(max_chars)
+    for number, paragraph in enumerate(text.splitlines(), 1):
+        out.add(paragraph, f"Paragraph {number}", paragraph=number)
+    return out.result()
+
+
+def parse_structured(data, name, max_chars, max_pages=200):
+    try:
+        suffix = Path(name).suffix.lower()
+        if suffix == ".docx":
+            return docx_blocks(data, max_chars)
+        if suffix == ".rtf":
+            return rtf_blocks(data, max_chars)
+        raise DocumentError("unsupported", "Unsupported structured format.")
+    except DocumentError:
+        raise
+    except Exception as error:
+        raise DocumentError(
+            "malformed_office", "Document could not be parsed. Export a valid unencrypted file."
+        ) from error
+
+
+def chunks_from_blocks(document, size=900, overlap=150, max_chunks=3000):
+    if size <= 0 or not 0 <= overlap < size:
+        raise ValueError("Require size > overlap >= 0")
+    chunks = []
+    for block in document["blocks"]:
+        text = block["text"].strip()
+        context = block.get("section", "")
+        # Long headings remain indexed as text, but are not repeated without bound.
+        prefix = (context + "\n") if context and len(context) <= 200 and text != context else ""
+        width = size - len(prefix)
+        for start in range(0, len(text), width - min(overlap, width - 1)):
+            part = text[start : start + width]
+            chunk = {
+                **block,
+                "text": prefix + part,
+                "chunk": len(chunks),
+                "warnings": document.get("warnings", []),
+            }
+            if len(text) > width:
+                chunk["continuation"] = start > 0
+                chunk["location"] += f" · characters {start + 1}–{start + len(part)}"
+            chunks.append(chunk)
+            if len(chunks) > max_chunks:
+                raise DocumentError("chunk_limit", "Document exceeds the configured chunk limit.")
+            if start + width >= len(text):
+                break
+    return chunks

@@ -229,6 +229,19 @@ class RagEngine:
                 "score": round(float(p.score), 4),
                 "text": p.payload["text"],
                 "page_number": p.payload.get("page_number"),
+                **{
+                    key: p.payload[key]
+                    for key in (
+                        "location",
+                        "section",
+                        "paragraph",
+                        "table",
+                        "row",
+                        "warnings",
+                        "continuation",
+                    )
+                    if key in p.payload
+                },
                 **({"document_id": p.payload["document_id"]} if "document_id" in p.payload else {}),
             }
             for p in points
@@ -236,7 +249,7 @@ class RagEngine:
         if not sources:
             return {"answer": "I don't know based on the available documents.", "sources": []}
         context = "\n\n".join(
-            f"[{i}] {s['source']} (page {s['page_number']}, chunk {s['chunk']}): {s['text']}"
+            f"[{i}] {s['source']} ({s.get('location') or 'page ' + str(s['page_number'])}, chunk {s['chunk']}): {s['text']}"
             for i, s in enumerate(sources, 1)
         )
         prompt = (
