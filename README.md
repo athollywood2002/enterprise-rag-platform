@@ -78,12 +78,12 @@ For a headless server, use the [SSH tunnel instructions](docs/setup.md#headless-
 ## Try a small folder
 
 1. Choose **Folder on this computer**, enter a source name, and select a folder of
-   TXT, CSV or text-based PDF files. `demo/fixtures` is a small example.
+   TXT, CSV, text-based PDF, DOCX, RTF, PPTX or XLSX files. `demo/fixtures` is a small example.
 2. Review the filenames, sizes and exclusions. Click **Start ingestion**.
 3. Wait for the files to complete. On a repeat import, **skipped / unchanged** means
    the existing index was verified. Read the detail for other skips or failures.
 4. Choose **Documents from the selected job**, ask something you can check in the
-   files, and inspect **Cited sources**, including PDF page numbers.
+   files, and inspect **Retrieved excerpts**, including page, section, slide or sheet/cell locations.
 
 You can refresh, reconnect with the same key and reopen the saved job. Scans need
 OCR before import. See the [illustrated walkthrough](docs/ui-walkthrough.md).
@@ -113,5 +113,5 @@ was verified and model-call totals were unverified. [Accepted results and scope]
 [Operating guide](docs/folder-library.md) ·
 [Developer reference](docs/developer-reference.md) · [MIT license](LICENSE)
 
-Managed DOCX and RTF support, extraction exclusions, citation locations and safe
+Managed Office and RTF support, extraction exclusions, citation locations and safe
 reindexing are documented in the [format support matrix](docs/office-formats.md).

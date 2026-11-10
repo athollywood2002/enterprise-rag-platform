@@ -59,4 +59,4 @@ jobs:
               )
           PY
       - name: Cross-platform Office parsers and Linux-only integration selection
-        run: python -m pytest -q -rs tests/test_office_formats.py tests/test_word_rtf_regressions.py tests/test_parser_correction_migration.py
+        run: python -m pytest -q -rs tests/test_office_formats.py tests/test_word_rtf_regressions.py tests/test_parser_correction_migration.py tests/test_xlsx_visibility.py
