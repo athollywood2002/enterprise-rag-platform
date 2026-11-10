@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     ollama_chat_model: str = "qwen3:8b"
     ollama_embed_model: str = "nomic-embed-text"
     ollama_num_predict: int | None = None
+    # Preserve existing requests unless explicitly configured. Validate model support at dispatch.
+    ollama_think: Literal["default", "on", "off"] = "default"
     qdrant_collection: str = "rag_documents_v1"
     api_key: str
     # Set to a persistent directory to enable the single-instance folder library.

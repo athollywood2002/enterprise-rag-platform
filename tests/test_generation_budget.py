@@ -338,3 +338,148 @@ def test_nontext_content_fails_without_retry(monkeypatch, content):
     with pytest.raises(TypeError, match="non-text"):
         engine.ask("Synthetic question?")
     assert len(sent) == 2
+
+
+def test_t15_empty_at_1536_has_actionable_notice_and_no_retry(monkeypatch):
+    reply = {
+        "message": {"content": "", "thinking": "PRIVATE_TRACE"},
+        "done": True,
+        "done_reason": "length",
+        "eval_count": 1536,
+    }
+    engine, sent = mocked_engine(monkeypatch, reply, 1536)
+    engine.db.query_points.return_value.points[0].payload["text"] = (
+        "Vendor VEN-011 annual cost: USD 24000; renewal requires Finance approval."
+    )
+    result = engine.ask("What is the vendor's annual cost?")
+    assert result["sources"] and result["answer"] == ""
+    assert result["generation"]["status"] == "limit"
+    assert result["generation"]["eval_count"] == 1536
+    assert result["generation"]["done_reason"] == "length"
+    assert "annual cost: USD 24000" in sent[-1][1]["messages"][0]["content"]
+    assert "configured generation limit" in result["generation_notice"]
+    assert "PRIVATE_TRACE" not in json.dumps(result)
+    assert len(sent) == 2
+
+
+@pytest.mark.parametrize("mode", ["on", "off"])
+def test_thinking_control_checks_capability_before_inference(mode):
+    config = settings(ollama_think=mode)
+    sent = []
+
+    def service(request):
+        sent.append(request.url.path)
+        return httpx.Response(200, json={"capabilities": ["completion"]})
+
+    engine = core.RagEngine(
+        config,
+        qdrant=Mock(),
+        model_client=lambda _: httpx.Client(transport=httpx.MockTransport(service)),
+    )
+    with pytest.raises(ValueError, match="does not advertise the requested thinking"):
+        engine.ask("Question")
+    assert sent == ["/api/show"]
+
+
+@pytest.mark.parametrize(
+    "values,mode,accepted",
+    [
+        ([True, False], "off", True),
+        ([True, False], "on", True),
+        (["low", "high"], "off", False),
+        ([False], "on", False),
+    ],
+)
+def test_exact_advertised_thinking_values(monkeypatch, values, mode, accepted):
+    engine, _ = mocked_engine(monkeypatch, completed_reply())
+    engine.config.ollama_think = mode
+    sent = []
+
+    def service(request):
+        payload = json.loads(request.content)
+        sent.append((request.url.path, payload))
+        if request.url.path == "/api/show":
+            return httpx.Response(200, json={"thinking": {"values": values}})
+        if request.url.path == "/api/embed":
+            return httpx.Response(200, json={"embeddings": [[1.0, 0.0]]})
+        return httpx.Response(200, json=completed_reply())
+
+    engine._model_client = lambda _: httpx.Client(transport=httpx.MockTransport(service))
+    if accepted:
+        engine.ask("Question")
+        assert sent[-1][1]["think"] is (mode == "on")
+    else:
+        with pytest.raises(ValueError, match="does not advertise"):
+            engine.ask("Question")
+        assert len(sent) == 1
+
+
+@pytest.mark.parametrize(
+    "content", ["<think>PRIVATE_TRACE</think>Visible [1]", "<think>PRIVATE_TRACE"]
+)
+def test_tagged_reasoning_is_never_returned(monkeypatch, content):
+    engine, _ = mocked_engine(monkeypatch, completed_reply() | {"message": {"content": content}})
+    result = engine.ask("Question")
+    assert "PRIVATE_TRACE" not in json.dumps(result)
+    assert result["answer"] in {"Visible [1]", ""}
+
+
+@pytest.mark.parametrize(
+    "case,excerpts,bad_answer,required_instruction",
+    [
+        (
+            "T06",
+            ["Security reviews access.", "The learning budget is USD 1200 with manager approval."],
+            "The learning budget is USD 1200 [1].",
+            "exact cited excerpt",
+        ),
+        (
+            "T18",
+            [
+                "Internal policy permits quarterly review.",
+                "The customer contract contains no unilateral termination clause.",
+            ],
+            "The contract permits quarterly termination [1].",
+            "Do not extrapolate contract terms",
+        ),
+        (
+            "T20",
+            [
+                "Version 1 required 48 hours. This rule is superseded; the replacement deadline is not in this excerpt."
+            ],
+            "The current deadline is 48 hours [1].",
+            "replacement is unknown",
+        ),
+        (
+            "T25",
+            [
+                "Release requires both the numerical threshold and written Security approval; exceptions need director approval."
+            ],
+            "Meeting the threshold authorizes release [1].",
+            "Preserve material conditions",
+        ),
+    ],
+)
+def test_grounding_adversaries_never_gain_semantic_credit_from_valid_numbers(
+    monkeypatch, case, excerpts, bad_answer, required_instruction
+):
+    # Deliberately wrong mock replies test the evidence boundary, not model quality.
+    engine, sent = mocked_engine(
+        monkeypatch, completed_reply() | {"message": {"content": bad_answer}}
+    )
+    points = [
+        SimpleNamespace(
+            id=i,
+            score=1.0,
+            payload={"source": case + ".txt", "chunk": i, "page_number": None, "text": text},
+        )
+        for i, text in enumerate(excerpts)
+    ]
+    engine.db.query_points.return_value = SimpleNamespace(points=points)
+    engine.db.scroll.return_value = (points, None)
+    result = engine.ask("What is the applicable requirement?", query_filter="committed-only")
+    assert is_completed_generation(result)  # Protocol completion is not grounding.
+    assert result["retrieval"]["claim_support_verified"] is False
+    assert result["answer"] == bad_answer
+    assert required_instruction in sent[-1][1]["messages"][0]["content"]
+    assert "[1]" in result["answer"] and result["sources"]

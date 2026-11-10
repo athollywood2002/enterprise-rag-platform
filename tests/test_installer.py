@@ -142,10 +142,13 @@ class Docker:
                 self.images["sha256:" + str(self.builds) * 64] = "sha256:" + str(self.builds) * 64
                 return 0, ""
             if "ps" in args:
-                return 0, "container-id" if self.running else ""
+                return 0, "container-id" if self.running and getattr(
+                    self, "running_project", None
+                ) == self.owner.state["project"] else ""
             if "up" in args:
                 if args[-1] == "api":
                     self.running = True
+                    self.running_project = self.owner.state["project"]
                 return 0, ""
             if "down" in args:
                 self.running = False
@@ -194,7 +197,7 @@ def installation(tmp_path, monkeypatch):
     runner = Docker()
     installer = m.Installer(tmp_path, runner)
     installer.directory.mkdir(mode=0o700)
-    monkeypatch.setattr(installer, "check_port", lambda: None)
+    monkeypatch.setattr(installer, "check_port", lambda *args: None)
     runner.owner = installer
     return installer, runner
 
@@ -708,7 +711,7 @@ def test_status_is_read_only_when_models_missing(installation):
     )
 
 
-def test_independent_installation_build_cannot_retag_first_saved_image(installation):
+def test_independent_installation_build_cannot_retag_first_saved_image(installation, monkeypatch):
     first, docker = installation
     first.command(m.arguments(["--device", "cpu"]))
     saved = first.state["api_image"]
@@ -721,6 +724,8 @@ def test_independent_installation_build_cannot_retag_first_saved_image(installat
     for name in ("index.html", "app.js", "style.css"):
         (other / "src/rag/web" / name).write_bytes((first.root / "src/rag/web" / name).read_bytes())
     second = m.Installer(other, docker)
+    # Match the fake-installation fixture: this test checks image identity, not sockets.
+    monkeypatch.setattr(second, "check_port", lambda *args: None)
     docker.owner = second
     second.command(m.arguments(["--device", "cpu"]))
     assert second.state["api_image"] != saved
@@ -908,3 +913,100 @@ def test_bad_public_ui_response_prevents_ready_report(installation, monkeypatch,
     installer.read()
     assert installer.state["phase"] == "provisioning"
     assert "Services ready" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("mapping", ["old-port", "wrong-address", "correct"])
+def test_owned_container_only_excuses_matching_published_port(installation, monkeypatch, mapping):
+    installer, _ = installation
+    installer.initialize(m.arguments([]))
+    installer.snapshot()
+    monkeypatch.setattr(installer, "compose", lambda *a, **k: (0, "owned-api"))
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        port = listener.getsockname()[1]
+        installer.state["port"] = port
+        inspected = [
+            {
+                "Config": {
+                    "Labels": {
+                        "com.docker.compose.project": installer.state["project"],
+                        "com.docker.compose.project.working_dir": str(installer.root),
+                        "com.docker.compose.service": "api",
+                    }
+                },
+                "State": {"Running": True},
+                "NetworkSettings": {
+                    "Ports": {
+                        "8000/tcp": [
+                            {
+                                "HostIp": "0.0.0.0" if mapping == "wrong-address" else "127.0.0.1",
+                                "HostPort": str(port + 1 if mapping == "old-port" else port),
+                            }
+                        ]
+                    }
+                },
+            }
+        ]
+        monkeypatch.setattr(installer.runner, "run", lambda *a, **k: (0, json.dumps(inspected)))
+        if mapping == "correct":
+            m.Installer.check_port(installer)
+        else:
+            with pytest.raises(m.InstallError, match="port is occupied"):
+                m.Installer.check_port(installer)
+
+
+@pytest.mark.parametrize("provisioned", [True, False])
+def test_occupied_new_port_keeps_saved_state_and_owned_running_container(
+    installation, monkeypatch, provisioned
+):
+    installer, docker = installation
+    if provisioned:
+        installer.command(m.arguments(["--device", "cpu"]))
+    else:
+        installer.initialize(m.arguments([]))
+    old_port = installer.state["port"]
+    state_before = installer.record.read_bytes()
+    env_before = installer.envfile.read_bytes()
+    original_run = docker.run
+
+    def run(args, *positional, **kwargs):
+        if args[1] == "inspect" and args[-1] == "container-id":
+            return 0, json.dumps(
+                [
+                    {
+                        "Config": {
+                            "Labels": {
+                                "com.docker.compose.project": installer.state["project"],
+                                "com.docker.compose.project.working_dir": str(installer.root),
+                                "com.docker.compose.service": "api",
+                            }
+                        },
+                        "State": {"Running": True},
+                        "NetworkSettings": {
+                            "Ports": {
+                                "8000/tcp": [{"HostIp": "127.0.0.1", "HostPort": str(old_port)}]
+                            }
+                        },
+                    }
+                ]
+            )
+        return original_run(args, *positional, **kwargs)
+
+    monkeypatch.setattr(docker, "run", run)
+    monkeypatch.setattr(
+        installer, "check_port", lambda port=None: m.Installer.check_port(installer, port)
+    )
+    docker.calls.clear()
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        with pytest.raises(m.InstallError, match="port is occupied"):
+            installer.command(m.arguments(["--port", str(listener.getsockname()[1])]))
+    assert installer.record.read_bytes() == state_before
+    assert installer.envfile.read_bytes() == env_before
+    assert installer.state["port"] == old_port and docker.running == provisioned
+    assert not any(
+        ("up" in call or "down" in call or "build" in call) and "--help" not in call
+        for call in docker.calls
+    )
