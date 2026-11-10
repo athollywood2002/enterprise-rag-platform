@@ -22,7 +22,7 @@ def quoted(value):
     return json.dumps(value, ensure_ascii=False)
 
 
-def add_row(out, labels, values, row, sheet=None, coordinates=None):
+def add_row(out, labels, values, row, sheet=None, coordinates=None, **metadata):
     if len(values) > MAX_COLUMNS or row > MAX_ROWS:
         raise DocumentError("table_limit", "Table exceeds row/column limits.")
     cells = []
@@ -50,6 +50,8 @@ def add_row(out, labels, values, row, sheet=None, coordinates=None):
         sheet_name=sheet,
         cell_range=cell_range,
         cells=cells,
+        row_entities=[v for v in values if 1 < len(v) <= 120 and any(c.isalpha() for c in v)],
+        **metadata,
     )
 
 
@@ -91,7 +93,7 @@ def xml_boolean(value):
 
 def xlsx_blocks(data, max_chars):
     from openpyxl import load_workbook
-    from openpyxl.utils.cell import coordinate_to_tuple, get_column_letter, range_boundaries
+    from openpyxl.utils.cell import coordinate_to_tuple, range_boundaries
 
     archive = package(data, "xl/workbook.xml")
     sheets = [
@@ -174,7 +176,7 @@ def xlsx_blocks(data, max_chars):
                 )
             if value_sheet._charts or value_sheet._images:
                 out.warnings.add(f"Sheet {name}: charts/images excluded; no OCR.")
-            headers = None
+            rows = []
             for rn in range(1, value_sheet.max_row + 1):
                 if overrides.get(rn, default_hidden):
                     out.warnings.add(f"Sheet {name}: hidden rows excluded.")
@@ -205,12 +207,26 @@ def xlsx_blocks(data, max_chars):
                     coords.append(cell.coordinate)
                 if not any(values):
                     continue
-                if headers is None:
-                    headers = [
-                        f"{get_column_letter(coordinate_to_tuple(c)[1])} {v or '(unnamed)'}"
-                        for c, v in zip(coords, values, strict=True)
-                    ]
-                add_row(out, headers, values, rn, name, coords)
+                rows.append((rn, values, coords))
+            if not value_sheet.tables and rows:
+                out.warnings.add(
+                    f"Sheet {name}: plain-sheet header selection uses the first full visible "
+                    "text row; inspect header_row/header_range. Use an Excel Table to select "
+                    "a different header or represent multiple regions."
+                )
+            from .xlsx_headers import associate_headers
+
+            for rn, labels, values, coords, metadata in associate_headers(
+                value_sheet, rows, formula_sheet
+            ):
+                add_row(out, labels, values, rn, name, coords, **metadata)
+            if any(
+                b.get("row_kind") == "context" and b.get("sheet_name") == name for b in out.items
+            ):
+                out.warnings.add(
+                    f"Sheet {name}: title/metadata or cells outside Excel Tables retained as "
+                    "coordinate-only context; not inferred as column headers."
+                )
         names = archive.namelist()
         for marker, message in [
             ("xl/externalLinks/", "External links excluded; never fetched."),

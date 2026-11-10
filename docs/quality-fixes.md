@@ -10,3 +10,5 @@ The unchanged 30-question baseline is preserved in PR #28. These changes do not 
 * Watchdog test: startup no longer competes with the tiny test deadline. The real deadline timer is armed after the response enters its event handler with a live registered child; a bounded process wait proves watchdog termination despite the held event lock. SIGKILL and deadline assertions remain.
 
 Offline checks use generated fixtures and mock model transports; no inference or retained installation is touched. Existing API keys, volumes, replacement and cancellation mechanisms are unchanged.
+
+The next [table evidence correction](table-evidence-quality.md) handles XLSX preambles/headers, adds a bounded named-row/field ranking lane and separates managed generation instructions from structured source records. It preserves the original evaluations and documents the remaining semantic measurement.

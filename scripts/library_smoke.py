@@ -85,6 +85,23 @@ def office_smoke():
             assert all(s["slide_number"] == 1 for s in answer["sources"])
         if extension == "xlsx":
             assert all(s["sheet_name"] == "Assets" and s["cell_range"] for s in answer["sources"])
+            comparison = request(
+                "POST",
+                "/library/ask",
+                json={
+                    "question": "Compare Gatehouse SSO and Beacon security RTOs and RPOs.",
+                    "top_k": 5,
+                    "job_id": job,
+                },
+            )
+            rows = {s["row"]: s for s in comparison["sources"] if s.get("row_kind") == "data"}
+            assert {4, 5} <= rows.keys()
+            for row in (4, 5):
+                assert rows[row]["header_row"] == 3
+                assert rows[row]["header_range"] == "A3:E3"
+                assert "RTO hours" in rows[row]["text"] and "RPO minutes" in rows[row]["text"]
+            assert '"E RPO minutes": "0"' in rows[4]["text"]
+            assert '"E RPO minutes": "5"' in rows[5]["text"]
         again = stage({path: data}, source)
         request("POST", f"/library/jobs/{again}/start")
         assert wait(again)["counts"]["skipped"] == 1

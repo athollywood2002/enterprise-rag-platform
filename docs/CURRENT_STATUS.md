@@ -1,6 +1,6 @@
 # Current status
 
-Updated November 9, 2026. The browser library and manual n8n workflow are available for community setup and workflow review. Both use the same API service with separate collections. Start with the [Docker browser quickstart](../README.md#docker-browser-quickstart) or [see the interface](ui-walkthrough.md).
+Updated November 10, 2026. The browser library and manual n8n workflow are available for community setup and workflow review. Both use the same API service with separate collections. Start with the [Docker browser quickstart](../README.md#docker-browser-quickstart) or [see the interface](ui-walkthrough.md).
 
 ## Completed demonstrations
 
@@ -35,9 +35,9 @@ The public quickstart uses different fixtures: ORION is the recovery **code** fo
 
 The 30-question competing-document evaluation is retained unchanged in [draft PR #28](https://github.com/athollywood2002/enterprise-rag-platform/pull/28). It is the baseline for the review fixes; no results are relabeled by this implementation. The earlier four-chunk demonstration above remains historical evidence with its original limitations.
 
-The staged implementation adds DOCX/RTF, PPTX and XLSX to the managed library, structured CSV rows, format-specific citations and explicit extraction warnings. See the [support matrix and reindex guidance](office-formats.md). The [reliability changes](quality-fixes.md) cover empty generation, bounded passage retrieval, grounding instructions, owned-container port checks and watchdog-test synchronization.
+The merged implementation adds DOCX/RTF, PPTX and XLSX to the managed library, structured CSV rows, format-specific citations and explicit extraction warnings. See the [support matrix and reindex guidance](office-formats.md). The [reliability changes](quality-fixes.md) cover empty generation, bounded passage retrieval, grounding instructions, owned-container port checks and watchdog-test synchronization.
 
-Mechanical tests and synthetic container checks can establish extraction, API compatibility and safe revision replacement. They cannot establish improved real-model answer quality. The following task is a separately authorized, measured comparison against the unchanged 30-question baseline, focusing on T15 generation, T21 answer-bearing passages, T06 claim-to-excerpt support, and T18/T20/T25 qualifications and version precedence. No new live inference is part of this implementation.
+Mechanical tests and synthetic container checks can establish extraction, API compatibility and safe revision replacement. They cannot establish improved real-model answer quality. The separate November 10 development evaluation completed 24 requests, but its corrected agent-reviewed score is 16/24 fully passing (17 answer passes, four partials, three failures). DOCX and XLSX were exercised; RTF/PPTX were not. Different questions/corpus coverage prevent a controlled comparison with the unchanged 30-question baseline. The [next table evidence correction](table-evidence-quality.md) addresses observed XLSX/header and named-row retrieval problems and revises grounding context. Its live benefit remains unmeasured; that page specifies one deferred same-24-question check. No new live inference is part of this implementation.
 
 ## Earlier development-set evaluation
 

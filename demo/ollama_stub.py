@@ -6,6 +6,25 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
+def request_excerpts(messages):
+    """Read both legacy and structured managed envelopes in the CI-only stub."""
+    prompt = next(m["content"] for m in reversed(messages) if m["role"] == "user")
+    try:
+        record = json.loads(prompt)
+    except json.JSONDecodeError:
+        record = None
+    if isinstance(record, dict) and "evidence" in record:
+        return record["question"], [
+            (str(s["citation"]), s["source"], s.get("location"), s["text"])
+            for s in record["evidence"]
+        ]
+    return prompt, re.findall(
+        r"\[(\d+)\] (.*?) \((.*?), chunk \d+\): (.*?)(?=\n\n\[\d+\] |\n\nQuestion:|\Z)",
+        prompt,
+        re.DOTALL,
+    )
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path != "/api/tags":
@@ -35,12 +54,7 @@ class Handler(BaseHTTPRequestHandler):
                 time.sleep(20)
             result = {"embeddings": [[1.0, 0.0, 0.0]]}
         elif self.path == "/api/chat":
-            prompt = data["messages"][0]["content"]
-            excerpts = re.findall(
-                r"\[(\d+)\] (.*?) \((.*?), chunk \d+\): (.*?)(?=\n\n\[\d+\] |\n\nQuestion:|\Z)",
-                prompt,
-                re.DOTALL,
-            )
+            prompt, excerpts = request_excerpts(data["messages"])
             if "How many brass telescopes" in prompt:
                 ref = next(
                     n for n, source, page, text in excerpts if "seventeen brass telescopes" in text

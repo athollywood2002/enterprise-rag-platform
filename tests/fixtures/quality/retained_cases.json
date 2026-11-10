@@ -1,0 +1,488 @@
+[
+  {
+    "id": "N03",
+    "question": "I already worked remotely abroad for 11 working days this calendar year and want another 10. My manager agreed. Is that sufficient under the remote-work policy?",
+    "expected": "No. 11+10=21 working days exceeds the 20-working-day annual international maximum, counted across trips. Manager scheduling approval does not authorize international work; People Operations and Security must both approve before work there.",
+    "saved_answer": "The remote-work policy limits international remote work to **20 working days per calendar year** [1]. You have already used **11 days**, and the requested **10 additional days** would exceed this limit. Manager approval alone is insufficient for international remote work; **People Operations and Security must also approve** [1]. Since the replacement policy for this rule is unknown [1], and the total exceeds the 20-day cap, the request is not sufficient under the policy.",
+    "sources": [
+      {
+        "source": "04_remote_work_policy.docx",
+        "chunk": 5,
+        "score": 0.0328,
+        "text": "Temporary work locations\nWorking temporarily from another state or country requires an approved location request before the first workday there. People Operations and Security must both approve any international request. The maximum approved international remote-work period is 20 working days per calendar year, counted across all trips. Approval depends on the destination, role, customer commitments, and security requirements. This policy does not publish an approved-country list and does not guarantee any destination will be approved.",
+        "page_number": null,
+        "location": "Section Temporary work locations · paragraph 6",
+        "section": "Temporary work locations",
+        "paragraph": 6,
+        "warnings": [
+          "Footers are excluded."
+        ]
+      },
+      {
+        "source": "04_remote_work_policy.docx",
+        "chunk": 6,
+        "score": 0.032,
+        "text": "Temporary work locations\nFor temporary domestic work from another state, People Operations must approve the location and the manager must approve the schedule. Employees must submit either request at least 10 business days before the proposed start. Personal travel expenses are not reimbursable merely because remote work is approved.",
+        "page_number": null,
+        "location": "Section Temporary work locations · paragraph 7",
+        "section": "Temporary work locations",
+        "paragraph": 7,
+        "warnings": [
+          "Footers are excluded."
+        ]
+      },
+      {
+        "source": "04_remote_work_policy.docx",
+        "chunk": 3,
+        "score": 0.0315,
+        "text": "Scope and approval\nPolicy HR-REM-04 applies to employees requesting hybrid work, a temporary work location, or home-office equipment. Managers may approve up to three remote days per week for roles designated hybrid. Fully remote roles are recorded separately in the employment record. A manager's scheduling approval does not approve international remote work.",
+        "page_number": null,
+        "location": "Section Scope and approval · paragraph 4",
+        "section": "Scope and approval",
+        "paragraph": 4,
+        "warnings": [
+          "Footers are excluded."
+        ]
+      },
+      {
+        "source": "17_onboarding_checklist.txt",
+        "chunk": 6,
+        "score": 0.0311,
+        "text": "Allowances and exceptions\n## Allowances and exceptions\nThe annual learning budget is USD 1,200 under DOC-001 and needs manager approval before registration. The home-office allowance is USD 600 per rolling 24 months under DOC-004. These budgets are separate. A new calendar year or new manager does not reset the home-office clock. Remote work from another country needs People Operations and Security approval before the first workday there. This checklist cannot approve a purchase, destination, or access role on its own.",
+        "page_number": null,
+        "location": "Section Allowances and exceptions · paragraph 13",
+        "section": "Allowances and exceptions",
+        "paragraph": 13,
+        "warnings": []
+      },
+      {
+        "source": "01_company_handbook.txt",
+        "chunk": 3,
+        "score": 0.031,
+        "text": "Working week and leave\n## Working week and leave\nThe standard workweek is Monday through Friday. Each employee agrees on a four-hour overlap window with their team. There is no company-wide mandatory time zone. Full-time US employees receive 20 vacation days per calendar year, prorated for their first year. Up to 5 unused vacation days may carry into the next year and must be used by March 31. Managers approve planned vacation in the People Portal. Sick leave is handled separately and does not reduce the vacation balance. Country-specific sick leave and parental leave entitlements are outside this handbook.",
+        "page_number": null,
+        "location": "Section Working week and leave · paragraph 6",
+        "section": "Working week and leave",
+        "paragraph": 6,
+        "warnings": []
+      }
+    ]
+  },
+  {
+    "id": "N04",
+    "question": "I want to claim a USD 400 USB headset within my available home-office allowance. Which approvals are needed before purchase, and where should I submit the claim?",
+    "expected": "A headset is eligible. Manager approval is required before purchase; IT approval is also required because it connects by USB. Submit itemized receipts in LedgerLoop using Home Office.",
+    "saved_answer": "To claim a USD 400 USB headset under the home-office allowance:  \n- **Approvals required**: Manager approval (before purchase) and IT approval (for USB-connected devices) [2].  \n- **Submission**: Submit itemized receipts via LedgerLoop with expense category \"Home Office\" [2].  \n\nThe headset is eligible as an approved device under the USD 600 rolling 24-month allowance [1]. Approved equipment remains company property and must be returned upon departure [2].  \n\nCitations: [1], [2].",
+    "sources": [
+      {
+        "source": "04_remote_work_policy.docx",
+        "chunk": 8,
+        "score": 0.0325,
+        "text": "Home office allowance\nEmployees may claim up to USD 600 of approved home-office equipment once per rolling 24-month period. The interval starts on the date of the first reimbursed purchase in that period. It is not an annual allowance and does not reset on January 1. Monitors, keyboards, ergonomic chairs, and approved headsets are eligible. Monthly internet bills, rent, décor, and personal mobile phones are excluded.",
+        "page_number": null,
+        "location": "Section Home office allowance · paragraph 9",
+        "section": "Home office allowance",
+        "paragraph": 9,
+        "warnings": [
+          "Footers are excluded."
+        ]
+      },
+      {
+        "source": "04_remote_work_policy.docx",
+        "chunk": 9,
+        "score": 0.0325,
+        "text": "Home office allowance\nManager approval is required before purchase. Submit itemized receipts in LedgerLoop with expense category Home Office. IT approval is also required for any device that connects to the managed laptop by USB or network. The standard company laptop and hardware security key are supplied by IT outside the USD 600 allowance. Approved equipment remains company property and must be returned if requested on departure.",
+        "page_number": null,
+        "location": "Section Home office allowance · paragraph 10",
+        "section": "Home office allowance",
+        "paragraph": 10,
+        "warnings": [
+          "Footers are excluded."
+        ]
+      },
+      {
+        "source": "17_onboarding_checklist.txt",
+        "chunk": 6,
+        "score": 0.0313,
+        "text": "Allowances and exceptions\n## Allowances and exceptions\nThe annual learning budget is USD 1,200 under DOC-001 and needs manager approval before registration. The home-office allowance is USD 600 per rolling 24 months under DOC-004. These budgets are separate. A new calendar year or new manager does not reset the home-office clock. Remote work from another country needs People Operations and Security approval before the first workday there. This checklist cannot approve a purchase, destination, or access role on its own.",
+        "page_number": null,
+        "location": "Section Allowances and exceptions · paragraph 13",
+        "section": "Allowances and exceptions",
+        "paragraph": 13,
+        "warnings": []
+      },
+      {
+        "source": "03_travel_policy_2026.pdf",
+        "chunk": 4,
+        "score": 0.031,
+        "text": "reimbursable business travel. Home-office equipment and the USD 600 allowance are governed by HR-REM-04, DOC-004. The travel policy does not replenish that allowance.",
+        "page_number": 1
+      },
+      {
+        "source": "03_travel_policy_2026.pdf",
+        "chunk": 3,
+        "score": 0.0303,
+        "text": ". Attach dates, business purpose, cost center, and required receipts and approvals. Finance reviews complete submissions within 7 business days. The review target is not a promise of a bank deposit within 7 days. Personal upgrades, daily commuting, and fines are excluded. Worked limits For three qualifying nights in Boston and two qualifying meal days, the maximum before hotel taxes and mandatory fees is USD 845: three times USD 225 plus two times USD 85. Actual reimbursement may be lower. For the same stay in New York City the ceiling is USD 1,145. Neither example includes airfare or ground transportation. Relationship to remote work An approved temporary remote-work arrangement does not turn ordinary commuting or personal relocation into reimbursable business travel. Home-office equipment and the USD 600 allowance are governed by HR-REM-04, DOC-004. The travel policy does not replenish",
+        "page_number": 1
+      }
+    ]
+  },
+  {
+    "id": "N11",
+    "question": "Who is the business owner of LedgerLoop expenses, what tier is it, and what are its RTO and RPO with units?",
+    "expected": "Jordan Ellis; Tier 2; RTO 24 hours; RPO 1,440 minutes.",
+    "saved_answer": "The business owner of LedgerLoop expenses is Jordan Ellis [2], and it is classified as Tier 2 [2]. The RTO and RPO are not specified in the provided excerpts.",
+    "sources": [
+      {
+        "source": "04_remote_work_policy.docx",
+        "chunk": 9,
+        "score": 0.0317,
+        "text": "Home office allowance\nManager approval is required before purchase. Submit itemized receipts in LedgerLoop with expense category Home Office. IT approval is also required for any device that connects to the managed laptop by USB or network. The standard company laptop and hardware security key are supplied by IT outside the USD 600 allowance. Approved equipment remains company property and must be returned if requested on departure.",
+        "page_number": null,
+        "location": "Section Home office allowance · paragraph 10",
+        "section": "Home office allowance",
+        "paragraph": 10,
+        "warnings": [
+          "Footers are excluded."
+        ]
+      },
+      {
+        "source": "09_service_catalog.xlsx",
+        "chunk": 7,
+        "score": 0.0308,
+        "text": "Sheet Services · row 10: \"A Production service catalog\": \"SVC-005\"; \"B (unnamed)\": \"LedgerLoop expenses\"; \"C (unnamed)\": \"Jordan Ellis\"; \"D (unnamed)\": \"Tier 2\"; \"E (unnamed)\": \"24 (number format: 0)\"; \"F (unnamed)\": \"1440 (number format: 0)\"; \"G (unnamed)\": \"VEN-003\"; \"H (unnamed)\": \"us-east-1\"",
+        "page_number": null,
+        "location": "Sheet Services · row 10 · A10:H10",
+        "sheet_name": "Services",
+        "cell_range": "A10:H10",
+        "row": 10,
+        "warnings": []
+      },
+      {
+        "source": "02_travel_policy_2025_archived.pdf",
+        "chunk": 1,
+        "score": 0.0308,
+        "text": "atory hotel fees. The cap in New York City and San Francisco is USD 280 before taxes and mandatory fees. Booking above the applicable cap requires written approval from the department director before booking. Finance may reject the amount above the cap when no approval is attached. Meals and receipts Domestic meals are reimbursed at actual cost up to USD 60 per traveler per calendar day. This is a reimbursement ceiling, not a flat daily allowance. Alcohol is excluded. Itemized receipts are required for individual expenses of USD 25 or more. An expense of exactly USD 25 needs a receipt. Employees must not split a purchase to avoid this requirement. Filing an expense Submit an expense report in LedgerLoop within 30 calendar days after the trip ends. Include business purpose, attendees for hosted meals, trip dates, and any written exception. A missing receipt requires a signed declaration a",
+        "page_number": 1
+      },
+      {
+        "source": "09_service_catalog.xlsx",
+        "chunk": 2,
+        "score": 0.0301,
+        "text": "Sheet Services · row 5: \"A Production service catalog\": \"Service ID\"; \"B (unnamed)\": \"Service\"; \"C (unnamed)\": \"Business owner\"; \"D (unnamed)\": \"Criticality\"; \"E (unnamed)\": \"RTO hours\"; \"F (unnamed)\": \"RPO minutes\"; \"G (unnamed)\": \"Vendor ID\"; \"H (unnamed)\": \"Region\"",
+        "page_number": null,
+        "location": "Sheet Services · row 5 · A5:H5",
+        "sheet_name": "Services",
+        "cell_range": "A5:H5",
+        "row": 5,
+        "warnings": []
+      },
+      {
+        "source": "01_company_handbook.txt",
+        "chunk": 2,
+        "score": 0.0296,
+        "text": "Company and responsibilities\nPeople Operations is led by Maya Chen. IT Operations is led by Mateo Silva. Security Operations is led by Priya Nair. Finance is led by Jordan Ellis. Procurement is led by Soren Berg. Product is led by Elena Rossi. Customer Success is led by Noah Brooks. Data Governance is led by Amara Okafor. A named business owner does not automatically have approval authority for every request in that department.",
+        "page_number": null,
+        "location": "Section Company and responsibilities · paragraph 4",
+        "section": "Company and responsibilities",
+        "paragraph": 4,
+        "warnings": []
+      }
+    ]
+  },
+  {
+    "id": "N15",
+    "question": "Under the current domestic meal policy I spend USD 50 on qualifying meals Monday and USD 100 Tuesday. Can I carry Monday’s unused allowance to Tuesday, and what is the maximum reimbursement across the two days?",
+    "expected": "No carryover and no flat per diem. Reimburse actual eligible cost up to 85 per day: 50 Monday +85 Tuesday = USD 135 total.",
+    "saved_answer": "Under the current domestic meal policy (DOC-003, effective 2026-07-01), **unused amounts cannot carry over to another day** [1]. The maximum reimbursement per day is **USD 85** per traveler. For two days, the total maximum reimbursement is **USD 170** (USD 85 × 2 days). Spending USD 50 on Monday and USD 100 on Tuesday would result in reimbursement of USD 50 (Monday) and USD 85 (Tuesday), totaling USD 135, as the USD 100 spent on Tuesday exceeds the USD 85 daily cap.",
+    "sources": [
+      {
+        "source": "03_travel_policy_2026.pdf",
+        "chunk": 2,
+        "score": 0.0318,
+        "text": "rsed at actual cost up to USD 85 per traveler per calendar day. Alcohol is excluded. Meals provided by a conference or customer cannot also be claimed as a separate expense. The USD 85 is not a flat per diem and unused amounts cannot move to another day. Itemized receipts are required for each individual expense of USD 30 or more. Exactly USD 30 requires a receipt. A USD 29.99 purchase does not require an itemized receipt under this threshold, but the business purpose still must be recorded. Employees may not split a purchase to avoid the receipt rule. A lost receipt requires a declaration and manager approval; this does not waive the spending cap. Submission and reimbursement Submit in LedgerLoop within 30 calendar days after the trip ends. Attach dates, business purpose, cost center, and required receipts and approvals. Finance reviews complete submissions within 7 business days. The r",
+        "page_number": 1
+      },
+      {
+        "source": "03_travel_policy_2026.pdf",
+        "chunk": 3,
+        "score": 0.0318,
+        "text": ". Attach dates, business purpose, cost center, and required receipts and approvals. Finance reviews complete submissions within 7 business days. The review target is not a promise of a bank deposit within 7 days. Personal upgrades, daily commuting, and fines are excluded. Worked limits For three qualifying nights in Boston and two qualifying meal days, the maximum before hotel taxes and mandatory fees is USD 845: three times USD 225 plus two times USD 85. Actual reimbursement may be lower. For the same stay in New York City the ceiling is USD 1,145. Neither example includes airfare or ground transportation. Relationship to remote work An approved temporary remote-work arrangement does not turn ordinary commuting or personal relocation into reimbursable business travel. Home-office equipment and the USD 600 allowance are governed by HR-REM-04, DOC-004. The travel policy does not replenish",
+        "page_number": 1
+      },
+      {
+        "source": "02_travel_policy_2025_archived.pdf",
+        "chunk": 1,
+        "score": 0.0315,
+        "text": "atory hotel fees. The cap in New York City and San Francisco is USD 280 before taxes and mandatory fees. Booking above the applicable cap requires written approval from the department director before booking. Finance may reject the amount above the cap when no approval is attached. Meals and receipts Domestic meals are reimbursed at actual cost up to USD 60 per traveler per calendar day. This is a reimbursement ceiling, not a flat daily allowance. Alcohol is excluded. Itemized receipts are required for individual expenses of USD 25 or more. An expense of exactly USD 25 needs a receipt. Employees must not split a purchase to avoid this requirement. Filing an expense Submit an expense report in LedgerLoop within 30 calendar days after the trip ends. Include business purpose, attendees for hosted meals, trip dates, and any written exception. A missing receipt requires a signed declaration a",
+        "page_number": 1
+      },
+      {
+        "source": "02_travel_policy_2025_archived.pdf",
+        "chunk": 2,
+        "score": 0.0304,
+        "text": "p ends. Include business purpose, attendees for hosted meals, trip dates, and any written exception. A missing receipt requires a signed declaration and manager approval. The declaration does not increase the daily cap. Personal upgrades and commuting expenses are excluded. Historical example A standard Boston hotel stay on a trip beginning June 20, 2026 is capped at USD 180 per night, even if the reimbursement is submitted in July. A trip beginning July 2, 2026 uses DOC-003. International caps are not specified in this archived document and must not be inferred from domestic limits.",
+        "page_number": 1
+      },
+      {
+        "source": "03_travel_policy_2026.pdf",
+        "chunk": 0,
+        "score": 0.0304,
+        "text": "DOC-003 | Synthetic enterprise corpus Page 1 Current travel and expense policy DOC-003 | Northstar Systems (synthetic) | Finance Version 3.0 | active | Effective 2026-07-01 Internal | Allowed groups: employees Effective date and precedence Policy FIN-TRV-2026 applies to trips beginning on or after July 1, 2026 and replaces FIN-TRV-2025, DOC-002. Select the policy using the trip start date, not the booking date, invoice date, or reimbursement date. The limits below are domestic US limits. There is no international hotel or meal rate table in this document. Booking and hotel limits Manager approval is required before booking business travel. Economy airfare is the default. The standard domestic hotel cap is USD 225 per room per night before taxes and mandatory hotel fees. New York City and San Francisco have a higher cap of USD 325 per room per night before taxes and mandatory fees. Austin",
+        "page_number": 1
+      }
+    ]
+  },
+  {
+    "id": "N17",
+    "question": "May the incident commander alone approve an eight-hour break-glass production session? What approvals, session limit and follow-up review does the runbook require?",
+    "expected": "No. Incident commander and Security approver must both authorize break-glass. Emergency session expires after 60 minutes and is reviewed next business day. The ordinary eight-hour JIT-admin maximum is a different process.",
+    "saved_answer": "The incident commander cannot alone approve an eight-hour break-glass production session. Emergency production access requires **both the incident commander and Security approver** to authorize its use [1]. The emergency session has a **60-minute maximum duration** and must be reviewed the next business day. The eight-hour limit applies to ordinary just-in-time production administrator access under DOC-005, which requires **Security approval** but is distinct from emergency access [1].",
+    "sources": [
+      {
+        "source": "06_security_incident_runbook.txt",
+        "chunk": 7,
+        "score": 0.0328,
+        "text": "Containment and emergency access\nEmergency production access uses the break-glass process. The incident commander and Security approver must both authorize its use. The approved emergency session expires after 60 minutes and must be reviewed the next business day. This is separate from ordinary just-in-time production administrator access, which has an 8-hour maximum under DOC-005. The emergency account must not be used for routine maintenance. No secret for this account is stored in this runbook.",
+        "page_number": null,
+        "location": "Section Containment and emergency access · paragraph 12",
+        "section": "Containment and emergency access",
+        "paragraph": 12,
+        "warnings": []
+      },
+      {
+        "source": "06_security_incident_runbook.txt",
+        "chunk": 1,
+        "score": 0.0315,
+        "text": "Purpose and authority\n## Purpose and authority\nRunbook SEC-IR-09 governs suspected security incidents, including possible customer data exposure, credential theft, malicious access, and loss of a managed device. The incident commander coordinates response. Priya Nair is the primary security incident commander; Mateo Silva is the backup. A product outage can follow the operational response process without being a security incident. If evidence of data exposure appears, Security must assess the incident even if availability has already recovered.",
+        "page_number": null,
+        "location": "Section Purpose and authority · paragraph 3",
+        "section": "Purpose and authority",
+        "paragraph": 3,
+        "warnings": []
+      },
+      {
+        "source": "06_security_incident_runbook.txt",
+        "chunk": 6,
+        "score": 0.0308,
+        "text": "Containment and emergency access\n## Containment and emergency access\nThe commander may authorize session revocation, account suspension, network isolation, or a narrowly scoped rollback. Application owners carry out changes and report results. Every containment action must name an operator and include the time and scope. Do not disable audit logging to reduce load.",
+        "page_number": null,
+        "location": "Section Containment and emergency access · paragraph 11",
+        "section": "Containment and emergency access",
+        "paragraph": 11,
+        "warnings": []
+      },
+      {
+        "source": "20_restricted_juniper_memo.txt",
+        "chunk": 4,
+        "score": 0.0304,
+        "text": "Conditions\n## Conditions\nThe team must complete financial diligence, customer-contract review, and security diligence before seeking final board approval. A satisfactory diligence report does not itself authorize signing. The target date may move, and this memo contains no confirmation of closing. Operation Juniper is not Project Orion or an Atlas product release.",
+        "page_number": null,
+        "location": "Section Conditions · paragraph 9",
+        "section": "Conditions",
+        "paragraph": 9,
+        "warnings": []
+      },
+      {
+        "source": "17_onboarding_checklist.txt",
+        "chunk": 3,
+        "score": 0.0302,
+        "text": "Access requests\n## Access requests\nFor each business application, request the minimum role needed. Manager and application-owner approval are required under DOC-005. Production administrator access additionally requires Security approval and expires after at most 8 hours. Onboarding does not grant a standing production-admin exception. Contractors require a recorded end date and a maximum 30-day access approval.",
+        "page_number": null,
+        "location": "Section Access requests · paragraph 7",
+        "section": "Access requests",
+        "paragraph": 7,
+        "warnings": []
+      }
+    ]
+  },
+  {
+    "id": "N20",
+    "question": "Using only the indexed documents, what is Cedar Health’s current security-notification deadline on November 10, 2026 after a confirmed incident affecting its data?",
+    "expected": "Current deadline cannot be established: indexed excerpt has original48h clause but explicitly says CH-AM-02 replaces deadline from October1. Signed amendment EML was skipped/unsupported. Do not present 48h as current or invent its replacement.",
+    "saved_answer": "Cedar Health’s security-notification deadline for a confirmed incident affecting its data on November 10, 2026, is **48 elapsed hours** after confirmation, as specified in the original February 2026 clause. This deadline was replaced by Amendment CH-AM-02 in DOC-014 effective October 1, 2026, but the excerpt does not specify a revised duration. Thus, the original 48-hour period remains applicable under the amended clause [1].",
+    "sources": [
+      {
+        "source": "13_cedar_contract_excerpt.txt",
+        "chunk": 4,
+        "score": 0.0328,
+        "text": "Section 7 security notification as originally signed\n## Section 7 security notification as originally signed\nNorthstar will notify Cedar Health's designated security contact within 48 elapsed hours after confirmation of a security incident affecting Cedar Health customer data. A suspicion that has not been confirmed does not start the clock defined in this clause, although internal investigation begins immediately. This is the original February 2026 clause. Amendment CH-AM-02 in DOC-014 replaces only this notification deadline from October 1, 2026 onward.",
+        "page_number": null,
+        "location": "Section Section 7 security notification as originally signed · paragraph 9",
+        "section": "Section 7 security notification as originally signed",
+        "paragraph": 9,
+        "warnings": []
+      },
+      {
+        "source": "15_atlas_incident_postmortem.txt",
+        "chunk": 2,
+        "score": 0.0323,
+        "text": "Impact and security assessment\n## Impact and security assessment\nNo customer data was lost. Security reviewed access and audit events and found no evidence of unauthorized access or customer data exposure. This was an availability incident, not a confirmed customer-data security incident. Therefore the data-incident notification deadline in Cedar Health Section 7 was not triggered by this event. Customer Success still sent an operational availability update. A general statement that no data was lost is separate from the evidence-based assessment of unauthorized access.",
+        "page_number": null,
+        "location": "Section Impact and security assessment · paragraph 5",
+        "section": "Impact and security assessment",
+        "paragraph": 5,
+        "warnings": []
+      },
+      {
+        "source": "15_atlas_incident_postmortem.txt",
+        "chunk": 1,
+        "score": 0.0308,
+        "text": "Incident summary\n## Incident summary\nIncident INC-2026-1014 was a SEV-2 availability incident affecting Atlas export jobs in eu-west-1. The customer-impact window was October 14, 2026 from 09:12 UTC through 09:47 UTC, lasting 35 minutes. Interactive dashboards and scheduled imports remained available. The incident delayed exports for 18 workspaces, including Cedar Health. It did not affect us-east-1.",
+        "page_number": null,
+        "location": "Section Incident summary · paragraph 3",
+        "section": "Incident summary",
+        "paragraph": 3,
+        "warnings": []
+      },
+      {
+        "source": "15_atlas_incident_postmortem.txt",
+        "chunk": 6,
+        "score": 0.0303,
+        "text": "Customer communication and limitations\n## Customer communication and limitations\nSupport ticket TCK-1042 in DOC-016 records Cedar Health's delayed-export report. The support ticket's early suspicion of a data issue was not the final incident finding. The final assessment in this postmortem supersedes that preliminary suspicion for this event. The observed 35-minute interruption alone is insufficient to calculate a contractual service credit because the excerpted contract omits the credit schedule and calculation rules.",
+        "page_number": null,
+        "location": "Section Customer communication and limitations · paragraph 13",
+        "section": "Customer communication and limitations",
+        "paragraph": 13,
+        "warnings": []
+      },
+      {
+        "source": "13_cedar_contract_excerpt.txt",
+        "chunk": 1,
+        "score": 0.0301,
+        "text": "Agreement record\n## Agreement record\nAgreement CH-2026-014 is between fictional Northstar Systems and fictional Cedar Health. It was signed January 15, 2026 and became effective February 1, 2026. The initial term ends January 31, 2027. Cedar Health's account ID is CUS-0042. Noah Brooks is the Northstar account owner. The hosted Atlas workspace is in eu-west-1. This excerpt contains selected terms, not a complete agreement.",
+        "page_number": null,
+        "location": "Section Agreement record · paragraph 3",
+        "section": "Agreement record",
+        "paragraph": 3,
+        "warnings": []
+      }
+    ]
+  },
+  {
+    "id": "N22",
+    "question": "Orion has run both pipelines for 14 days with exactly 0.1% revenue variance, but one unexplained row-count mismatch remains. Can it pass validation and proceed directly to cutover?",
+    "expected": "No. Exactly0.1% passes only numerical variance check; zero unexplained row-count mismatches are also required for every daily comparison during14 consecutive calendar days. Validation signoff, Security signoff and successful rollback rehearsal still gate cutover.",
+    "saved_answer": "No, it cannot pass validation and proceed directly to cutover. The validation gate requires **zero unexplained row-count mismatches** [1], and the presence of **one unexplained row-count mismatch** fails the gate despite the 0.1% revenue variance meeting the numerical threshold. Amara Okafor must sign the validation result, which remains unattainable here. The cutover target is also conditional on OR-03 validation and rollback rehearsal success [5], neither of which is satisfied.",
+    "sources": [
+      {
+        "source": "19_project_orion_decisions.txt",
+        "chunk": 5,
+        "score": 0.0328,
+        "text": "Decision OR-03 approved October 15 2026\n## Decision OR-03 approved October 15 2026\nRun the legacy and Harbor batch pipelines in parallel for 14 consecutive calendar days before cutover. The validation gate requires zero unexplained row-count mismatches and absolute aggregate revenue variance no greater than 0.1% for every daily comparison. A variance of exactly 0.1% passes the numerical gate; an unexplained row-count mismatch still fails. Amara Okafor must sign the validation result. The operational rollback rehearsal must also pass.",
+        "page_number": null,
+        "location": "Section Decision OR-03 approved October 15 2026 · paragraph 11",
+        "section": "Decision OR-03 approved October 15 2026",
+        "paragraph": 11,
+        "warnings": []
+      },
+      {
+        "source": "19_project_orion_decisions.txt",
+        "chunk": 4,
+        "score": 0.032,
+        "text": "Discussion October 8 2026\n## Discussion October 8 2026\nOne attendee suggested moving directly to the Harbor platform without a dual-run period. Amara Okafor rejected that suggestion because it would remove the baseline comparison. No decision approved skipping validation. Another attendee suggested doubling the Atlas upload limit; that discussion belongs to the Atlas 4.3 proposal in DOC-012 and is not an Orion deliverable.",
+        "page_number": null,
+        "location": "Section Discussion October 8 2026 · paragraph 9",
+        "section": "Discussion October 8 2026",
+        "paragraph": 9,
+        "warnings": []
+      },
+      {
+        "source": "19_project_orion_decisions.txt",
+        "chunk": 3,
+        "score": 0.0315,
+        "text": "Decision OR-02 approved September 24 2026\n## Decision OR-02 approved September 24 2026\nThe provisional production cutover target was November 15, 2026, conditional on validation and rollback rehearsal. Mateo Silva owned the plan. This target was superseded by OR-04 on October 22, 2026. Keep this decision for history but do not communicate November 15 as the current target.",
+        "page_number": null,
+        "location": "Section Decision OR-02 approved September 24 2026 · paragraph 7",
+        "section": "Decision OR-02 approved September 24 2026",
+        "paragraph": 7,
+        "warnings": []
+      },
+      {
+        "source": "19_project_orion_decisions.txt",
+        "chunk": 1,
+        "score": 0.0301,
+        "text": "Program definition\n## Program definition\nProject Orion moves Northstar's internal analytics batch jobs from the legacy warehouse to the Harbor platform. It is not the Atlas product, the Atlas export service, or a vendor. Mateo Silva is the program lead. Amara Okafor owns data validation. The decision log records proposals and approvals separately. Only the most recent approved decision for the same scope controls that scope.",
+        "page_number": null,
+        "location": "Section Program definition · paragraph 3",
+        "section": "Program definition",
+        "paragraph": 3,
+        "warnings": []
+      },
+      {
+        "source": "19_project_orion_decisions.txt",
+        "chunk": 6,
+        "score": 0.0297,
+        "text": "Decision OR-04 approved October 22 2026\n## Decision OR-04 approved October 22 2026\nMove the production cutover target to December 6, 2026. This replaces the November 15 target in OR-02. The target remains conditional on OR-03 and successful rollback rehearsal. Priya Nair owns the security signoff. Mateo Silva may authorize the cutover only after Data Governance and Security signoffs and the rollback rehearsal are complete. No signed evidence that these gates have passed is included in this log as of November 9, 2026.",
+        "page_number": null,
+        "location": "Section Decision OR-04 approved October 22 2026 · paragraph 13",
+        "section": "Decision OR-04 approved October 22 2026",
+        "paragraph": 13,
+        "warnings": []
+      }
+    ]
+  },
+  {
+    "id": "N24",
+    "question": "A new hire starts Monday, November 23, 2026. Using only this corpus, give the exact calendar date of the five-business-day security-awareness and privacy-training deadline.",
+    "expected": "Cannot establish exact date from corpus: onboarding requires completion within5business days, while handbook excludes Northstar holidays and says its holiday calendar is absent. Do not assume an external holiday calendar or silently count weekdays as all business days.",
+    "saved_answer": "The five-business-day security-awareness and privacy-training deadline for a start date of Monday, November 23, 2026, is **Friday, November 27, 2026**. This is calculated by counting 5 business days (Monday–Friday) from the start date, assuming no holidays, as the corpus does not provide a holiday calendar [1].",
+    "sources": [
+      {
+        "source": "17_onboarding_checklist.txt",
+        "chunk": 4,
+        "score": 0.0323,
+        "text": "First week\n## First week\nComplete security awareness training and the privacy handling module within 5 business days of the start date. The manager assigns a buddy and reviews the team's escalation paths. Confirm the employee knows how to report a lost device and suspicious message. The manager verifies that shared folders are appropriate for the role rather than copying a prior employee's access wholesale.",
+        "page_number": null,
+        "location": "Section First week · paragraph 9",
+        "section": "First week",
+        "paragraph": 9,
+        "warnings": []
+      },
+      {
+        "source": "01_company_handbook.txt",
+        "chunk": 7,
+        "score": 0.0318,
+        "text": "Fiscal conventions\n## Fiscal conventions\nThe fiscal year runs from January 1 through December 31. Internal budget amounts in this collection are USD unless another currency is explicitly labeled. Business days mean Monday through Friday excluding Northstar holidays. This collection does not include a holiday calendar, so exact business-day deadlines that depend on holidays cannot be computed from the corpus alone.",
+        "page_number": null,
+        "location": "Section Fiscal conventions · paragraph 14",
+        "section": "Fiscal conventions",
+        "paragraph": 14,
+        "warnings": []
+      },
+      {
+        "source": "17_onboarding_checklist.txt",
+        "chunk": 1,
+        "score": 0.0311,
+        "text": "Before the start date\n## Before the start date\nThe hiring manager opens an onboarding ticket at least 7 business days before the employee's start date. Include the department, start date, manager, work location, role, and required applications. People Operations confirms the employment record. IT prepares a managed laptop and hardware security key. The employee does not purchase these items using the home-office allowance.",
+        "page_number": null,
+        "location": "Section Before the start date · paragraph 3",
+        "section": "Before the start date",
+        "paragraph": 3,
+        "warnings": []
+      },
+      {
+        "source": "13_cedar_contract_excerpt.txt",
+        "chunk": 4,
+        "score": 0.031,
+        "text": "Section 7 security notification as originally signed\n## Section 7 security notification as originally signed\nNorthstar will notify Cedar Health's designated security contact within 48 elapsed hours after confirmation of a security incident affecting Cedar Health customer data. A suspicion that has not been confirmed does not start the clock defined in this clause, although internal investigation begins immediately. This is the original February 2026 clause. Amendment CH-AM-02 in DOC-014 replaces only this notification deadline from October 1, 2026 onward.",
+        "page_number": null,
+        "location": "Section Section 7 security notification as originally signed · paragraph 9",
+        "section": "Section 7 security notification as originally signed",
+        "paragraph": 9,
+        "warnings": []
+      },
+      {
+        "source": "17_onboarding_checklist.txt",
+        "chunk": 5,
+        "score": 0.0308,
+        "text": "First month\n## First month\nThe manager and employee review the role goals by day 30. People Operations checks required training completion. IT closes the equipment task only after delivery and security-key enrollment are confirmed. An open application request should remain open even if the laptop task has completed.",
+        "page_number": null,
+        "location": "Section First month · paragraph 11",
+        "section": "First month",
+        "paragraph": 11,
+        "warnings": []
+      }
+    ]
+  }
+]
