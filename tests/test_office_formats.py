@@ -5,7 +5,7 @@ import zipfile
 
 import pytest
 from docx import Document
-from test_library import finish, upload
+from test_library import finish, linux_parser, upload
 from test_library import library as library_fixture
 
 from rag.folder_parser import DocumentError, chunks_from_pages
@@ -115,6 +115,7 @@ def test_expansion_and_text_limits(monkeypatch):
         ("policy.rtf", rb"{\rtf1 first}", rb"{\rtf1 replacement}", b"invalid rtf"),
     ],
 )
+@linux_parser
 def test_managed_nested_names_reimport_replacement_and_failed_replacement(
     library, name, data, new_data, bad
 ):
@@ -133,6 +134,7 @@ def test_managed_nested_names_reimport_replacement_and_failed_replacement(
     assert all(s["page_number"] is None for s in answer["sources"])
 
 
+@linux_parser
 def test_old_parser_index_remains_searchable(library, monkeypatch):
     lib = library
     current = lib.model_context
