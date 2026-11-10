@@ -35,8 +35,11 @@ def office_files(formats, marker="original"):
         book = Workbook()
         sheet = book.active
         sheet.title = "Assets"
-        sheet.append(["ID", "Details"])
-        sheet.append(["R1", text])
+        sheet.append(["Synthetic service catalog"])
+        sheet.append(["Effective 2026-07-01; offline container check"])
+        sheet.append(["ID", "Service", "Details", "RTO hours", "RPO minutes"])
+        sheet.append(["SVC-002", "Gatehouse SSO", text, 2, 0])
+        sheet.append(["SVC-007", "Beacon security", "Recovery objectives", 2, 5])
         out = BytesIO()
         book.save(out)
         result["xlsx"] = out.getvalue()

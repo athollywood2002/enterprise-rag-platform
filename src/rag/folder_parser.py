@@ -7,7 +7,7 @@ import re
 import sys
 from pathlib import Path
 
-PARSER_VERSION = "folder-v4.1-structured-visibility-corrections"
+PARSER_VERSION = "folder-v4.2-xlsx-header-association"
 COMPATIBLE_PARSERS = (
     "folder-v1-pypdf-text-csv-labels",
     "folder-v2-docx-rtf-locations",
@@ -15,6 +15,7 @@ COMPATIBLE_PARSERS = (
     "folder-v3-pptx-locations",
     "folder-v3.1-pptx-docx-rtf-corrections",
     "folder-v4-structured-rows",
+    "folder-v4.1-structured-visibility-corrections",
     PARSER_VERSION,
 )
 FORMATS = {".txt", ".csv", ".pdf", ".docx", ".rtf", ".pptx", ".xlsx"}

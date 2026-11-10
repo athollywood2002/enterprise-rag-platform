@@ -37,6 +37,40 @@ def lexical_rank(question, points):
     return [p for _, p in sorted(scored, key=lambda x: (-x[0], str(x[1].id)))]
 
 
+def row_rank(question, points):
+    """An extra RRF lane for exact named rows AND requested column labels.
+
+    No corpus-specific names or query rewriting. Multiword cell values/identifiers
+    must occur verbatim (token boundaries); short generic values are not entities.
+    This lane uses the same bounded, committed candidate pool as BM25.
+    """
+
+    def terms(text):
+        return [t[:-1] if len(t) > 3 and t.endswith("s") else t for t in tokens(text)]
+
+    query = terms(question)
+    query_set = set(query)
+    ranked = []
+    for point in points:
+        data = point.payload
+        if data.get("row_kind") != "data" or data.get("continuation"):
+            continue
+        fields = set(terms(" ".join(data.get("column_labels", [])))) & query_set
+        fields = {t for t in fields if len(t) > 2}
+        if not fields:
+            continue
+        matches = []
+        for value in data.get("row_entities", []):
+            words = terms(value)
+            if len(words) < 2 and not re.search(r"[A-Za-z]+[-_]\d", value):
+                continue
+            if words and any(query[i : i + len(words)] == words for i in range(len(query))):
+                matches.append(len(words))
+        if matches:
+            ranked.append((len(fields), max(matches), point))
+    return [p for _, _, p in sorted(ranked, key=lambda v: (-v[0], -v[1], str(v[2].id)))]
+
+
 def managed_candidates(db, collection, question, dense, query_filter, top_k):
     # A managed point ID identifies a revision/chunk globally, independent of its
     # parser collection. Never compare fusion scores calculated in separate pools.
@@ -72,8 +106,9 @@ def managed_candidates(db, collection, question, dense, query_filter, top_k):
     dense = list({str(p.id): p for p in reversed(dense)}.values())
     dense.sort(key=lambda p: (-getattr(p, "score", 0), str(p.id)))
     lexical = lexical_rank(question, list(candidates.values()))[:width]
+    structured = row_rank(question, list(candidates.values()))[:width]
     ranks, objects = {}, {}
-    for ranking in (dense[:width], lexical):
+    for ranking in (dense[:width], lexical, structured):
         for rank, point in enumerate(ranking, 1):
             key = str(point.id)
             objects[key] = point
@@ -81,6 +116,8 @@ def managed_candidates(db, collection, question, dense, query_filter, top_k):
     ordered = sorted(ranks, key=lambda key: (-ranks[key], key))[:top_k]
     return [SimpleNamespace(payload=objects[k].payload, score=ranks[k]) for k in ordered], {
         "method": "dense-bm25-rrf",
+        "structured_row_candidates": len(structured),
+        "ranking_lanes": ["dense", "bm25", "named-row-fields"],
         "collections": reports,
         "lexical_scanned": sum(r["lexical_scanned"] for r in reports),
         "lexical_scan_limit": SCAN_LIMIT * len(collections),

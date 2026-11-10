@@ -83,3 +83,56 @@ def test_global_fusion_keeps_each_collection_scan_bounded(monkeypatch):
     assert evidence["lexical_scanned"] == evidence["lexical_scan_limit"] == 6
     assert evidence["lexical_scan_truncated"]
     assert all(report["lexical_scan_truncated"] for report in evidence["collections"])
+
+
+def test_named_row_lane_is_global_and_does_not_change_plain_text_ranking():
+    from rag.retrieval import managed_candidates, row_rank
+
+    points = [candidate(i, f"noise {i}", 0.9 - i / 100) for i in range(5)]
+    for i, entity in [(8, "Example gateway"), (9, "Other security")]:
+        points.append(
+            NS(
+                id=i,
+                score=0.01,
+                payload={
+                    "text": f"{entity} RTO hours 2 RPO minutes 0",
+                    "row_kind": "data",
+                    "column_labels": ["Service", "RTO hours", "RPO minutes"],
+                    "row_entities": [entity],
+                },
+            )
+        )
+
+    class DB:
+        def __init__(self, groups):
+            self.groups = groups
+
+        def scroll(self, collection_name, **kw):
+            assert kw["scroll_filter"] == "selected-job-committed-revisions"
+            return self.groups[collection_name], None
+
+    def ranked(groups):
+        return managed_candidates(
+            DB(groups),
+            list(groups),
+            "Compare Example gateway and Other security RTOs and RPOs",
+            points[:5],
+            "selected-job-committed-revisions",
+            5,
+        )[0]
+
+    together = ranked({"all": points})
+    split = ranked({"new": points[::2], "old": points[1::2]})
+    assert [(p.payload, p.score) for p in together] == [(p.payload, p.score) for p in split]
+    assert {p.payload["row_entities"][0] for p in together if "row_entities" in p.payload} == {
+        "Example gateway",
+        "Other security",
+    }
+    assert row_rank("generic RTO definition", points) == []
+    assert row_rank("Example gateway owner", points) == []
+    assert (
+        row_rank(
+            "Example gateway RTO", [NS(id=1, payload={**points[-2].payload, "row_kind": "header"})]
+        )
+        == []
+    )

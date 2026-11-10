@@ -233,6 +233,11 @@ class RagEngine:
                     key: p.payload[key]
                     for key in (
                         "location",
+                        "header_row",
+                        "header_range",
+                        "column_labels",
+                        "row_kind",
+                        "table_name",
                         "slide_number",
                         "sheet_name",
                         "cell_range",
@@ -263,20 +268,15 @@ class RagEngine:
             "If insufficient, say you don't know. Cite excerpt numbers like [1].\n\n"
             f"Excerpts:\n{context}\n\nQuestion: {question}"
         )
+        messages = [{"role": "user", "content": prompt}]
         if query_filter is not None:
-            prompt = (
-                "Give a concise direct answer. Every substantive claim must be supported by the exact "
-                "cited excerpt, not merely a matching document or valid citation number. Preserve material "
-                "conditions, exceptions, units and dates. Distinguish one numerical check from the whole "
-                "approval gate. Select the applicable version by effective date; if a rule is superseded "
-                "and its replacement is missing, say the replacement is unknown. Do not extrapolate "
-                "contract terms from internal policies or add unrelated facts. If the answer-bearing "
-                "passage is absent, abstain without inventing an explanation.\n\n" + prompt
-            )
+            from .answer_context import managed_messages
+
+            messages = managed_messages(question, sources)
         payload = {
             "model": self.config.ollama_chat_model,
             "stream": False,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
         }
         if think != "default":
             payload["think"] = think == "on"
