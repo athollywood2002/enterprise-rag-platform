@@ -33,3 +33,30 @@ jobs:
       # Explicit setup-time downloads, never automatic downloads inside tests.
       - run: python -m nltk.downloader -d "$NLTK_DATA" punkt_tab averaged_perceptron_tagger_eng
       - run: python -m pytest -q --run-document-tests
+  test-portability-macos:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.12'
+      - run: pip install -e '.[dev]'
+      - name: Installer tests with default API port occupied
+        run: |
+          python - <<'PY'
+          import socket
+          import subprocess
+          import sys
+
+          assert sys.platform == "darwin"
+          with socket.socket() as listener:
+              listener.bind(("127.0.0.1", 18000))
+              listener.listen(1)
+              subprocess.run(
+                  [sys.executable, "-m", "pytest", "--noconftest", "-q", "tests/test_installer.py"],
+                  check=True,
+              )
+          PY
+      - name: Cross-platform Office parsers and Linux-only integration selection
+        run: python -m pytest -q -rs tests/test_office_formats.py tests/test_word_rtf_regressions.py tests/test_parser_correction_migration.py tests/test_xlsx_visibility.py

@@ -5,7 +5,7 @@ import zipfile
 
 import pytest
 from docx import Document
-from test_library import finish, upload
+from test_library import finish, linux_parser, upload
 from test_library import library as library_fixture
 
 from rag.folder_parser import DocumentError, chunks_from_pages
@@ -115,6 +115,7 @@ def test_expansion_and_text_limits(monkeypatch):
         ("policy.rtf", rb"{\rtf1 first}", rb"{\rtf1 replacement}", b"invalid rtf"),
     ],
 )
+@linux_parser
 def test_managed_nested_names_reimport_replacement_and_failed_replacement(
     library, name, data, new_data, bad
 ):
@@ -133,6 +134,7 @@ def test_managed_nested_names_reimport_replacement_and_failed_replacement(
     assert all(s["page_number"] is None for s in answer["sources"])
 
 
+@linux_parser
 def test_old_parser_index_remains_searchable(library, monkeypatch):
     lib = library
     current = lib.model_context
@@ -175,6 +177,7 @@ def test_pptx_group_tables_notes_and_slide_locations():
         parse_structured(pptx_bytes(), "a.pptx", 10000, max_pages=0)
 
 
+@linux_parser
 def test_pptx_managed_replacement_and_corruption(library):
     lib = library
     data = pptx_bytes()
@@ -282,6 +285,7 @@ def test_xlsx_limits_and_corruption(monkeypatch):
         parse_structured(xlsx_bytes(), "a.xlsx", 10000)
 
 
+@linux_parser
 def test_xlsx_managed_replacement_retention_and_search(library):
     lib = library
     data = xlsx_bytes()
@@ -301,6 +305,7 @@ def test_xlsx_managed_replacement_retention_and_search(library):
     assert all(s["sheet_name"] == "Costs — Europe" and s["cell_range"] for s in sources)
 
 
+@linux_parser
 def test_all_formats_server_folder_http_and_citation_contract(library, monkeypatch):
     from pathlib import Path
 

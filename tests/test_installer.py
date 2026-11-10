@@ -711,7 +711,7 @@ def test_status_is_read_only_when_models_missing(installation):
     )
 
 
-def test_independent_installation_build_cannot_retag_first_saved_image(installation):
+def test_independent_installation_build_cannot_retag_first_saved_image(installation, monkeypatch):
     first, docker = installation
     first.command(m.arguments(["--device", "cpu"]))
     saved = first.state["api_image"]
@@ -724,6 +724,8 @@ def test_independent_installation_build_cannot_retag_first_saved_image(installat
     for name in ("index.html", "app.js", "style.css"):
         (other / "src/rag/web" / name).write_bytes((first.root / "src/rag/web" / name).read_bytes())
     second = m.Installer(other, docker)
+    # Match the fake-installation fixture: this test checks image identity, not sockets.
+    monkeypatch.setattr(second, "check_port", lambda *args: None)
     docker.owner = second
     second.command(m.arguments(["--device", "cpu"]))
     assert second.state["api_image"] != saved

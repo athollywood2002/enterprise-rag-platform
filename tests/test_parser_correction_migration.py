@@ -1,5 +1,5 @@
 import pytest
-from test_library import finish, upload
+from test_library import finish, linux_parser, upload
 from test_library import library as library_fixture
 
 from rag.folder_parser import COMPATIBLE_PARSERS, DocumentError
@@ -8,6 +8,7 @@ library = library_fixture
 
 
 @pytest.mark.parametrize("historical", COMPATIBLE_PARSERS[:-1])
+@linux_parser
 def test_correction_reindexes_same_bytes_without_losing_previous_revision(
     library, monkeypatch, historical
 ):
