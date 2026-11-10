@@ -10,6 +10,8 @@ These formats apply to browser uploads, configured read-only server folders and 
 | DOCX | Body headings, paragraphs and table rows in order | section, paragraph, table / row | Tracked changes fail: accept/reject them first. Nested tables, text boxes, content controls and fields fail with export guidance. Headers, footers, comments, foot/endnotes, images and embedded objects are excluded with warnings. No page numbers or OCR. Table grid positions include omitted leading/trailing cells. Merged cells are emitted once per row with their column span and matching header labels; visual layout is not reconstructed. |
 | RTF | Readable text, Unicode, paragraph boundaries; single Windows-1252 or Windows-1251 code page | paragraph | Objects, images, fields, revisions, tables, comments and header/footer content fail with export guidance. Literal high bytes and hex escapes use the declared code page (default Windows-1252); Unicode controls override fallback bytes. Matching/default font charsets are supported. Mixed code pages, conflicting font charsets, other code pages and Mac/DOS encodings fail explicitly: export Unicode TXT or DOCX. No inferred pages. |
 
+| PPTX | Slide titles, text shapes, grouped text and tables in shape-tree order | slide / shape / table row | Speaker notes excluded with warnings. Hidden slides included with warnings. Images, charts and embedded objects excluded with warnings; no OCR or layout reading-order inference. Image-only decks fail. |
+
 Legacy `.doc`, `.xls`, `.ppt`, macros, OCR and LibreOffice conversion are outside this milestone. Never rename a legacy extension to bypass preview: content signatures are checked.
 
 ## Operation

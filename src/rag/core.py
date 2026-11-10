@@ -233,6 +233,7 @@ class RagEngine:
                     key: p.payload[key]
                     for key in (
                         "location",
+                        "slide_number",
                         "section",
                         "paragraph",
                         "table",
