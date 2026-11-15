@@ -1,0 +1,860 @@
+[
+  {
+    "id": "N10",
+    "question": "Compare the recovery objectives for Gatehouse SSO and Beacon security. What are their RTOs and RPOs, and does Gatehouse’s zero mean its RPO is missing?",
+    "expected": "Both RTOs are 2 hours. Gatehouse SSO RPO is 0 minutes (a valid zero, not missing). Beacon security RPO is 5 minutes. These are recovery objectives, not retention periods or support response SLAs.",
+    "saved_answer": "Gatehouse SSO has an RTO of 2 hours [1] and an RPO of 0 minutes [1]. Beacon security has an RTO of 2 hours [4] and an RPO of 5 minutes [4]. Gatehouse’s zero RPO is explicitly stated, so it is not missing.",
+    "sources": [
+      {
+        "source": "09_service_catalog.xlsx",
+        "chunk": 4,
+        "score": 0.0464,
+        "text": "Sheet Services · row 7: \"A Service ID\": \"SVC-002\"; \"B Service\": \"Gatehouse SSO\"; \"C Business owner\": \"Mateo Silva\"; \"D Criticality\": \"Tier 1\"; \"E RTO hours\": \"2 (number format: 0)\"; \"F RPO minutes\": \"0 (number format: 0)\"; \"G Vendor ID\": \"VEN-001\"; \"H Region\": \"Global identity\"",
+        "page_number": null,
+        "location": "Sheet Services · row 7 · A7:H7",
+        "header_row": 5,
+        "header_range": "A5:H5",
+        "column_labels": [
+          "A Service ID",
+          "B Service",
+          "C Business owner",
+          "D Criticality",
+          "E RTO hours",
+          "F RPO minutes",
+          "G Vendor ID",
+          "H Region"
+        ],
+        "row_kind": "data",
+        "table_name": "ServiceCatalog",
+        "sheet_name": "Services",
+        "cell_range": "A7:H7",
+        "row": 7,
+        "warnings": [
+          "Sheet Recovery notes: plain-sheet header selection uses the first full visible text row; inspect header_row/header_range. Use an Excel Table to select a different header or represent multiple regions.",
+          "Sheet Recovery notes: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers.",
+          "Sheet Services: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers."
+        ]
+      },
+      {
+        "source": "09_service_catalog.xlsx",
+        "chunk": 12,
+        "score": 0.032,
+        "text": "Sheet Recovery notes · row 3: \"A3\": \"DOC-009 | Synthetic catalog | RTO and RPO are objectives, not contractual support targets\"",
+        "page_number": null,
+        "location": "Sheet Recovery notes · row 3 · A3:A3",
+        "row_kind": "context",
+        "sheet_name": "Recovery notes",
+        "cell_range": "A3:A3",
+        "row": 3,
+        "warnings": [
+          "Sheet Recovery notes: plain-sheet header selection uses the first full visible text row; inspect header_row/header_range. Use an Excel Table to select a different header or represent multiple regions.",
+          "Sheet Recovery notes: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers.",
+          "Sheet Services: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers."
+        ]
+      },
+      {
+        "source": "09_service_catalog.xlsx",
+        "chunk": 17,
+        "score": 0.032,
+        "text": "Sheet Recovery notes · row 9: \"A Service ID\": \"SVC-002\"; \"B Dependency or definition\": \"Gatehouse SSO is supplied by VEN-001\"; \"C Operational note\": \"Vendor renewal and notice periods are in DOC-010. Access procedures are in DOC-005.\"",
+        "page_number": null,
+        "location": "Sheet Recovery notes · row 9 · A9:C9",
+        "header_row": 5,
+        "header_range": "A5:C5",
+        "column_labels": [
+          "A Service ID",
+          "B Dependency or definition",
+          "C Operational note"
+        ],
+        "row_kind": "data",
+        "sheet_name": "Recovery notes",
+        "cell_range": "A9:C9",
+        "row": 9,
+        "warnings": [
+          "Sheet Recovery notes: plain-sheet header selection uses the first full visible text row; inspect header_row/header_range. Use an Excel Table to select a different header or represent multiple regions.",
+          "Sheet Recovery notes: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers.",
+          "Sheet Services: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers."
+        ]
+      },
+      {
+        "source": "09_service_catalog.xlsx",
+        "chunk": 9,
+        "score": 0.0313,
+        "text": "Sheet Services · row 12: \"A Service ID\": \"SVC-007\"; \"B Service\": \"Beacon security\"; \"C Business owner\": \"Priya Nair\"; \"D Criticality\": \"Tier 1\"; \"E RTO hours\": \"2 (number format: 0)\"; \"F RPO minutes\": \"5 (number format: 0)\"; \"G Vendor ID\": \"VEN-008\"; \"H Region\": \"us-east-1; eu-west-1\"",
+        "page_number": null,
+        "location": "Sheet Services · row 12 · A12:H12",
+        "header_row": 5,
+        "header_range": "A5:H5",
+        "column_labels": [
+          "A Service ID",
+          "B Service",
+          "C Business owner",
+          "D Criticality",
+          "E RTO hours",
+          "F RPO minutes",
+          "G Vendor ID",
+          "H Region"
+        ],
+        "row_kind": "data",
+        "table_name": "ServiceCatalog",
+        "sheet_name": "Services",
+        "cell_range": "A12:H12",
+        "row": 12,
+        "warnings": [
+          "Sheet Recovery notes: plain-sheet header selection uses the first full visible text row; inspect header_row/header_range. Use an Excel Table to select a different header or represent multiple regions.",
+          "Sheet Recovery notes: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers.",
+          "Sheet Services: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers."
+        ]
+      },
+      {
+        "source": "04_remote_work_policy.docx",
+        "chunk": 11,
+        "score": 0.0302,
+        "text": "Security and support\nUse the managed laptop, disk encryption, screen lock, and company SSO. Do not share the device with household members. Report a lost device to security@northstar.example immediately and contact the helpdesk for replacement. IT may remotely lock a missing device. A replacement device is not an automatic second home-office allowance.",
+        "page_number": null,
+        "location": "Section Security and support · paragraph 12",
+        "section": "Security and support",
+        "paragraph": 12,
+        "warnings": [
+          "Footers are excluded."
+        ]
+      }
+    ],
+    "generation": {
+      "status": "complete",
+      "done": true,
+      "done_reason": "stop",
+      "eval_count": 344,
+      "num_predict": 1536,
+      "visible_empty": false
+    },
+    "review": {
+      "id": "N10",
+      "answer_grade": "pass",
+      "citation_grade": "pass",
+      "combined_pass": true,
+      "rationale": "Both actual service rows are retrieved and cited: Gatehouse [1] Services row7 A7:H7 and Beacon [4] row12 A12:H12. Attached column labels establish RTO2hours for both and RPO0/5minutes respectively. Zero is correctly treated as an explicit value, not missing. This is actual new-run passage/answer evidence, not merely a workbook-level hit.",
+      "flags": []
+    }
+  },
+  {
+    "id": "N11",
+    "question": "Who is the business owner of LedgerLoop expenses, what tier is it, and what are its RTO and RPO with units?",
+    "expected": "Jordan Ellis; Tier 2; RTO 24 hours; RPO 1,440 minutes.",
+    "saved_answer": "The business owner of LedgerLoop expenses is **Jordan Ellis**, with a **Tier 2** criticality. The RTO is **24 hours** ([1](#evidence1)) and the RPO is **1440 minutes** ([1](#evidence1)). \n\nCitations:  \n- [1](#evidence1): \"C Business owner\": \"Jordan Ellis\"; \"D Criticality\": \"Tier 2\"; \"E RTO hours\": \"24 (number format: 0)\"; \"F RPO minutes\": \"1440 (number format: 0)\".",
+    "sources": [
+      {
+        "source": "09_service_catalog.xlsx",
+        "chunk": 7,
+        "score": 0.0492,
+        "text": "Sheet Services · row 10: \"A Service ID\": \"SVC-005\"; \"B Service\": \"LedgerLoop expenses\"; \"C Business owner\": \"Jordan Ellis\"; \"D Criticality\": \"Tier 2\"; \"E RTO hours\": \"24 (number format: 0)\"; \"F RPO minutes\": \"1440 (number format: 0)\"; \"G Vendor ID\": \"VEN-003\"; \"H Region\": \"us-east-1\"",
+        "page_number": null,
+        "location": "Sheet Services · row 10 · A10:H10",
+        "header_row": 5,
+        "header_range": "A5:H5",
+        "column_labels": [
+          "A Service ID",
+          "B Service",
+          "C Business owner",
+          "D Criticality",
+          "E RTO hours",
+          "F RPO minutes",
+          "G Vendor ID",
+          "H Region"
+        ],
+        "row_kind": "data",
+        "table_name": "ServiceCatalog",
+        "sheet_name": "Services",
+        "cell_range": "A10:H10",
+        "row": 10,
+        "warnings": [
+          "Sheet Recovery notes: plain-sheet header selection uses the first full visible text row; inspect header_row/header_range. Use an Excel Table to select a different header or represent multiple regions.",
+          "Sheet Recovery notes: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers.",
+          "Sheet Services: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers."
+        ]
+      },
+      {
+        "source": "09_service_catalog.xlsx",
+        "chunk": 2,
+        "score": 0.0313,
+        "text": "Sheet Services · row 5: \"A Service ID\": \"Service ID\"; \"B Service\": \"Service\"; \"C Business owner\": \"Business owner\"; \"D Criticality\": \"Criticality\"; \"E RTO hours\": \"RTO hours\"; \"F RPO minutes\": \"RPO minutes\"; \"G Vendor ID\": \"Vendor ID\"; \"H Region\": \"Region\"",
+        "page_number": null,
+        "location": "Sheet Services · row 5 · A5:H5",
+        "header_row": 5,
+        "header_range": "A5:H5",
+        "column_labels": [
+          "A Service ID",
+          "B Service",
+          "C Business owner",
+          "D Criticality",
+          "E RTO hours",
+          "F RPO minutes",
+          "G Vendor ID",
+          "H Region"
+        ],
+        "row_kind": "header",
+        "table_name": "ServiceCatalog",
+        "sheet_name": "Services",
+        "cell_range": "A5:H5",
+        "row": 5,
+        "warnings": [
+          "Sheet Recovery notes: plain-sheet header selection uses the first full visible text row; inspect header_row/header_range. Use an Excel Table to select a different header or represent multiple regions.",
+          "Sheet Recovery notes: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers.",
+          "Sheet Services: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers."
+        ]
+      },
+      {
+        "source": "04_remote_work_policy.docx",
+        "chunk": 9,
+        "score": 0.0306,
+        "text": "Home office allowance\nManager approval is required before purchase. Submit itemized receipts in LedgerLoop with expense category Home Office. IT approval is also required for any device that connects to the managed laptop by USB or network. The standard company laptop and hardware security key are supplied by IT outside the USD 600 allowance. Approved equipment remains company property and must be returned if requested on departure.",
+        "page_number": null,
+        "location": "Section Home office allowance · paragraph 10",
+        "section": "Home office allowance",
+        "paragraph": 10,
+        "warnings": [
+          "Footers are excluded."
+        ]
+      },
+      {
+        "source": "09_service_catalog.xlsx",
+        "chunk": 4,
+        "score": 0.0303,
+        "text": "Sheet Services · row 7: \"A Service ID\": \"SVC-002\"; \"B Service\": \"Gatehouse SSO\"; \"C Business owner\": \"Mateo Silva\"; \"D Criticality\": \"Tier 1\"; \"E RTO hours\": \"2 (number format: 0)\"; \"F RPO minutes\": \"0 (number format: 0)\"; \"G Vendor ID\": \"VEN-001\"; \"H Region\": \"Global identity\"",
+        "page_number": null,
+        "location": "Sheet Services · row 7 · A7:H7",
+        "header_row": 5,
+        "header_range": "A5:H5",
+        "column_labels": [
+          "A Service ID",
+          "B Service",
+          "C Business owner",
+          "D Criticality",
+          "E RTO hours",
+          "F RPO minutes",
+          "G Vendor ID",
+          "H Region"
+        ],
+        "row_kind": "data",
+        "table_name": "ServiceCatalog",
+        "sheet_name": "Services",
+        "cell_range": "A7:H7",
+        "row": 7,
+        "warnings": [
+          "Sheet Recovery notes: plain-sheet header selection uses the first full visible text row; inspect header_row/header_range. Use an Excel Table to select a different header or represent multiple regions.",
+          "Sheet Recovery notes: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers.",
+          "Sheet Services: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers."
+        ]
+      },
+      {
+        "source": "09_service_catalog.xlsx",
+        "chunk": 9,
+        "score": 0.0301,
+        "text": "Sheet Services · row 12: \"A Service ID\": \"SVC-007\"; \"B Service\": \"Beacon security\"; \"C Business owner\": \"Priya Nair\"; \"D Criticality\": \"Tier 1\"; \"E RTO hours\": \"2 (number format: 0)\"; \"F RPO minutes\": \"5 (number format: 0)\"; \"G Vendor ID\": \"VEN-008\"; \"H Region\": \"us-east-1; eu-west-1\"",
+        "page_number": null,
+        "location": "Sheet Services · row 12 · A12:H12",
+        "header_row": 5,
+        "header_range": "A5:H5",
+        "column_labels": [
+          "A Service ID",
+          "B Service",
+          "C Business owner",
+          "D Criticality",
+          "E RTO hours",
+          "F RPO minutes",
+          "G Vendor ID",
+          "H Region"
+        ],
+        "row_kind": "data",
+        "table_name": "ServiceCatalog",
+        "sheet_name": "Services",
+        "cell_range": "A12:H12",
+        "row": 12,
+        "warnings": [
+          "Sheet Recovery notes: plain-sheet header selection uses the first full visible text row; inspect header_row/header_range. Use an Excel Table to select a different header or represent multiple regions.",
+          "Sheet Recovery notes: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers.",
+          "Sheet Services: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers."
+        ]
+      }
+    ],
+    "generation": {
+      "status": "complete",
+      "done": true,
+      "done_reason": "stop",
+      "eval_count": 432,
+      "num_predict": 1536,
+      "visible_empty": false
+    },
+    "review": {
+      "id": "N11",
+      "answer_grade": "pass",
+      "citation_grade": "pass",
+      "combined_pass": true,
+      "rationale": "Correct Jordan Ellis, Tier2, RTO24hours and RPO1440minutes, all supported by [1] Services row10 A10:H10 with header_row5/header_rangeA5:H5. Original run already retrieved data[2] and headers[4]; the improvement is correct associated labels and use of available evidence, not newly retrieving a previously absent header.",
+      "flags": []
+    }
+  },
+  {
+    "id": "N12",
+    "question": "Which vendor supplies Gatehouse SSO, who owns that vendor relationship, and what renewal date and notice period does the register give?",
+    "expected": "The catalog maps Gatehouse SSO/SVC-002 to VEN-001. Register: Gatehouse Identity, owner Mateo Silva, renewal January 31, 2027, notice 60 days.",
+    "saved_answer": "The vendor supplying Gatehouse SSO is **Gatehouse Identity** (Vendor ID: VEN-001), owned by **Mateo Silva**. The register specifies a **renewal date of 2027-01-31** and a **60-day notice period** [4].",
+    "sources": [
+      {
+        "source": "09_service_catalog.xlsx",
+        "chunk": 4,
+        "score": 0.0474,
+        "text": "Sheet Services · row 7: \"A Service ID\": \"SVC-002\"; \"B Service\": \"Gatehouse SSO\"; \"C Business owner\": \"Mateo Silva\"; \"D Criticality\": \"Tier 1\"; \"E RTO hours\": \"2 (number format: 0)\"; \"F RPO minutes\": \"0 (number format: 0)\"; \"G Vendor ID\": \"VEN-001\"; \"H Region\": \"Global identity\"",
+        "page_number": null,
+        "location": "Sheet Services · row 7 · A7:H7",
+        "header_row": 5,
+        "header_range": "A5:H5",
+        "column_labels": [
+          "A Service ID",
+          "B Service",
+          "C Business owner",
+          "D Criticality",
+          "E RTO hours",
+          "F RPO minutes",
+          "G Vendor ID",
+          "H Region"
+        ],
+        "row_kind": "data",
+        "table_name": "ServiceCatalog",
+        "sheet_name": "Services",
+        "cell_range": "A7:H7",
+        "row": 7,
+        "warnings": [
+          "Sheet Recovery notes: plain-sheet header selection uses the first full visible text row; inspect header_row/header_range. Use an Excel Table to select a different header or represent multiple regions.",
+          "Sheet Recovery notes: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers.",
+          "Sheet Services: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers."
+        ]
+      },
+      {
+        "source": "08_procurement_policy.docx",
+        "chunk": 11,
+        "score": 0.0325,
+        "text": "Renewals\nSubmit a renewal review at least 45 calendar days before the renewal date. Review the total renewed commitment, usage, ownership, data access, and termination notice clause. DOC-010 records vendor renewal dates and notice periods. A 30-day notice clause and the 45-day internal review rule are separate deadlines; use whichever action is needed at the appropriate time. A vendor marked Approved in the register still needs spending approval for a new commitment.",
+        "page_number": null,
+        "location": "Section Renewals · paragraph 12",
+        "section": "Renewals",
+        "paragraph": 12,
+        "warnings": [
+          "Footers are excluded."
+        ]
+      },
+      {
+        "source": "09_service_catalog.xlsx",
+        "chunk": 17,
+        "score": 0.032,
+        "text": "Sheet Recovery notes · row 9: \"A Service ID\": \"SVC-002\"; \"B Dependency or definition\": \"Gatehouse SSO is supplied by VEN-001\"; \"C Operational note\": \"Vendor renewal and notice periods are in DOC-010. Access procedures are in DOC-005.\"",
+        "page_number": null,
+        "location": "Sheet Recovery notes · row 9 · A9:C9",
+        "header_row": 5,
+        "header_range": "A5:C5",
+        "column_labels": [
+          "A Service ID",
+          "B Dependency or definition",
+          "C Operational note"
+        ],
+        "row_kind": "data",
+        "sheet_name": "Recovery notes",
+        "cell_range": "A9:C9",
+        "row": 9,
+        "warnings": [
+          "Sheet Recovery notes: plain-sheet header selection uses the first full visible text row; inspect header_row/header_range. Use an Excel Table to select a different header or represent multiple regions.",
+          "Sheet Recovery notes: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers.",
+          "Sheet Services: title/metadata or cells outside Excel Tables retained as coordinate-only context; not inferred as column headers."
+        ]
+      },
+      {
+        "source": "10_vendor_register.csv",
+        "chunk": 0,
+        "score": 0.0318,
+        "text": "CSV record 2: \"doc_id\": \"DOC-010\"; \"vendor_id\": \"VEN-001\"; \"vendor_name\": \"Gatehouse Identity\"; \"business_owner\": \"Mateo Silva\"; \"status\": \"Approved\"; \"annual_cost_usd\": \"36000\"; \"renewal_date\": \"2027-01-31\"; \"notice_days\": \"60\"; \"receives_customer_data\": \"true\"; \"notes\": \"SSO and identity\"",
+        "page_number": null,
+        "location": "CSV record 2",
+        "sheet_name": null,
+        "cell_range": null,
+        "row": 2,
+        "warnings": []
+      },
+      {
+        "source": "17_onboarding_checklist.txt",
+        "chunk": 2,
+        "score": 0.0301,
+        "text": "Day one\n## Day one\nPeople Operations verifies contact and payroll records through the People Portal. IT guides the employee through Gatehouse SSO enrollment and hardware-key setup. The employee signs the acceptable-use acknowledgement. The manager explains team hours, planned work location, and the four-hour overlap window described in DOC-001. All employees complete the security introduction before receiving production data access.",
+        "page_number": null,
+        "location": "Section Day one · paragraph 5",
+        "section": "Day one",
+        "paragraph": 5,
+        "warnings": []
+      }
+    ],
+    "generation": {
+      "status": "complete",
+      "done": true,
+      "done_reason": "stop",
+      "eval_count": 410,
+      "num_predict": 1536,
+      "visible_empty": false
+    },
+    "review": {
+      "id": "N12",
+      "answer_grade": "pass",
+      "citation_grade": "partial",
+      "combined_pass": false,
+      "rationale": "Vendor name, owner, renewal and notice are correct. Cited CSV [4], record2, supports VEN-001/Gatehouse Identity/Mateo/2027-01-31/60days but not the exact Gatehouse SSO-to-VEN-001 join. The necessary workbook link was retrieved at [1] Services row7 and [3] Recovery notes row9 but neither is cited. Unlike this response, the original answer cited its join excerpt[2] and register[3].",
+      "flags": [
+        "retrieved evidence is present; the failure is missing claim-to-passage citation support, not missing workbook retrieval"
+      ]
+    }
+  },
+  {
+    "id": "N14",
+    "question": "Two Austin trips were booked on June 20, 2026 and reimbursed in August. One starts June 30 and the other July 1. What domestic nightly hotel cap applies to each, before taxes and mandatory fees?",
+    "expected": "June 30 trip: archived policy cap USD 180 per room/night. July 1 trip: current policy cap USD 225. Trip start date controls, not booking or reimbursement date.",
+    "saved_answer": "The domestic nightly hotel cap for the trip starting June 30, 2026 (under DOC-002, effective 2025-01-01 to 2026-06-30) is **USD 180** per room per night [citation 2]. For the trip starting July 1, 2026 (under DOC-003, effective 2026-07-01), Austin uses the standard cap of **USD 225** per room per night [citation 1].",
+    "sources": [
+      {
+        "source": "03_travel_policy_2026.pdf",
+        "chunk": 0,
+        "score": 0.0325,
+        "text": "DOC-003 | Synthetic enterprise corpus Page 1 Current travel and expense policy DOC-003 | Northstar Systems (synthetic) | Finance Version 3.0 | active | Effective 2026-07-01 Internal | Allowed groups: employees Effective date and precedence Policy FIN-TRV-2026 applies to trips beginning on or after July 1, 2026 and replaces FIN-TRV-2025, DOC-002. Select the policy using the trip start date, not the booking date, invoice date, or reimbursement date. The limits below are domestic US limits. There is no international hotel or meal rate table in this document. Booking and hotel limits Manager approval is required before booking business travel. Economy airfare is the default. The standard domestic hotel cap is USD 225 per room per night before taxes and mandatory hotel fees. New York City and San Francisco have a higher cap of USD 325 per room per night before taxes and mandatory fees. Austin",
+        "page_number": 1
+      },
+      {
+        "source": "02_travel_policy_2025_archived.pdf",
+        "chunk": 0,
+        "score": 0.032,
+        "text": "DOC-002 | Synthetic enterprise corpus Page 1 Travel and expense policy for 2025 DOC-002 | Northstar Systems (synthetic) | Finance Version 2.0 | superseded | Effective 2025-01-01 Internal | Allowed groups: employees Archived policy scope Policy FIN-TRV-2025 governed business travel with a trip start date from January 1, 2025 through June 30, 2026. It is retained for historical expense review. FIN-TRV-2026, DOC-003, supersedes it for trips beginning on or after July 1, 2026. A later reimbursement submission date does not change which version applies. Booking and hotel limits Employees must obtain manager approval before booking. Economy airfare is the default. The standard domestic hotel cap is USD 180 per room per night before taxes and mandatory hotel fees. The cap in New York City and San Francisco is USD 280 before taxes and mandatory fees. Booking above the applicable cap requires wri",
+        "page_number": 1
+      },
+      {
+        "source": "03_travel_policy_2026.pdf",
+        "chunk": 1,
+        "score": 0.032,
+        "text": "axes and mandatory hotel fees. New York City and San Francisco have a higher cap of USD 325 per room per night before taxes and mandatory fees. Austin and Boston use the standard USD 225 cap. These amounts are ceilings on actual reimbursable cost, not automatic entitlements. The department director must approve a hotel above the applicable cap in writing before booking. Attach that approval to the expense report. The manager's ordinary trip approval does not replace the director's cap exception. A conference organizer's recommended hotel does not automatically qualify for an exception. Security may require a particular hotel for a documented safety reason; Finance must still record the exception. Meals and receipts Domestic meals are reimbursed at actual cost up to USD 85 per traveler per calendar day. Alcohol is excluded. Meals provided by a conference or customer cannot also be claimed",
+        "page_number": 1
+      },
+      {
+        "source": "02_travel_policy_2025_archived.pdf",
+        "chunk": 2,
+        "score": 0.0313,
+        "text": "p ends. Include business purpose, attendees for hosted meals, trip dates, and any written exception. A missing receipt requires a signed declaration and manager approval. The declaration does not increase the daily cap. Personal upgrades and commuting expenses are excluded. Historical example A standard Boston hotel stay on a trip beginning June 20, 2026 is capped at USD 180 per night, even if the reimbursement is submitted in July. A trip beginning July 2, 2026 uses DOC-003. International caps are not specified in this archived document and must not be inferred from domestic limits.",
+        "page_number": 1
+      },
+      {
+        "source": "02_travel_policy_2025_archived.pdf",
+        "chunk": 1,
+        "score": 0.031,
+        "text": "atory hotel fees. The cap in New York City and San Francisco is USD 280 before taxes and mandatory fees. Booking above the applicable cap requires written approval from the department director before booking. Finance may reject the amount above the cap when no approval is attached. Meals and receipts Domestic meals are reimbursed at actual cost up to USD 60 per traveler per calendar day. This is a reimbursement ceiling, not a flat daily allowance. Alcohol is excluded. Itemized receipts are required for individual expenses of USD 25 or more. An expense of exactly USD 25 needs a receipt. Employees must not split a purchase to avoid this requirement. Filing an expense Submit an expense report in LedgerLoop within 30 calendar days after the trip ends. Include business purpose, attendees for hosted meals, trip dates, and any written exception. A missing receipt requires a signed declaration a",
+        "page_number": 1
+      }
+    ],
+    "generation": {
+      "status": "complete",
+      "done": true,
+      "done_reason": "stop",
+      "eval_count": 565,
+      "num_predict": 1536,
+      "visible_empty": false
+    },
+    "review": {
+      "id": "N14",
+      "answer_grade": "pass",
+      "citation_grade": "pass",
+      "combined_pass": true,
+      "rationale": "Correct180/225 domestic hotel caps keyed to June30/July1 trip starts. Archived PDF [2] physical page1 gives through-June30 scope/cap and rejects reimbursement-date changes; current PDF [1] page1 gives from-July1 scope and225 standard cap. No booking/reimbursement-date switch.",
+      "flags": [
+        "minor omission: does not separately restate the before-tax/mandatory-fee qualifier already specified in the question"
+      ]
+    }
+  },
+  {
+    "id": "N15",
+    "question": "Under the current domestic meal policy I spend USD 50 on qualifying meals Monday and USD 100 Tuesday. Can I carry Monday’s unused allowance to Tuesday, and what is the maximum reimbursement across the two days?",
+    "expected": "No carryover and no flat per diem. Reimburse actual eligible cost up to 85 per day: 50 Monday +85 Tuesday = USD 135 total.",
+    "saved_answer": "",
+    "sources": [
+      {
+        "source": "03_travel_policy_2026.pdf",
+        "chunk": 3,
+        "score": 0.0318,
+        "text": ". Attach dates, business purpose, cost center, and required receipts and approvals. Finance reviews complete submissions within 7 business days. The review target is not a promise of a bank deposit within 7 days. Personal upgrades, daily commuting, and fines are excluded. Worked limits For three qualifying nights in Boston and two qualifying meal days, the maximum before hotel taxes and mandatory fees is USD 845: three times USD 225 plus two times USD 85. Actual reimbursement may be lower. For the same stay in New York City the ceiling is USD 1,145. Neither example includes airfare or ground transportation. Relationship to remote work An approved temporary remote-work arrangement does not turn ordinary commuting or personal relocation into reimbursable business travel. Home-office equipment and the USD 600 allowance are governed by HR-REM-04, DOC-004. The travel policy does not replenish",
+        "page_number": 1
+      },
+      {
+        "source": "03_travel_policy_2026.pdf",
+        "chunk": 2,
+        "score": 0.0318,
+        "text": "rsed at actual cost up to USD 85 per traveler per calendar day. Alcohol is excluded. Meals provided by a conference or customer cannot also be claimed as a separate expense. The USD 85 is not a flat per diem and unused amounts cannot move to another day. Itemized receipts are required for each individual expense of USD 30 or more. Exactly USD 30 requires a receipt. A USD 29.99 purchase does not require an itemized receipt under this threshold, but the business purpose still must be recorded. Employees may not split a purchase to avoid the receipt rule. A lost receipt requires a declaration and manager approval; this does not waive the spending cap. Submission and reimbursement Submit in LedgerLoop within 30 calendar days after the trip ends. Attach dates, business purpose, cost center, and required receipts and approvals. Finance reviews complete submissions within 7 business days. The r",
+        "page_number": 1
+      },
+      {
+        "source": "02_travel_policy_2025_archived.pdf",
+        "chunk": 1,
+        "score": 0.0315,
+        "text": "atory hotel fees. The cap in New York City and San Francisco is USD 280 before taxes and mandatory fees. Booking above the applicable cap requires written approval from the department director before booking. Finance may reject the amount above the cap when no approval is attached. Meals and receipts Domestic meals are reimbursed at actual cost up to USD 60 per traveler per calendar day. This is a reimbursement ceiling, not a flat daily allowance. Alcohol is excluded. Itemized receipts are required for individual expenses of USD 25 or more. An expense of exactly USD 25 needs a receipt. Employees must not split a purchase to avoid this requirement. Filing an expense Submit an expense report in LedgerLoop within 30 calendar days after the trip ends. Include business purpose, attendees for hosted meals, trip dates, and any written exception. A missing receipt requires a signed declaration a",
+        "page_number": 1
+      },
+      {
+        "source": "03_travel_policy_2026.pdf",
+        "chunk": 0,
+        "score": 0.0304,
+        "text": "DOC-003 | Synthetic enterprise corpus Page 1 Current travel and expense policy DOC-003 | Northstar Systems (synthetic) | Finance Version 3.0 | active | Effective 2026-07-01 Internal | Allowed groups: employees Effective date and precedence Policy FIN-TRV-2026 applies to trips beginning on or after July 1, 2026 and replaces FIN-TRV-2025, DOC-002. Select the policy using the trip start date, not the booking date, invoice date, or reimbursement date. The limits below are domestic US limits. There is no international hotel or meal rate table in this document. Booking and hotel limits Manager approval is required before booking business travel. Economy airfare is the default. The standard domestic hotel cap is USD 225 per room per night before taxes and mandatory hotel fees. New York City and San Francisco have a higher cap of USD 325 per room per night before taxes and mandatory fees. Austin",
+        "page_number": 1
+      },
+      {
+        "source": "02_travel_policy_2025_archived.pdf",
+        "chunk": 2,
+        "score": 0.0304,
+        "text": "p ends. Include business purpose, attendees for hosted meals, trip dates, and any written exception. A missing receipt requires a signed declaration and manager approval. The declaration does not increase the daily cap. Personal upgrades and commuting expenses are excluded. Historical example A standard Boston hotel stay on a trip beginning June 20, 2026 is capped at USD 180 per night, even if the reimbursement is submitted in July. A trip beginning July 2, 2026 uses DOC-003. International caps are not specified in this archived document and must not be inferred from domestic limits.",
+        "page_number": 1
+      }
+    ],
+    "generation": {
+      "status": "limit",
+      "done": true,
+      "done_reason": "length",
+      "eval_count": 1536,
+      "num_predict": 1536,
+      "visible_empty": true
+    },
+    "review": {
+      "id": "N15",
+      "answer_grade": "fail",
+      "citation_grade": "fail",
+      "combined_pass": false,
+      "rationale": "No visible answer, so no actual135 calculation, no no-carryover answer and no usable citations. HTTP200 is not a successful response for quality scoring. generation.status=limit, done_reason=length, eval_count=num_predict=1536, visible_empty=true. The relevant actual-cost85/no-carryover passage is retrieved at [2] physical page1, so the failure is not absent policy retrieval.",
+      "flags": [
+        "empty visible answer at unchanged generation cap; no retry or token-cap increase"
+      ]
+    }
+  },
+  {
+    "id": "N16",
+    "question": "For a verified customer deletion request with no hold or exception, may active workspace deletion wait 120 days because backup copies take another 90 days? When does the backup clock start?",
+    "expected": "No. Active-data deletion operational target is 30 calendar days after verified request. Backup copies age out within 90 calendar days after active deletion. Do not add backup time to the active-data target.",
+    "saved_answer": "The active workspace deletion must occur within 30 calendar days after a verified request, per [1]. Backup copies age out within 90 calendar days **after active deletion** completes, meaning the backup clock starts when the active deletion is finalized. The 30-day active deletion period and 90-day backup aging are separate timelines; the active deletion does not wait for backups. Thus, waiting 120 days is not permitted.  \n\nCitations: [1]",
+    "sources": [
+      {
+        "source": "07_retention_schedule.txt",
+        "chunk": 4,
+        "score": 0.0328,
+        "text": "Customer deletion requests\n## Customer deletion requests\nCustomer Success verifies the requester and opens a deletion case. The data owner identifies the applicable datasets and contractual requirements. Legal checks for a hold. When no hold or documented exception applies, the operational target for deleting active customer workspace data is 30 calendar days after a verified request. Backup copies age out within 90 calendar days after active deletion. The backup interval is not added to the active-data response target when reporting the active deletion date.",
+        "page_number": null,
+        "location": "Section Customer deletion requests · paragraph 9",
+        "section": "Customer deletion requests",
+        "paragraph": 9,
+        "warnings": []
+      },
+      {
+        "source": "07_retention_schedule.txt",
+        "chunk": 5,
+        "score": 0.0323,
+        "text": "Execution and audit\n## Execution and audit\nRecord the case ID, systems examined, deletion job IDs, completion timestamp, and exceptions. A failed deletion job remains open and must not be marked complete because a download link expired. Legal may narrow or release a hold; the system owner then recalculates eligibility using the original record dates. This policy does not authorize copying customer data to another system to avoid deletion.",
+        "page_number": null,
+        "location": "Section Execution and audit · paragraph 11",
+        "section": "Execution and audit",
+        "paragraph": 11,
+        "warnings": []
+      },
+      {
+        "source": "06_security_incident_runbook.txt",
+        "chunk": 9,
+        "score": 0.0303,
+        "text": "Evidence handling\nIncident evidence is normally retained for 365 days after incident closure, as specified in DOC-007. An active legal hold suspends deletion even after the ordinary period ends. Legal owns release of the hold. Responders must not interpret a closed operational ticket as release of a legal hold.",
+        "page_number": null,
+        "location": "Section Evidence handling · paragraph 15",
+        "section": "Evidence handling",
+        "paragraph": 15,
+        "warnings": []
+      },
+      {
+        "source": "07_retention_schedule.txt",
+        "chunk": 1,
+        "score": 0.0294,
+        "text": "Policy scope\n## Policy scope\nPolicy DATA-RET-06 defines ordinary retention periods for Northstar records. Amara Okafor owns the schedule. System owners implement deletion and record completion. The periods below are Northstar's synthetic internal policy choices, not statements of statutory requirements. An active legal hold suspends normal deletion for covered records until Legal releases the hold in writing.",
+        "page_number": null,
+        "location": "Section Policy scope · paragraph 3",
+        "section": "Policy scope",
+        "paragraph": 3,
+        "warnings": []
+      },
+      {
+        "source": "17_onboarding_checklist.txt",
+        "chunk": 3,
+        "score": 0.0273,
+        "text": "Access requests\n## Access requests\nFor each business application, request the minimum role needed. Manager and application-owner approval are required under DOC-005. Production administrator access additionally requires Security approval and expires after at most 8 hours. Onboarding does not grant a standing production-admin exception. Contractors require a recorded end date and a maximum 30-day access approval.",
+        "page_number": null,
+        "location": "Section Access requests · paragraph 7",
+        "section": "Access requests",
+        "paragraph": 7,
+        "warnings": []
+      }
+    ],
+    "generation": {
+      "status": "complete",
+      "done": true,
+      "done_reason": "stop",
+      "eval_count": 578,
+      "num_predict": 1536,
+      "visible_empty": false
+    },
+    "review": {
+      "id": "N16",
+      "answer_grade": "partial",
+      "citation_grade": "partial",
+      "combined_pass": false,
+      "rationale": "Correctly rejects adding backup aging to the active-data interval and places the90day backup clock after active deletion. However, it says active deletion 'must occur within30calendar days' citing [1]. Retention Customer deletion requests paragraph9 establishes only an 'operational target', not a mandatory guarantee. This materially strengthens the source. The original answer correctly retained 'operational target'.",
+      "flags": [
+        "material force change: target becomes unconditional obligation"
+      ]
+    }
+  },
+  {
+    "id": "N20",
+    "question": "Using only the indexed documents, what is Cedar Health’s current security-notification deadline on November 10, 2026 after a confirmed incident affecting its data?",
+    "expected": "Current deadline cannot be established: indexed excerpt has original48h clause but explicitly says CH-AM-02 replaces deadline from October1. Signed amendment EML was skipped/unsupported. Do not present 48h as current or invent its replacement.",
+    "saved_answer": "",
+    "sources": [
+      {
+        "source": "13_cedar_contract_excerpt.txt",
+        "chunk": 4,
+        "score": 0.0328,
+        "text": "Section 7 security notification as originally signed\n## Section 7 security notification as originally signed\nNorthstar will notify Cedar Health's designated security contact within 48 elapsed hours after confirmation of a security incident affecting Cedar Health customer data. A suspicion that has not been confirmed does not start the clock defined in this clause, although internal investigation begins immediately. This is the original February 2026 clause. Amendment CH-AM-02 in DOC-014 replaces only this notification deadline from October 1, 2026 onward.",
+        "page_number": null,
+        "location": "Section Section 7 security notification as originally signed · paragraph 9",
+        "section": "Section 7 security notification as originally signed",
+        "paragraph": 9,
+        "warnings": []
+      },
+      {
+        "source": "15_atlas_incident_postmortem.txt",
+        "chunk": 2,
+        "score": 0.0323,
+        "text": "Impact and security assessment\n## Impact and security assessment\nNo customer data was lost. Security reviewed access and audit events and found no evidence of unauthorized access or customer data exposure. This was an availability incident, not a confirmed customer-data security incident. Therefore the data-incident notification deadline in Cedar Health Section 7 was not triggered by this event. Customer Success still sent an operational availability update. A general statement that no data was lost is separate from the evidence-based assessment of unauthorized access.",
+        "page_number": null,
+        "location": "Section Impact and security assessment · paragraph 5",
+        "section": "Impact and security assessment",
+        "paragraph": 5,
+        "warnings": []
+      },
+      {
+        "source": "15_atlas_incident_postmortem.txt",
+        "chunk": 1,
+        "score": 0.0308,
+        "text": "Incident summary\n## Incident summary\nIncident INC-2026-1014 was a SEV-2 availability incident affecting Atlas export jobs in eu-west-1. The customer-impact window was October 14, 2026 from 09:12 UTC through 09:47 UTC, lasting 35 minutes. Interactive dashboards and scheduled imports remained available. The incident delayed exports for 18 workspaces, including Cedar Health. It did not affect us-east-1.",
+        "page_number": null,
+        "location": "Section Incident summary · paragraph 3",
+        "section": "Incident summary",
+        "paragraph": 3,
+        "warnings": []
+      },
+      {
+        "source": "15_atlas_incident_postmortem.txt",
+        "chunk": 6,
+        "score": 0.0303,
+        "text": "Customer communication and limitations\n## Customer communication and limitations\nSupport ticket TCK-1042 in DOC-016 records Cedar Health's delayed-export report. The support ticket's early suspicion of a data issue was not the final incident finding. The final assessment in this postmortem supersedes that preliminary suspicion for this event. The observed 35-minute interruption alone is insufficient to calculate a contractual service credit because the excerpted contract omits the credit schedule and calculation rules.",
+        "page_number": null,
+        "location": "Section Customer communication and limitations · paragraph 13",
+        "section": "Customer communication and limitations",
+        "paragraph": 13,
+        "warnings": []
+      },
+      {
+        "source": "13_cedar_contract_excerpt.txt",
+        "chunk": 1,
+        "score": 0.0301,
+        "text": "Agreement record\n## Agreement record\nAgreement CH-2026-014 is between fictional Northstar Systems and fictional Cedar Health. It was signed January 15, 2026 and became effective February 1, 2026. The initial term ends January 31, 2027. Cedar Health's account ID is CUS-0042. Noah Brooks is the Northstar account owner. The hosted Atlas workspace is in eu-west-1. This excerpt contains selected terms, not a complete agreement.",
+        "page_number": null,
+        "location": "Section Agreement record · paragraph 3",
+        "section": "Agreement record",
+        "paragraph": 3,
+        "warnings": []
+      }
+    ],
+    "generation": {
+      "status": "limit",
+      "done": true,
+      "done_reason": "length",
+      "eval_count": 1536,
+      "num_predict": 1536,
+      "visible_empty": true
+    },
+    "review": {
+      "id": "N20",
+      "answer_grade": "fail",
+      "citation_grade": "fail",
+      "combined_pass": false,
+      "rationale": "Empty visible answer is not an abstention. generation.status=limit, done_reason=length, eval_count=num_predict=1536. Contract [1], Section7 paragraph9, explicitly says the original48hour deadline was replaced fromOctober1; the amendment remains unsupported/skipped. The new run makes no wrong48hour assertion but supplies no usable unknown-replacement answer either.",
+      "flags": [
+        "empty visible answer at unchanged generation cap; absence of old hallucination is not a pass"
+      ]
+    }
+  },
+  {
+    "id": "N22",
+    "question": "Orion has run both pipelines for 14 days with exactly 0.1% revenue variance, but one unexplained row-count mismatch remains. Can it pass validation and proceed directly to cutover?",
+    "expected": "No. Exactly0.1% passes only numerical variance check; zero unexplained row-count mismatches are also required for every daily comparison during14 consecutive calendar days. Validation signoff, Security signoff and successful rollback rehearsal still gate cutover.",
+    "saved_answer": "Orion cannot pass validation and proceed directly to cutover. The validation gate requires **zero unexplained row-count mismatches** and **absolute aggregate revenue variance ≤ 0.1%**. While the 0.1% variance meets the numerical gate, the **unexplained row-count mismatch** explicitly fails validation [1]. Additionally, Amara Okafor must sign the validation result, and the rollback rehearsal must pass, neither of which is confirmed here [1]. The cutover target is conditional on OR-03 validation and rollback rehearsal completion [5]. \n\n**Answer:** No, the unexplained row-count mismatch fails validation [1].",
+    "sources": [
+      {
+        "source": "19_project_orion_decisions.txt",
+        "chunk": 5,
+        "score": 0.0328,
+        "text": "Decision OR-03 approved October 15 2026\n## Decision OR-03 approved October 15 2026\nRun the legacy and Harbor batch pipelines in parallel for 14 consecutive calendar days before cutover. The validation gate requires zero unexplained row-count mismatches and absolute aggregate revenue variance no greater than 0.1% for every daily comparison. A variance of exactly 0.1% passes the numerical gate; an unexplained row-count mismatch still fails. Amara Okafor must sign the validation result. The operational rollback rehearsal must also pass.",
+        "page_number": null,
+        "location": "Section Decision OR-03 approved October 15 2026 · paragraph 11",
+        "section": "Decision OR-03 approved October 15 2026",
+        "paragraph": 11,
+        "warnings": []
+      },
+      {
+        "source": "19_project_orion_decisions.txt",
+        "chunk": 4,
+        "score": 0.032,
+        "text": "Discussion October 8 2026\n## Discussion October 8 2026\nOne attendee suggested moving directly to the Harbor platform without a dual-run period. Amara Okafor rejected that suggestion because it would remove the baseline comparison. No decision approved skipping validation. Another attendee suggested doubling the Atlas upload limit; that discussion belongs to the Atlas 4.3 proposal in DOC-012 and is not an Orion deliverable.",
+        "page_number": null,
+        "location": "Section Discussion October 8 2026 · paragraph 9",
+        "section": "Discussion October 8 2026",
+        "paragraph": 9,
+        "warnings": []
+      },
+      {
+        "source": "19_project_orion_decisions.txt",
+        "chunk": 3,
+        "score": 0.0315,
+        "text": "Decision OR-02 approved September 24 2026\n## Decision OR-02 approved September 24 2026\nThe provisional production cutover target was November 15, 2026, conditional on validation and rollback rehearsal. Mateo Silva owned the plan. This target was superseded by OR-04 on October 22, 2026. Keep this decision for history but do not communicate November 15 as the current target.",
+        "page_number": null,
+        "location": "Section Decision OR-02 approved September 24 2026 · paragraph 7",
+        "section": "Decision OR-02 approved September 24 2026",
+        "paragraph": 7,
+        "warnings": []
+      },
+      {
+        "source": "19_project_orion_decisions.txt",
+        "chunk": 1,
+        "score": 0.0301,
+        "text": "Program definition\n## Program definition\nProject Orion moves Northstar's internal analytics batch jobs from the legacy warehouse to the Harbor platform. It is not the Atlas product, the Atlas export service, or a vendor. Mateo Silva is the program lead. Amara Okafor owns data validation. The decision log records proposals and approvals separately. Only the most recent approved decision for the same scope controls that scope.",
+        "page_number": null,
+        "location": "Section Program definition · paragraph 3",
+        "section": "Program definition",
+        "paragraph": 3,
+        "warnings": []
+      },
+      {
+        "source": "19_project_orion_decisions.txt",
+        "chunk": 6,
+        "score": 0.0297,
+        "text": "Decision OR-04 approved October 22 2026\n## Decision OR-04 approved October 22 2026\nMove the production cutover target to December 6, 2026. This replaces the November 15 target in OR-02. The target remains conditional on OR-03 and successful rollback rehearsal. Priya Nair owns the security signoff. Mateo Silva may authorize the cutover only after Data Governance and Security signoffs and the rollback rehearsal are complete. No signed evidence that these gates have passed is included in this log as of November 9, 2026.",
+        "page_number": null,
+        "location": "Section Decision OR-04 approved October 22 2026 · paragraph 13",
+        "section": "Decision OR-04 approved October 22 2026",
+        "paragraph": 13,
+        "warnings": []
+      }
+    ],
+    "generation": {
+      "status": "complete",
+      "done": true,
+      "done_reason": "stop",
+      "eval_count": 453,
+      "num_predict": 1536,
+      "visible_empty": false
+    },
+    "review": {
+      "id": "N22",
+      "answer_grade": "partial",
+      "citation_grade": "pass",
+      "combined_pass": false,
+      "rationale": "Correctly says0.1% meets only the numerical gate and an unexplained mismatch fails validation, supported by OR-03 [1]. It now describes signatures/rehearsal as unconfirmed rather than proven failed, consistent with OR-04 [5]. But in summarizing cutover gates it omits the required Security signoff expressly present in [5], so the answer remains incomplete. Stated claims have cited support; citation support is not downgraded solely for the omitted claim.",
+      "flags": [
+        "material omission: Security signoff gate",
+        "every-daily-comparison/14-day context not fully restated"
+      ]
+    }
+  },
+  {
+    "id": "N24",
+    "question": "A new hire starts Monday, November 23, 2026. Using only this corpus, give the exact calendar date of the five-business-day security-awareness and privacy-training deadline.",
+    "expected": "Cannot establish exact date from corpus: onboarding requires completion within5business days, while handbook excludes Northstar holidays and says its holiday calendar is absent. Do not assume an external holiday calendar or silently count weekdays as all business days.",
+    "saved_answer": "The five-business-day deadline for security-awareness and privacy-training begins on the start date, November 23, 2026. Counting 5 business days (Monday–Friday, excluding holidays not specified in the corpus):  \n- **Day 1**: November 23 (Monday)  \n- **Day 2**: November 24 (Tuesday)  \n- **Day 3**: November 25 (Wednesday)  \n- **Day 4**: November 26 (Thursday)  \n- **Day 5**: November 27 (Friday)  \n\n**Deadline**: **November 27, 2026** [1].",
+    "sources": [
+      {
+        "source": "17_onboarding_checklist.txt",
+        "chunk": 4,
+        "score": 0.0323,
+        "text": "First week\n## First week\nComplete security awareness training and the privacy handling module within 5 business days of the start date. The manager assigns a buddy and reviews the team's escalation paths. Confirm the employee knows how to report a lost device and suspicious message. The manager verifies that shared folders are appropriate for the role rather than copying a prior employee's access wholesale.",
+        "page_number": null,
+        "location": "Section First week · paragraph 9",
+        "section": "First week",
+        "paragraph": 9,
+        "warnings": []
+      },
+      {
+        "source": "01_company_handbook.txt",
+        "chunk": 7,
+        "score": 0.0318,
+        "text": "Fiscal conventions\n## Fiscal conventions\nThe fiscal year runs from January 1 through December 31. Internal budget amounts in this collection are USD unless another currency is explicitly labeled. Business days mean Monday through Friday excluding Northstar holidays. This collection does not include a holiday calendar, so exact business-day deadlines that depend on holidays cannot be computed from the corpus alone.",
+        "page_number": null,
+        "location": "Section Fiscal conventions · paragraph 14",
+        "section": "Fiscal conventions",
+        "paragraph": 14,
+        "warnings": []
+      },
+      {
+        "source": "13_cedar_contract_excerpt.txt",
+        "chunk": 4,
+        "score": 0.031,
+        "text": "Section 7 security notification as originally signed\n## Section 7 security notification as originally signed\nNorthstar will notify Cedar Health's designated security contact within 48 elapsed hours after confirmation of a security incident affecting Cedar Health customer data. A suspicion that has not been confirmed does not start the clock defined in this clause, although internal investigation begins immediately. This is the original February 2026 clause. Amendment CH-AM-02 in DOC-014 replaces only this notification deadline from October 1, 2026 onward.",
+        "page_number": null,
+        "location": "Section Section 7 security notification as originally signed · paragraph 9",
+        "section": "Section 7 security notification as originally signed",
+        "paragraph": 9,
+        "warnings": []
+      },
+      {
+        "source": "17_onboarding_checklist.txt",
+        "chunk": 1,
+        "score": 0.0309,
+        "text": "Before the start date\n## Before the start date\nThe hiring manager opens an onboarding ticket at least 7 business days before the employee's start date. Include the department, start date, manager, work location, role, and required applications. People Operations confirms the employment record. IT prepares a managed laptop and hardware security key. The employee does not purchase these items using the home-office allowance.",
+        "page_number": null,
+        "location": "Section Before the start date · paragraph 3",
+        "section": "Before the start date",
+        "paragraph": 3,
+        "warnings": []
+      },
+      {
+        "source": "17_onboarding_checklist.txt",
+        "chunk": 5,
+        "score": 0.0308,
+        "text": "First month\n## First month\nThe manager and employee review the role goals by day 30. People Operations checks required training completion. IT closes the equipment task only after delivery and security-key enrollment are confirmed. An open application request should remain open even if the laptop task has completed.",
+        "page_number": null,
+        "location": "Section First month · paragraph 11",
+        "section": "First month",
+        "paragraph": 11,
+        "warnings": []
+      }
+    ],
+    "generation": {
+      "status": "complete",
+      "done": true,
+      "done_reason": "stop",
+      "eval_count": 511,
+      "num_predict": 1536,
+      "visible_empty": false
+    },
+    "review": {
+      "id": "N24",
+      "answer_grade": "fail",
+      "citation_grade": "fail",
+      "combined_pass": false,
+      "rationale": "Wrongly givesNovember27 as an exact deadline and silently counts weekdays despite the missing company holiday calendar. Cited onboarding [1], paragraph9, supplies only five business days, not that calendar date. Retrieved handbook [2], paragraph14, explicitly says exact holiday-dependent deadlines cannot be computed from the corpus. This is failure to use available counterevidence, not a retrieval miss.",
+      "flags": [
+        "unsupported exact-date answer despite required abstention"
+      ]
+    }
+  }
+]
