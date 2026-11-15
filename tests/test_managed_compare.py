@@ -34,8 +34,17 @@ def plan_files(tmp_path, monkeypatch):
         "questions": "questions.json",
         "questions_sha256": run.sha(run.encode(questions)),
         "freeze_sha256": "f" * 64,
+        "custodian_receipt": "custodian-receipt.json",
         "arms": {},
     }
+    receipt = {
+        "question_export_sha256": plan["questions_sha256"],
+        "sealed_bundle_sha256_unchanged": plan["freeze_sha256"],
+        "question_export_count": 8,
+        "question_export_fields": ["id", "question"],
+    }
+    (tmp_path / "custodian-receipt.json").write_bytes(run.encode(receipt))
+    plan["custodian_receipt_sha256"] = run.sha(run.encode(receipt))
     for n, arm in enumerate(run.ARMS):
         state = {
             "isolated": True,
@@ -65,6 +74,7 @@ def plan_files(tmp_path, monkeypatch):
                 "owner_reference": "synthetic test ONLY",
                 "plan_sha256": run.sha(plan_path.read_bytes()),
                 "isolated_execution_authorized": True,
+                "ledger_dir": str(tmp_path / "campaign-ledger"),
             }
         )
     )
@@ -139,6 +149,14 @@ def rewrite_state(files, arm, mutate):
     )
 
 
+def rewrite_receipt(files, mutate):
+    path = files[0].parent / "custodian-receipt.json"
+    receipt = json.loads(path.read_bytes())
+    mutate(receipt)
+    path.write_bytes(run.encode(receipt))
+    rewrite_plan(files, lambda p: p.update(custodian_receipt_sha256=run.sha(path.read_bytes())))
+
+
 def test_plan_only_never_contacts_services(plan_files, capsys):
     assert run.main(["--plan", str(plan_files[0])]) == 0
     result = json.loads(capsys.readouterr().out)
@@ -178,6 +196,18 @@ def test_once_each_raw_hashes_order_privacy_and_unreviewed_grades(plan_files, an
                 plan_files[0],
                 plan_files[1],
                 out.parent / "another",
+                transport=transport_for(plan_files[3], []),
+            )
+        )
+    # Renaming/reformatting unchanged authorization still hits the same ledger identity.
+    copied_auth = plan_files[1].with_name("copied-authorization.json")
+    copied_auth.write_text(json.dumps(json.loads(plan_files[1].read_bytes()), indent=4))
+    with pytest.raises(FileExistsError):
+        asyncio.run(
+            run.compare(
+                plan_files[0],
+                copied_auth,
+                out.parent / "third",
                 transport=transport_for(plan_files[3], []),
             )
         )
@@ -250,7 +280,36 @@ def test_expected_answers_cannot_enter_dispatch_export(plan_files):
     questions[0]["expected_answer"] = "grader only"
     path.write_bytes(run.encode(questions))
     rewrite_plan(plan_files, lambda p: p.update(questions_sha256=run.sha(path.read_bytes())))
+    rewrite_receipt(
+        plan_files, lambda r: r.update(question_export_sha256=run.sha(path.read_bytes()))
+    )
     with pytest.raises(ValueError, match="grading fields"):
+        run.load_plan(plan_files[0])
+
+
+def test_preserves_exact_export_bytes_not_reencoded_json(plan_files):
+    path = plan_files[0].parent / "questions.json"
+    path.write_text(json.dumps(json.loads(path.read_bytes()), indent=4) + "\n")
+    rewrite_plan(plan_files, lambda p: p.update(questions_sha256=run.sha(path.read_bytes())))
+    rewrite_receipt(
+        plan_files, lambda r: r.update(question_export_sha256=run.sha(path.read_bytes()))
+    )
+    assert execute(plan_files, transport_for(plan_files[3], [])) == 0
+    assert (plan_files[2] / "questions.json").read_bytes() == path.read_bytes()
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("question_export_sha256", "e" * 64),
+        ("sealed_bundle_sha256_unchanged", "e" * 64),
+        ("question_export_count", 12),
+        ("question_export_fields", ["id", "question", "expected"]),
+    ],
+)
+def test_export_and_frozen_bundle_must_match_pinned_custodian_receipt(plan_files, field, value):
+    rewrite_receipt(plan_files, lambda r: r.update({field: value}))
+    with pytest.raises(ValueError, match="custodian"):
         run.load_plan(plan_files[0])
 
 

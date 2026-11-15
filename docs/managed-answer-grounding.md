@@ -102,6 +102,8 @@ Prepare a private plan with exactly:
   "questions": "questions-only.json",
   "questions_sha256": "<SHA256 of exact question-export bytes>",
   "freeze_sha256": "<frozen bundle SHA256>",
+  "custodian_receipt": "reviewer-adapter-receipt.json",
+  "custodian_receipt_sha256": "<SHA256 of nonrevealing custodian receipt>",
   "arms": {
     "baseline": {
       "url": "http://127.0.0.1:19001",
@@ -139,6 +141,16 @@ and after the comparison; preserve those receipts privately. Live readiness chec
 model names/availability, and document snapshots are checked before and after. A
 document receipt is not a proof of all underlying vector bytes.
 
+The pinned custodian receipt must bind `question_export_sha256`,
+`sealed_bundle_sha256_unchanged`, `question_export_count` and
+`question_export_fields: ["id", "question"]` to this export and frozen bundle. The
+runner checks these links and saves the exact export bytes, not re-encoded JSON.
+The operator must authenticate the receipt's provenance independently; a file hash
+does not prove who wrote it. Both arms must be byte-identical clones of one library
+snapshot, including revision metadata and complete document records, not separate
+reimports of identical source files. Relative input paths can refer outside the
+plan folder; this is a trusted operator tool, not a filesystem sandbox.
+
 Plan-only command (no network or generation):
 
 ```sh
@@ -146,8 +158,9 @@ PYTHONPATH=src python -m evaluation.managed_compare --plan /private/path/plan.js
 ```
 
 Only after separate isolated-execution authorization, create a private authorization
-JSON with exactly `owner_reference`, `plan_sha256` (exact plan-file bytes) and
-`isolated_execution_authorized: true`. Set dedicated API keys in the named environment
+JSON with exactly `owner_reference`, `plan_sha256` (exact plan-file bytes),
+`isolated_execution_authorized: true` and `ledger_dir` (the fixed absolute private
+campaign ledger directory). Set dedicated API keys in the named environment
 variables without putting them in the plan, receipt, command line or Git. Then:
 
 ```sh
@@ -158,10 +171,14 @@ PYTHONPATH=src python -m evaluation.managed_compare \
 ```
 
 The runner permits numeric-loopback HTTP only, blocks the deployed API's port 18000,
-disables proxies/redirects/transport retries, and consumes the authorization via an
-exclusive durable file before any network access. Loopback alone does not establish
+disables proxies/redirects/transport retries, and consumes the canonical authorization
+identity in its pinned campaign ledger via an exclusive durable file before any
+network access. Loopback alone does not establish
 isolation: do not use a forwarded shared/deployed endpoint. A consumed authorization
 cannot be reused even with another output directory. Do not remove it to resume.
+Copying or reformatting unchanged authorization content still hits the same ledger
+identity. Changing the ledger or authorization content requires new owner approval;
+the file-based gate does not authenticate or constrain a malicious operator.
 
 Requests are sequential: baseline then candidate for each unchanged question, same
 order in both arms, exactly one attempt per question per arm, `top_k=5` and explicit
@@ -183,6 +200,8 @@ conditions and correct abstention against the sealed gold. Report answer/citatio
 combined scores, confounds and all failures; no automatic semantic improvement claim.
 Model nondeterminism, API/model idle/loading/cache state and question exposure remain
 limitations even when requests and retrieved passages match.
+Baseline always runs first within each pair; this introduces a model-warmth/order
+bias, so timing differences must not be treated as unbiased speed comparisons.
 
 Submit for independent code/evidence review before any merge or deployment. Do not
 change unrelated connector/retention work or existing PRs as part of this correction.

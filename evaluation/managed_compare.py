@@ -45,16 +45,34 @@ def save(path, raw):
         os.close(directory)
 
 
-def load_plan(path):
-    plan = json.loads(path.read_bytes())
-    if set(plan) != {"questions", "questions_sha256", "freeze_sha256", "arms"}:
-        raise ValueError("Plan must contain only questions path/hash, freeze hash and arms")
+def load_plan(path, *, raw=None):
+    plan = json.loads(path.read_bytes() if raw is None else raw)
+    if set(plan) != {
+        "questions",
+        "questions_sha256",
+        "freeze_sha256",
+        "arms",
+        "custodian_receipt",
+        "custodian_receipt_sha256",
+    }:
+        raise ValueError("Plan needs question export, frozen bundle and custodian receipt pins")
+    receipt_raw = (path.parent / plan["custodian_receipt"]).read_bytes()
+    if sha(receipt_raw) != plan["custodian_receipt_sha256"]:
+        raise ValueError("Custodian receipt hash mismatch")
+    receipt = json.loads(receipt_raw)
     questions_raw = (path.parent / plan["questions"]).read_bytes()
     if sha(questions_raw) != plan["questions_sha256"]:
         raise ValueError("Question bytes differ from frozen reviewer export")
     questions = json.loads(questions_raw)
     if not isinstance(questions, list) or not 8 <= len(questions) <= 12:
         raise ValueError("Require 8–12 frozen held-out questions")
+    if (
+        receipt.get("question_export_sha256") != plan["questions_sha256"]
+        or receipt.get("sealed_bundle_sha256_unchanged") != plan["freeze_sha256"]
+        or receipt.get("question_export_count") != len(questions)
+        or receipt.get("question_export_fields") != ["id", "question"]
+    ):
+        raise ValueError("Question export is not bound to the custodian's frozen-bundle receipt")
     ids = set()
     for case in questions:
         if (
@@ -189,14 +207,16 @@ def parsed(raw, result):
 
 
 async def compare(plan_path, authorization_path, output, *, transport=None):
-    plan, questions, states = load_plan(plan_path)
+    plan_raw = plan_path.read_bytes()
+    plan, questions, states = load_plan(plan_path, raw=plan_raw)
     authorization_raw = authorization_path.read_bytes()
     authorization = json.loads(authorization_raw)
     if (
-        set(authorization) != {"owner_reference", "plan_sha256", "isolated_execution_authorized"}
+        set(authorization)
+        != {"owner_reference", "plan_sha256", "isolated_execution_authorized", "ledger_dir"}
         or not authorization["owner_reference"].strip()
         or authorization["isolated_execution_authorized"] is not True
-        or authorization["plan_sha256"] != sha(plan_path.read_bytes())
+        or authorization["plan_sha256"] != sha(plan_raw)
     ):
         raise ValueError("Separate owner authorization must pin this exact isolated plan")
     for state in states.values():
@@ -209,21 +229,36 @@ async def compare(plan_path, authorization_path, output, *, transport=None):
     keys = {arm: os.environ[plan["arms"][arm]["key_env"]] for arm in ARMS}
     if any(not value for value in keys.values()):
         raise ValueError("Empty dedicated API key")
+    ledger = Path(authorization["ledger_dir"])
+    if (
+        not ledger.is_absolute()
+        or ".." in ledger.parts
+        or any(p.is_symlink() for p in (ledger, *ledger.parents))
+    ):
+        raise ValueError("Require a fixed absolute nonsymlink campaign ledger directory")
     out = new_output(output)
+    ledger.mkdir(mode=0o700, parents=True, exist_ok=True)
     # Consume authorization BEFORE any network access, even if metadata fails.
     save(
-        authorization_path.with_name(authorization_path.name + ".consumed"),
+        ledger / (sha(encode(authorization)) + ".consumed.json"),
         encode(
             {
                 "output": str(out),
-                "plan_sha256": sha(plan_path.read_bytes()),
+                "plan_sha256": sha(plan_raw),
                 "consumed_at": datetime.now(UTC).isoformat(),
             }
         ),
     )
-    save(out / "plan.json", plan_path.read_bytes())
+    save(out / "plan.json", plan_raw)
     save(out / "authorization.json", authorization_raw)
-    save(out / "questions.json", encode(questions))
+    for name, path_key, hash_key in (
+        ("questions.json", "questions", "questions_sha256"),
+        ("custodian-receipt.json", "custodian_receipt", "custodian_receipt_sha256"),
+    ):
+        raw = (plan_path.parent / plan[path_key]).read_bytes()
+        if sha(raw) != plan[hash_key]:
+            raise ValueError("Pinned input changed before dispatch; authorization remains consumed")
+        save(out / name, raw)
     save(out / "state-receipts.json", encode(states))
     save(
         out / "runner-source-hashes.json",
