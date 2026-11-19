@@ -101,6 +101,8 @@ PYTHONPATH="$PWD/src" python -m evaluation.search_preflight \
 
 The command verifies both API configurations against that arm’s frozen inputs. Repeat with the other arm’s files and compare the resulting `selected-snapshot.json` hashes. Its 15 document records bind the ID, committed revision, parser/model fingerprint and collection. Its 138 point records bind ID, document, revision, collection and a canonical hash of the complete payload. The read-only adapter uses the pinned `Library.ask` and `model_context` code and stops when it obtains the application’s actual revision filter. It never opens the sealed questions.
 
+The offline check examines the two rendered Docker bridge names, their members and the names each API can use for its database. It rejects a second service claiming `qdrant`, including through an alias or link, and rejects a host entry that overrides the name. The guest inspector later checks DNS inside each running API.
+
 For the negative control, render a temporary Compose override using the historical arm-specific hostname, keep the same two archive inputs, and choose a different output directory. Expect `no_documents`, a nonzero exit and zero question requests. Preserve the positive and negative receipts. The original capture contains point identities and payloads. The stored-vector check against the isolated running databases takes place only in a future authorized campaign.
 
 ### Test host and ownership

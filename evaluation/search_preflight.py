@@ -15,7 +15,7 @@ from urllib.parse import quote
 
 import httpx
 
-from evaluation.campaign_resources import ResourceStop, bridge_ip
+from evaluation.campaign_resources import ARMS, ResourceStop, bridge_ip
 from evaluation.registry_snapshot import DOCUMENT_FIELDS, committed_registry
 from rag import folder_parser, library
 from rag.config import Settings
@@ -301,6 +301,52 @@ async def runtime_arm(client, api, settings, listing, job, manifest):
     }
 
 
+def verify_rendered_qdrant_routes(rendered):
+    services = rendered["services"]
+    if rendered["networks"]["baseline"]["name"] == rendered["networks"]["candidate"]["name"]:
+        raise ResourceStop("the two rendered arms require distinct Docker bridges")
+
+    for arm in ARMS:
+        api_name, db_name = arm + "-api", arm + "-qdrant"
+        api, database = services[api_name], services[db_name]
+        members = {
+            name: service
+            for name, service in services.items()
+            if arm in (service.get("networks") or {})
+        }
+        if (
+            set(members) != {api_name, db_name, "ollama"}
+            or set(api["networks"]) != {arm}
+            or set(database["networks"]) != {arm}
+        ):
+            raise ResourceStop(f"{arm}: rendered bridge membership differs from the isolated pair")
+
+        providers = set()
+        for name, peer in members.items():
+            attachment = peer["networks"][arm] or {}
+            names = [name, peer.get("container_name") or "", *(attachment.get("aliases") or ())]
+            if any(n.rstrip(".").lower() == "qdrant" for n in names):
+                providers.add(name)
+        for link in api.get("links") or ():
+            target, _, alias = link.partition(":")
+            if (alias or target).rstrip(".").lower() == "qdrant":
+                providers.add(target)
+
+        overrides = [api.get("hostname") or ""]
+        overrides.extend(
+            re.split(r"[=:]", entry, maxsplit=1)[0] for entry in (api.get("extra_hosts") or ())
+        )
+        overrides.extend(link.rsplit(":", 1)[-1] for link in (api.get("external_links") or ()))
+        db_aliases = (database["networks"][arm] or {}).get("aliases") or ()
+        if (
+            api["environment"]["QDRANT_URL"] != "http://qdrant:6333"
+            or "qdrant" not in db_aliases
+            or providers != {db_name}
+            or any(n.rstrip(".").lower() == "qdrant" for n in overrides)
+        ):
+            raise ResourceStop(f"{arm}: rendered qdrant name must resolve only to {db_name}")
+
+
 def offline_proof(db, capture, rendered, job_id, embed_digest):
     docs, membership = committed_registry(db, job_id)
     docs_by_id = keyed(docs, DOCUMENT_FIELDS)
@@ -321,10 +367,8 @@ def offline_proof(db, capture, rendered, job_id, embed_digest):
         membership,
         {k: (p["collection"], p["document_id"], p["revision"]) for k, p in expected.items()},
     )
-    for arm in ("baseline", "candidate"):
-        services = rendered["services"]
-        api, database = services[arm + "-api"], services[arm + "-qdrant"]
-        env = api["environment"]
+    for arm in ARMS:
+        env = rendered["services"][arm + "-api"]["environment"]
         config = selection_config(
             env["QDRANT_URL"], env["QDRANT_COLLECTION"], env["OLLAMA_EMBED_MODEL"]
         )
@@ -337,13 +381,7 @@ def offline_proof(db, capture, rendered, job_id, embed_digest):
         except ResourceStop as error:
             raise ResourceStop(f"{arm}: {error}") from error
         require_same(arm + " application-selected snapshot", docs_by_id, selected)
-        if (
-            env["QDRANT_URL"] != "http://qdrant:6333"
-            or set(api["networks"]) != {arm}
-            or set(database["networks"]) != {arm}
-            or "qdrant" not in database["networks"][arm]["aliases"]
-        ):
-            raise ResourceStop(arm + " rendered database URL or private bridge alias mismatch")
+    verify_rendered_qdrant_routes(rendered)
     return manifest
 
 

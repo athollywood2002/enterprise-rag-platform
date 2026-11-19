@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ROOT / "evaluation/compose.managed-compare.yaml"
 
 
-def render(tmp_path, wrong_arm=None):
+def render(tmp_path, wrong_arm=None, *, override=None):
     command = (
         [shutil.which("docker-compose")]
         if shutil.which("docker-compose")
@@ -38,10 +38,16 @@ def render(tmp_path, wrong_arm=None):
         pytest.skip("Docker Compose is required only for the render integration checks")
     args = [*command, "-f", str(COMPOSE)]
     if wrong_arm:
-        overlay = tmp_path / "wrong-host.yaml"
-        overlay.write_text(
-            f"services:\n  {wrong_arm}-api:\n    environment:\n      QDRANT_URL: http://{wrong_arm}-qdrant:6333\n"
-        )
+        override = {
+            "services": {
+                wrong_arm + "-api": {
+                    "environment": {"QDRANT_URL": f"http://{wrong_arm}-qdrant:6333"}
+                }
+            }
+        }
+    if override:
+        overlay = tmp_path / "override.json"
+        overlay.write_text(json.dumps(override))
         args.extend(["-f", str(overlay)])
     env = {
         **os.environ,
@@ -99,6 +105,58 @@ def test_rendered_env_against_real_selection_and_retained_bytes(tmp_path, wrong_
             assert points == {p["id"]: p for p in data.manifest["points"]}
             assert (len(docs), len(points)) == (15, 138)
     assert hashlib.sha256(archive.read_bytes()).hexdigest() == original
+
+
+@pytest.mark.parametrize(
+    "override,reason",
+    [
+        ({"services": {"ollama": {"networks": {"baseline": {"aliases": ["qdrant"]}}}}}, "baseline"),
+        (
+            {"services": {"ollama": {"networks": {"candidate": {"aliases": ["QDRANT"]}}}}},
+            "candidate",
+        ),
+        ({"services": {"ollama": {"container_name": "qdrant"}}}, "baseline"),
+        ({"services": {"baseline-api": {"extra_hosts": {"qdrant": "192.0.2.1"}}}}, "baseline"),
+        ({"services": {"candidate-api": {"hostname": "qdrant"}}}, "candidate"),
+        ({"services": {"candidate-api": {"links": ["ollama:qdrant"]}}}, "candidate"),
+        ({"services": {"baseline-api": {"external_links": ["other:qdrant"]}}}, "baseline"),
+        ({"networks": {arm: {"name": "same-bridge"} for arm in runner.ARMS}}, "distinct"),
+        (
+            {"services": {"extra": {"image": "unused:fixture", "networks": ["baseline"]}}},
+            "baseline",
+        ),
+    ],
+    ids=[
+        "baseline-alias",
+        "candidate-alias",
+        "container-name",
+        "extra-host",
+        "api-hostname",
+        "link",
+        "external-link",
+        "same-bridge",
+        "extra-member",
+    ],
+)
+def test_archive_proof_rejects_ambiguous_or_shared_rendered_route(tmp_path, override, reason):
+    data = snapshot()
+    rendered = json.loads(render(tmp_path, override=override))
+    with closing(sqlite3.connect(":memory:")) as db:
+        seed(db, data)
+        with pytest.raises(probe.ResourceStop, match=reason):
+            probe.offline_proof(db, archived_bindings(data), rendered, "synthetic-job", "b" * 64)
+
+
+def test_rendered_link_to_own_database_preserves_expected_route(tmp_path):
+    override = {
+        "services": {
+            "candidate-api": {
+                "links": ["candidate-qdrant:qdrant"],
+                "extra_hosts": {"unrelated": "192.0.2.1"},
+            }
+        }
+    }
+    probe.verify_rendered_qdrant_routes(json.loads(render(tmp_path, override=override)))
 
 
 @pytest.mark.parametrize("arm", ["baseline", "candidate"])
