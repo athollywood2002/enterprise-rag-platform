@@ -1,9 +1,12 @@
 """Synthetic Docker inspection and kernel files. The tests use no daemon or model."""
 
 import json
+import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
+from search_fixture import seed, snapshot
 
 from evaluation import campaign_resources as host
 
@@ -23,16 +26,18 @@ def docker_view(tmp_path, monkeypatch):
         for net in nets:
             networks.setdefault(net, {"Id": net, "Containers": {}, "Driver": "bridge"})[
                 "Containers"
-            ][cid] = {}
+            ][cid] = {"IPv4Address": f"172.20.{1 if net == one else 2}.{i}/24"}
         limit = 12 * host.GIB if role == "ollama" else (256 if role == "runner" else 512) * host.MIB
         env = {
             "OLLAMA_NUM_PARALLEL": "1",
             "OLLAMA_MAX_LOADED_MODELS": "2",
             "OLLAMA_URL": "http://ollama:11434",
             "QDRANT_URL": "http://qdrant:6333",
+            "QDRANT_COLLECTION": "rag_eval_reference",
             "OLLAMA_CHAT_MODEL": "synthetic",
             "OLLAMA_EMBED_MODEL": "synthetic-embed",
             "OLLAMA_NUM_PREDICT": "1536",
+            "OLLAMA_THINK": "default",
             "API_KEY": "private-fixture-key",
         }
         source = tmp_path / role
@@ -70,7 +75,7 @@ def docker_view(tmp_path, monkeypatch):
                 "Networks": {
                     n: {
                         "NetworkID": n,
-                        "IPAddress": f"172.20.1.{i}",
+                        "IPAddress": f"172.20.{1 if n == one else 2}.{i}",
                         "Aliases": [role, "qdrant" if role.endswith("-qdrant") else role],
                     }
                     for n in nets
@@ -85,6 +90,11 @@ def docker_view(tmp_path, monkeypatch):
             return ("\n".join(n["Id"] for n in nodes.values())).encode()
         if args[0] == "inspect":
             return json.dumps(list(nodes.values())).encode()
+        if args[0] == "exec":
+            api = next(n for n in nodes.values() if n["Id"] == args[1])
+            net_id = next(iter(api["NetworkSettings"]["Networks"]))
+            db = nodes[api["Config"]["Labels"][host.LABEL + "role"].replace("-api", "-qdrant")]
+            return json.dumps([db["NetworkSettings"]["Networks"][net_id]["IPAddress"]]).encode()
         assert args[:2] == ("network", "inspect")
         return json.dumps(list(networks.values())).encode()
 
@@ -95,7 +105,24 @@ def docker_view(tmp_path, monkeypatch):
     )
     protected = tmp_path / "production"
     protected.mkdir()
-    return nodes, networks, lambda: host.inspect_campaign(campaign, [protected])
+    data = snapshot()
+    for arm in host.ARMS:
+        with closing(sqlite3.connect(tmp_path / (arm + "-api") / "library.sqlite3")) as db:
+            seed(db, data)
+    render = {
+        "name": campaign,
+        "services": {
+            role: {"environment": dict(v.split("=", 1) for v in n["Config"]["Env"])}
+            for role, n in nodes.items()
+        },
+    }
+    return (
+        nodes,
+        networks,
+        lambda: host.inspect_campaign(
+            campaign, [protected], json.dumps(render).encode(), json.dumps(data.manifest).encode()
+        ),
+    )
 
 
 def test_capture_binds_exact_identities_and_drops_sensitive_environment(docker_view):
@@ -160,3 +187,33 @@ def test_resource_reader_tracks_actual_runner_and_separates_paging(tmp_path):
     (proc / "self/cgroup").write_text("0::/unrelated")
     with pytest.raises(host.ResourceStop, match="outside"):
         host.resource_sample(services, tmp_path, proc=proc, cgroup=cg)
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "UPDATE revisions SET state='retired' WHERE id='rev-0'",
+        "UPDATE revisions SET state='staging' WHERE id='rev-0'",
+        "UPDATE documents SET points='[\"other\"]' WHERE id='doc-0'",
+        "UPDATE documents SET fingerprint='other' WHERE id='doc-0'",
+        "UPDATE files SET job_id='outside-job' WHERE doc_id='doc-0'",
+    ],
+)
+def test_physical_sqlite_scope_is_read_before_ownership_receipt(docker_view, sql):
+    nodes, _, capture = docker_view
+    root = Path(nodes["candidate-api"]["Mounts"][0]["Source"])
+    with closing(sqlite3.connect(root / "library.sqlite3")) as db:
+        db.execute(sql)
+        db.commit()
+    with pytest.raises(ValueError, match="revision|point memberships"):
+        capture()
+
+
+def test_namespace_dns_must_match_database_ip(docker_view, monkeypatch):
+    _, _, capture = docker_view
+    original = host.docker
+    monkeypatch.setattr(
+        host, "docker", lambda *args: b'["172.31.1.6"]' if args[0] == "exec" else original(*args)
+    )
+    with pytest.raises(ValueError, match="DNS"):
+        capture()

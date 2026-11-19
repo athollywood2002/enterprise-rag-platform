@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
+from search_fixture import CHAT, MODEL, PREFIX, backend, snapshot
 
 from evaluation import campaign_resources as resources
 from evaluation import managed_compare as run
@@ -38,9 +39,13 @@ def topology():
             bind_port=str(19001 + i),
             model_backend_id=model["id"],
             qdrant_backend_id=db["id"],
+            qdrant_url="http://qdrant:6333",
+            qdrant_collection=PREFIX,
+            qdrant_ip=f"172.21.{i}.2",
+            ollama_ip=f"172.21.{i}.3",
             model_settings={
-                "chat_model": "synthetic-chat:fixed",
-                "embed_model": "synthetic-embed:fixed",
+                "chat_model": CHAT,
+                "embed_model": MODEL,
                 "num_predict": 1536,
                 "think": "default",
             },
@@ -48,6 +53,7 @@ def topology():
         networks[f"{i + 20:064x}"] = [api["id"], db["id"], model["id"]]
     return {
         "campaign_id": "synthetic-campaign",
+        "rendered_sha256": "8" * 64,
         "backend_mode": "campaign-only-shared-ollama",
         "services": services,
         "networks": networks,
@@ -84,7 +90,10 @@ def sample(services, disk_path):
 
 @pytest.fixture
 def plan_files(tmp_path, monkeypatch):
-    documents = {"documents": [{"id": "synthetic", "revision": "one", "chunks": 1}]}
+    data = snapshot()
+    documents = data.listing
+    snapshot_bytes = run.encode(data.manifest)
+    (tmp_path / "selected.json").write_bytes(snapshot_bytes)
     settings = {
         "think": "default",
         "num_predict": 1536,
@@ -93,9 +102,9 @@ def plan_files(tmp_path, monkeypatch):
         "top_k": 5,
         "job_id": "synthetic-job",
         "resources": {"cpu_count": 6, "memory_bytes": 512 * MIB},
-        "chat_model": "synthetic-chat:fixed",
+        "chat_model": CHAT,
         "chat_digest": "a" * 64,
-        "embed_model": "synthetic-embed:fixed",
+        "embed_model": MODEL,
         "embed_digest": "b" * 64,
         "corpus_sha256": "c" * 64,
         "index_sha256": "d" * 64,
@@ -104,6 +113,8 @@ def plan_files(tmp_path, monkeypatch):
     questions = [{"id": f"fresh-{n}", "question": f"Synthetic question {n}?"} for n in range(12)]
     (tmp_path / "questions.json").write_bytes(run.encode(questions))
     ownership = topology()
+    ownership["registry_snapshot_sha256"] = run.sha(snapshot_bytes)
+    ownership["registry_checks"] = {arm: {"documents": 15, "points": 138} for arm in run.ARMS}
     (tmp_path / "host.json").write_bytes(run.encode(ownership))
     plan = {
         "campaign_id": ownership["campaign_id"],
@@ -112,6 +123,9 @@ def plan_files(tmp_path, monkeypatch):
         "budget": run.BUDGET,
         "ownership_receipt": "host.json",
         "ownership_sha256": run.sha(run.encode(ownership)),
+        "selected_snapshot": "selected.json",
+        "selected_snapshot_sha256": run.sha(snapshot_bytes),
+        "rendered_sha256": ownership["rendered_sha256"],
         "questions": "questions.json",
         "questions_sha256": run.sha(run.encode(questions)),
         "freeze_sha256": "f" * 64,
@@ -132,7 +146,7 @@ def plan_files(tmp_path, monkeypatch):
             "deployment": False,
             "campaign_id": ownership["campaign_id"],
             "api_container_id": ownership["services"][arm + "-api"]["id"],
-            "git_commit": str(n + 1) * 40,
+            "git_commit": run.PINNED_BUILDS[arm],
             "observed_at": datetime.now(UTC).isoformat(),
             "inspection": "Synthetic test receipt; not actual machine evidence",
             "settings": settings,
@@ -173,12 +187,14 @@ def transport_for(documents, calls, *, answer="Synthetic fact [1].", fail=None, 
                 json={
                     "metadata_ready": True,
                     "mode": "real",
-                    "chat_model": {"name": "synthetic-chat:fixed"},
-                    "embedding_model": {"name": "synthetic-embed:fixed"},
+                    "chat_model": {"name": CHAT},
+                    "embedding_model": {"name": MODEL},
                 },
             )
         if request.url.path == "/library/documents":
             return httpx.Response(200, json=documents)
+        if request.method == "GET" and request.url.path == "/library/jobs/synthetic-job":
+            return httpx.Response(200, json=snapshot().job)
         assert request.method == "POST" and request.url.path == "/library/ask"
         if fail:
             return fail(request)
@@ -208,9 +224,18 @@ def transport_for(documents, calls, *, answer="Synthetic fact [1].", fail=None, 
     return httpx.MockTransport(handler)
 
 
-def execute(files, transport, reader=sample):
+def execute(files, transport, reader=sample, peers=None):
     plan, auth, output, _ = files
-    return asyncio.run(run.compare(plan, auth, output, transport=transport, reader=reader))
+    return asyncio.run(
+        run.compare(
+            plan,
+            auth,
+            output,
+            transport=transport,
+            backend_transport=peers or backend(),
+            reader=reader,
+        )
+    )
 
 
 def rewrite_plan(files, mutate):
@@ -629,7 +654,7 @@ def test_idle_guest_swap_is_recorded_and_experiment_swap_stops(plan_files):
         result = sample(services, path)
         result["pswpout"] += count
         count += 1
-        if count == 3:
+        if count == 4:
             result["containers"]["baseline-api"]["swap_peak"] = 4096
         return result
 

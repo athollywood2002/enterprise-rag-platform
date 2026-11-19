@@ -2,14 +2,19 @@
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import re
 import shutil
+import sqlite3
 import subprocess
 from datetime import UTC, datetime
+from ipaddress import IPv4Address
 from pathlib import Path
 from urllib.parse import urlsplit
+
+from evaluation.registry_snapshot import verify_registry
 
 ARMS = ("baseline", "candidate")
 ROLES = ("baseline-api", "baseline-qdrant", "candidate-api", "candidate-qdrant", "ollama", "runner")
@@ -39,6 +44,19 @@ def loopback_url(address, port):
         raise ValueError("Invalid or deployed API port")
     host = "[::1]" if address == "::1" else address
     return f"http://{host}:{port}"
+
+
+def bridge_ip(value):
+    ip = IPv4Address(value)
+    if (
+        not ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_unspecified
+        or ip.is_reserved
+    ):
+        raise ValueError("Expected private Docker bridge IPv4 address")
+    return str(ip)
 
 
 def resolve_backend(api, endpoint, port, containers):
@@ -128,18 +146,21 @@ def validate_ownership(campaign, receipt, targets=None):
     members = {cid for group in networks.values() for cid in group}
     if members != ids - {services["runner"]["id"]}:
         raise ValueError("Require exclusive service bridges and a host-network runner")
-    endpoints = set()
+    endpoints, peer_addresses = set(), set()
     for arm in ARMS:
         api, db = services[f"{arm}-api"], services[f"{arm}-qdrant"]
         if (
             api["model_backend_id"] != model["id"]
             or api["qdrant_backend_id"] != db["id"]
-            or any(
-                not any({api["id"], other} <= set(group) for group in networks.values())
-                for other in (model["id"], db["id"])
-            )
+            or len(networks) != 2
+            or {api["id"], db["id"], model["id"]} not in [set(group) for group in networks.values()]
         ):
             raise ValueError("API routing must use its own Qdrant and the single campaign Ollama")
+        for key in ("qdrant_ip", "ollama_ip"):
+            address = bridge_ip(api[key])
+            if address in peer_addresses:
+                raise ValueError("Experimental peers require distinct bridge addresses")
+            peer_addresses.add(address)
         endpoint = loopback_url(api["bind_ip"], api["bind_port"])
         if endpoint in endpoints or (targets is not None and endpoint != targets[arm]["url"]):
             raise ValueError("Plan API endpoint differs from the inspected published binding")
@@ -178,8 +199,11 @@ def storage_root(path):
     return {"path": str(real), "inode": [stat.st_dev, stat.st_ino]}
 
 
-def inspect_campaign(campaign, protected_roots):
+def inspect_campaign(campaign, protected_roots, rendered_raw, snapshot_raw):
     """Inspect only the labeled containers and their attached bridges. Never serialize raw env."""
+    rendered = json.loads(rendered_raw)
+    if rendered["name"] != campaign:
+        raise ValueError("Rendered Compose project differs from inspected campaign")
     ids = (
         docker("ps", "-q", "--no-trunc", "--filter", f"label={LABEL}campaign={campaign}")
         .decode()
@@ -234,6 +258,20 @@ def inspect_campaign(campaign, protected_roots):
         storage[role] = storage_root(mounts[0])
         ports = {k: v for k, v in (node["NetworkSettings"]["Ports"] or {}).items() if v}
         if role.endswith("-api"):
+            declared = rendered["services"][role]["environment"]
+            if any(
+                env[key] != declared[key]
+                for key in (
+                    "QDRANT_URL",
+                    "QDRANT_COLLECTION",
+                    "OLLAMA_URL",
+                    "OLLAMA_CHAT_MODEL",
+                    "OLLAMA_EMBED_MODEL",
+                    "OLLAMA_NUM_PREDICT",
+                    "OLLAMA_THINK",
+                )
+            ):
+                raise ValueError("Inspected API routing/model settings differ from the render")
             if set(ports) != {"8000/tcp"} or len(ports["8000/tcp"]) != 1:
                 raise ValueError("Require a single published API binding")
             binding = ports["8000/tcp"][0]
@@ -242,6 +280,8 @@ def inspect_campaign(campaign, protected_roots):
                 bind_port=binding["HostPort"],
                 model_backend_id=resolve_backend(node, env["OLLAMA_URL"], 11434, nodes),
                 qdrant_backend_id=resolve_backend(node, env["QDRANT_URL"], 6333, nodes),
+                qdrant_url=env["QDRANT_URL"],
+                qdrant_collection=env["QDRANT_COLLECTION"],
             )
             record["model_settings"] = {
                 "chat_model": env["OLLAMA_CHAT_MODEL"],
@@ -266,8 +306,29 @@ def inspect_campaign(campaign, protected_roots):
     nets = json.loads(docker("network", "inspect", *sorted(bridges)))
     if any(n["Driver"] != "bridge" for n in nets):
         raise ValueError("Expected experiment-only bridge networks")
+    for arm in ARMS:
+        api = services[f"{arm}-api"]
+        arm_nets = [n["Containers"] for n in nets if api["id"] in n["Containers"]]
+        if len(arm_nets) != 1:
+            raise ValueError("Each API must belong to exactly one experimental bridge")
+        for peer, key in (("qdrant", "qdrant_backend_id"), ("ollama", "model_backend_id")):
+            address = arm_nets[0][api[key]]["IPv4Address"].split("/")[0]
+            api[peer + "_ip"] = bridge_ip(address)
+        # Check DNS inside the API namespace; the host-network runner uses the inspected IP.
+        result = docker(
+            "exec",
+            api["id"],
+            "python",
+            "-c",
+            "import json,socket,sys; print(json.dumps(sorted(set("
+            "a[4][0] for a in socket.getaddrinfo(sys.argv[1],6333,type=socket.SOCK_STREAM)))))",
+            urlsplit(api["qdrant_url"]).hostname,
+        )
+        if json.loads(result) != [api["qdrant_ip"]]:
+            raise ValueError("Qdrant DNS inside the API differs from its inspected database")
     receipt = {
         "campaign_id": campaign,
+        "rendered_sha256": hashlib.sha256(rendered_raw).hexdigest(),
         "backend_mode": "campaign-only-shared-ollama",
         "observed_at": datetime.now(UTC).isoformat(),
         "services": services,
@@ -276,6 +337,15 @@ def inspect_campaign(campaign, protected_roots):
         "protected_storage": [storage_root(root) for root in protected_roots],
     }
     validate_ownership(campaign, receipt)
+    # Only read the campaign databases after all volume and isolation checks have passed.
+    manifest = json.loads(snapshot_raw)
+    receipt["registry_snapshot_sha256"] = hashlib.sha256(snapshot_raw).hexdigest()
+    receipt["registry_checks"] = {}
+    for arm in ARMS:
+        path = Path(storage[f"{arm}-api"]["path"]) / "library.sqlite3"
+        if path.is_symlink():
+            raise ValueError("Campaign SQLite file must be inside its inspected data root")
+        receipt["registry_checks"][arm] = verify_registry(path, manifest)
     return receipt
 
 
@@ -387,6 +457,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--campaign", required=True)
     parser.add_argument(
+        "--selected-snapshot",
+        required=True,
+        type=Path,
+        help="Independently verified private selected-snapshot.json",
+    )
+    parser.add_argument(
+        "--rendered-compose",
+        required=True,
+        type=Path,
+        help="Exact private docker compose config --format json output",
+    )
+    parser.add_argument(
         "--protect",
         action="append",
         required=True,
@@ -395,11 +477,28 @@ def main():
     )
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    receipt = inspect_campaign(args.campaign, args.protect)
     with open(args.output, "x", encoding="utf-8", opener=private_open) as stream:
+        try:
+            receipt = inspect_campaign(
+                args.campaign,
+                args.protect,
+                args.rendered_compose.read_bytes(),
+                args.selected_snapshot.read_bytes(),
+            )
+        except (
+            OSError,
+            ValueError,
+            KeyError,
+            TypeError,
+            sqlite3.Error,
+            subprocess.SubprocessError,
+        ) as error:
+            json.dump({"status": "failed", "reason": str(error), "question_requests": 0}, stream)
+            return 1
         json.dump(receipt, stream, sort_keys=True)
         stream.write("\n")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

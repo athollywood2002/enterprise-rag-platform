@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import sqlite3
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -22,6 +23,7 @@ from evaluation.campaign_resources import (
 )
 from evaluation.grounding import citation_diagnostics
 from evaluation.run import new_output
+from evaluation.search_preflight import PINNED_BUILDS, runtime_arm, validate_manifest
 
 API_SECONDS = 300
 BATCH_SECONDS = 7200
@@ -50,7 +52,15 @@ def arm_order(ordinal):
 def runner_sources():
     return {
         name: sha((Path(__file__).parent / name).read_bytes())
-        for name in ("managed_compare.py", "campaign_resources.py", "grounding.py", "run.py")
+        for name in (
+            "managed_compare.py",
+            "campaign_resources.py",
+            "search_preflight.py",
+            "registry_snapshot.py",
+            "compose.managed-compare.yaml",
+            "grounding.py",
+            "run.py",
+        )
     }
 
 
@@ -77,6 +87,9 @@ def load_plan(path, *, raw=None):
         "budget",
         "ownership_receipt",
         "ownership_sha256",
+        "selected_snapshot",
+        "selected_snapshot_sha256",
+        "rendered_sha256",
         "questions",
         "questions_sha256",
         "freeze_sha256",
@@ -102,6 +115,10 @@ def load_plan(path, *, raw=None):
     if sha(ownership_raw) != plan["ownership_sha256"]:
         raise ValueError("Pinned host ownership receipt mismatch")
     ownership = json.loads(ownership_raw)
+    if not re.fullmatch(r"[a-f0-9]{64}", plan["rendered_sha256"]) or plan[
+        "rendered_sha256"
+    ] != ownership.get("rendered_sha256"):
+        raise ValueError("Require the reviewed render bound to the inspected ownership receipt")
     receipt_raw = (path.parent / plan["custodian_receipt"]).read_bytes()
     if sha(receipt_raw) != plan["custodian_receipt_sha256"]:
         raise ValueError("Custodian receipt hash mismatch")
@@ -167,7 +184,7 @@ def load_plan(path, *, raw=None):
             or state.get("deployment") is not False
             or state["campaign_id"] != plan["campaign_id"]
             or state["api_container_id"] != ownership["services"][f"{arm}-api"]["id"]
-            or not re.fullmatch(r"[a-f0-9]{40}", state.get("git_commit", ""))
+            or state.get("git_commit") != PINNED_BUILDS[arm]
         ):
             raise ValueError("State receipt must bind the campaign's inspected API container")
         settings = state["settings"]
@@ -203,7 +220,7 @@ def load_plan(path, *, raw=None):
             or type(settings["top_k"]) is not int
             or settings["top_k"] != 5
             or not isinstance(settings["job_id"], str)
-            or not settings["job_id"].strip()
+            or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", settings["job_id"])
             or not isinstance(settings["resources"], dict)
             or set(settings["resources"]) != {"cpu_count", "memory_bytes"}
             or any(type(v) is not int or v <= 0 for v in settings["resources"].values())
@@ -293,8 +310,25 @@ def parsed(raw, result):
     return value
 
 
+def fresh_receipts(states, ownership):
+    for state in (*states.values(), ownership):
+        observed = datetime.fromisoformat(state["observed_at"])
+        if observed.tzinfo is None:
+            raise ResourceStop("State receipt timestamps must include a timezone")
+        age = (datetime.now(UTC) - observed).total_seconds()
+        if not 0 <= age <= 900:
+            raise ResourceStop("Inspected state receipts must be timezone-aware and <15min old")
+
+
 async def compare(
-    plan_path, authorization_path, output, *, transport=None, reader=resource_sample, disk_path=None
+    plan_path,
+    authorization_path,
+    output,
+    *,
+    transport=None,
+    backend_transport=None,
+    reader=resource_sample,
+    disk_path=None,
 ):
     plan_raw = plan_path.read_bytes()
     plan, questions, states, ownership = load_plan(plan_path, raw=plan_raw)
@@ -315,13 +349,7 @@ async def compare(
         or authorization["plan_sha256"] != sha(plan_raw)
     ):
         raise ValueError("Separate owner authorization must pin this exact isolated plan")
-    for state in (*states.values(), ownership):
-        observed = datetime.fromisoformat(state["observed_at"])
-        if observed.tzinfo is None:
-            raise ValueError("State receipt timestamps must include a timezone")
-        age = (datetime.now(UTC) - observed).total_seconds()
-        if not 0 <= age <= 900:
-            raise ValueError("Inspected state receipts must be timezone-aware and <15min old")
+    fresh_receipts(states, ownership)
     keys = {arm: os.environ[plan["arms"][arm]["key_env"]] for arm in ARMS}
     if any(not value for value in keys.values()):
         raise ValueError("Empty dedicated API key")
@@ -336,19 +364,7 @@ async def compare(
     ledger.mkdir(mode=0o700, parents=True, exist_ok=True)
     if any(ledger.iterdir()):
         raise FileExistsError("Keep the existing campaign ledger intact")
-    # Consume authorization BEFORE any network access, even if metadata fails.
-    save(
-        ledger / "campaign.consumed.json",
-        encode(
-            {
-                "output": str(out),
-                "campaign_id": plan["campaign_id"],
-                "plan_sha256": sha(plan_raw),
-                "authorization_sha256": sha(authorization_raw),
-                "consumed_at": datetime.now(UTC).isoformat(),
-            }
-        ),
-    )
+    consumed = False
     save(out / "plan.json", plan_raw)
     save(out / "authorization.json", authorization_raw)
     for name, path_key, hash_key in (
@@ -358,7 +374,7 @@ async def compare(
     ):
         raw = (plan_path.parent / plan[path_key]).read_bytes()
         if sha(raw) != plan[hash_key]:
-            raise ValueError("Pinned input changed before dispatch; authorization remains consumed")
+            raise ValueError("Pinned input changed before preflight")
         save(out / name, raw)
     save(out / "state-receipts.json", encode(states))
     save(out / "runner-source-hashes.json", encode(runner_sources()))
@@ -375,39 +391,118 @@ async def compare(
     }
 
     async def dispatch():
+        nonlocal consumed
         async with httpx.AsyncClient(
             transport=transport or httpx.AsyncHTTPTransport(retries=0),
             timeout=API_SECONDS,
             trust_env=False,
             follow_redirects=False,
         ) as client:
-            before_docs = {}
-            for arm in ARMS:
-                for endpoint in ("readiness", "documents"):
-                    raw, evidence = await request(
-                        client,
-                        "GET",
-                        plan["arms"][arm]["url"] + "/library/" + endpoint,
-                        headers[arm],
-                    )
-                    save(out / f"{arm}-before-{endpoint}.body", raw)
-                    save(out / f"{arm}-before-{endpoint}.json", encode(evidence))
-                    value = parsed(raw, evidence)
-                    if endpoint == "readiness":
+            before_docs, arm_proofs = {}, {}
+            stage = "snapshot"
+            async with httpx.AsyncClient(
+                transport=backend_transport, trust_env=False, follow_redirects=False, timeout=15
+            ) as peers:
+                try:
+                    raw_manifest = (plan_path.parent / plan["selected_snapshot"]).read_bytes()
+                    if sha(raw_manifest) != plan["selected_snapshot_sha256"]:
+                        raise ResourceStop("expected snapshot manifest hash mismatch")
+                    if ownership.get("registry_snapshot_sha256") != sha(
+                        raw_manifest
+                    ) or ownership.get("registry_checks") != {
+                        arm: {"documents": 15, "points": 138} for arm in ARMS
+                    }:
+                        raise ResourceStop(
+                            "fresh physical SQLite checks must bind both arms to the same frozen snapshot"
+                        )
+                    manifest = json.loads(raw_manifest)
+                    validate_manifest(manifest, states[ARMS[0]]["settings"]["job_id"])
+                    save(out / "selected-snapshot.json", raw_manifest)
+                    for arm in ARMS:
+                        stage = arm
                         settings = states[arm]["settings"]
-                        if (
-                            value.get("metadata_ready") is not True
-                            or value.get("mode") != "real"
-                            or value["chat_model"]["name"] != settings["chat_model"]
-                            or value["embedding_model"]["name"] != settings["embed_model"]
-                        ):
-                            raise ValueError("Runtime readiness/model names do not match")
-                    else:
-                        if sha(encode(value)) != states[arm]["settings"]["documents_sha256"]:
-                            raise ValueError("Runtime documents differ from inspected snapshot")
-                        before_docs[arm] = value
-            if before_docs["baseline"] != before_docs["candidate"]:
-                raise ValueError("Runtime document records differ between arms")
+                        for endpoint in ("readiness", "documents", "jobs/" + settings["job_id"]):
+                            raw, evidence = await request(
+                                client,
+                                "GET",
+                                plan["arms"][arm]["url"] + "/library/" + endpoint,
+                                headers[arm],
+                            )
+                            label = "job" if endpoint.startswith("jobs/") else endpoint
+                            save(out / f"{arm}-before-{label}.body", raw)
+                            save(out / f"{arm}-before-{label}.json", encode(evidence))
+                            value = parsed(raw, evidence)
+                            if endpoint == "readiness":
+                                if (
+                                    value.get("metadata_ready") is not True
+                                    or value.get("mode") != "real"
+                                    or value["chat_model"]["name"] != settings["chat_model"]
+                                    or value["embedding_model"]["name"] != settings["embed_model"]
+                                ):
+                                    raise ResourceStop("Runtime readiness/model names do not match")
+                            elif endpoint == "documents":
+                                if (
+                                    sha(encode(value))
+                                    != states[arm]["settings"]["documents_sha256"]
+                                ):
+                                    raise ResourceStop(
+                                        "Runtime documents differ from inspected snapshot"
+                                    )
+                                before_docs[arm] = value
+                            else:
+                                arm_proofs[arm] = await runtime_arm(
+                                    peers,
+                                    ownership["services"][arm + "-api"],
+                                    settings,
+                                    before_docs[arm],
+                                    value,
+                                    manifest,
+                                )
+                    if before_docs["baseline"] != before_docs["candidate"]:
+                        raise ResourceStop("Runtime document records differ between arms")
+                except (
+                    ResourceStop,
+                    KeyError,
+                    ValueError,
+                    TypeError,
+                    OSError,
+                    sqlite3.Error,
+                    httpx.HTTPError,
+                ) as error:
+                    reason = str(error) if isinstance(error, ResourceStop) else type(error).__name__
+                    raise ResourceStop(f"search preflight ({stage}): {reason}") from error
+            save(
+                out / "search-preflight.json",
+                encode(
+                    {
+                        "status": "pass",
+                        "arms": arm_proofs,
+                        "snapshot_sha256": sha(raw_manifest),
+                        "rendered_sha256": plan["rendered_sha256"],
+                    }
+                ),
+            )
+            monitor.check()
+            if time.monotonic() - start >= NO_NEW_AFTER_SECONDS:
+                raise ResourceStop("no-new-request deadline before campaign consumption")
+            # Concurrent successful preflights race only here. O_EXCL permits one dispatcher.
+            fresh_receipts(states, ownership)
+            try:
+                save(
+                    ledger / "campaign.consumed.json",
+                    encode(
+                        {
+                            "output": str(out),
+                            "campaign_id": plan["campaign_id"],
+                            "plan_sha256": sha(plan_raw),
+                            "authorization_sha256": sha(authorization_raw),
+                            "consumed_at": datetime.now(UTC).isoformat(),
+                        }
+                    ),
+                )
+            except FileExistsError as error:
+                raise ResourceStop("campaign consumed by a concurrent dispatcher") from error
+            consumed = True
             for ordinal, case in enumerate(questions, 1):
                 first_evidence = None
                 for position, arm in enumerate(arm_order(ordinal), 1):
@@ -504,6 +599,11 @@ async def compare(
     except (ValueError, KeyError, TypeError, TimeoutError, httpx.HTTPError) as exc:
         stop = type(exc).__name__
     finally:
+        if not consumed and not (out / "search-preflight.json").exists():
+            save(
+                out / "search-preflight.json",
+                encode({"status": "failed", "reason": stop, "question_requests": 0}),
+            )
         schedule = [
             f"{case['id']}-{arm}"
             for ordinal, case in enumerate(questions, 1)
@@ -518,6 +618,7 @@ async def compare(
             encode(
                 {
                     "planned": len(questions) * 2,
+                    "authorization_consumed": consumed,
                     "campaign_id": plan["campaign_id"],
                     "runner_commit": plan["runner"]["commit"],
                     "order": plan["order"],
