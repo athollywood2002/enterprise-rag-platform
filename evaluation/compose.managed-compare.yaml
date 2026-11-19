@@ -1,0 +1,130 @@
+name: ${RAG_EVAL_CAMPAIGN:?Set the unique campaign ID}
+
+x-labels: &labels
+  org.enterprise-rag.eval.campaign: ${RAG_EVAL_CAMPAIGN}
+
+x-pair: &pair
+  mem_limit: 512m
+  memswap_limit: 512m
+  cpus: ${RAG_EVAL_CPUS:?Set the CPU quota from the host budget}
+  pull_policy: never
+  restart: "no"
+
+x-api: &api
+  <<: *pair
+  init: true
+  read_only: true
+  tmpfs: ["/tmp:size=64m,mode=1777"]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+x-api-env: &api-env
+  RAG_MODEL_MODE: real
+  QDRANT_COLLECTION: ${RAG_EVAL_COLLECTION:?Use the snapshot collection prefix}
+  QDRANT_URL: http://qdrant:6333
+  OLLAMA_URL: http://ollama:11434
+  OLLAMA_CHAT_MODEL: qwen3:8b
+  OLLAMA_EMBED_MODEL: nomic-embed-text:latest
+  OLLAMA_THINK: default
+  OLLAMA_NUM_PREDICT: "1536"
+  NO_PROXY: "*"
+  no_proxy: "*"
+
+x-bind: &bind
+  type: bind
+  bind: {create_host_path: false}
+
+x-qdrant: &qdrant
+  <<: *pair
+  image: qdrant/qdrant:v1.17.0@sha256:f1c7272cdac52b38c1a0e89313922d940ba50afd90d593a1605dbbc214e66ffb
+
+services:
+  baseline-api:
+    <<: *api
+    image: ${RAG_EVAL_BASELINE_IMAGE:?Use the verified baseline build}
+    labels: {<<: *labels, org.enterprise-rag.eval.role: baseline-api}
+    environment:
+      <<: *api-env
+      API_KEY: ${RAG_EVAL_BASELINE_KEY:?Set a private experiment key}
+    ports: ["127.0.0.1:${RAG_EVAL_BASELINE_PORT:-19001}:8000"]
+    networks: [baseline]
+    volumes:
+      - {<<: *bind, source: "${RAG_EVAL_STATE:?Use verified private snapshot copies}/baseline/library", target: /data}
+
+  candidate-api:
+    <<: *api
+    image: ${RAG_EVAL_CANDIDATE_IMAGE:?Use the verified candidate build}
+    labels: {<<: *labels, org.enterprise-rag.eval.role: candidate-api}
+    environment:
+      <<: *api-env
+      API_KEY: ${RAG_EVAL_CANDIDATE_KEY:?Set a private experiment key}
+    ports: ["127.0.0.1:${RAG_EVAL_CANDIDATE_PORT:-19002}:8000"]
+    networks: [candidate]
+    volumes:
+      - {<<: *bind, source: "${RAG_EVAL_STATE}/candidate/library", target: /data}
+
+  baseline-qdrant:
+    <<: *qdrant
+    labels: {<<: *labels, org.enterprise-rag.eval.role: baseline-qdrant}
+    networks:
+      baseline:
+        aliases: [qdrant]
+    volumes:
+      - {<<: *bind, source: "${RAG_EVAL_STATE}/baseline/qdrant", target: /qdrant/storage}
+
+  candidate-qdrant:
+    <<: *qdrant
+    labels: {<<: *labels, org.enterprise-rag.eval.role: candidate-qdrant}
+    networks:
+      candidate:
+        aliases: [qdrant]
+    volumes:
+      - {<<: *bind, source: "${RAG_EVAL_STATE}/candidate/qdrant", target: /qdrant/storage}
+
+  ollama:
+    image: ollama/ollama:0.40.15@sha256:0e59999e0e8f9fd4e704bd788a89b7e4cad399367fb1365f8c102ac662288761
+    labels: {<<: *labels, org.enterprise-rag.eval.role: ollama}
+    networks: [baseline, candidate]
+    mem_limit: 12g
+    memswap_limit: 12g
+    cpus: ${RAG_EVAL_CPUS}
+    pull_policy: never
+    restart: "no"
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "2"
+      OLLAMA_KEEP_ALIVE: "30m"
+      CUDA_VISIBLE_DEVICES: "-1"
+      NVIDIA_VISIBLE_DEVICES: void
+    volumes:
+      - {<<: *bind, source: "${RAG_EVAL_STATE}/ollama", target: /root/.ollama}
+
+  runner:
+    image: ${RAG_EVAL_CANDIDATE_IMAGE}
+    labels: {<<: *labels, org.enterprise-rag.eval.role: runner}
+    entrypoint: ["sleep", "infinity"]
+    command: []
+    healthcheck: {disable: true}
+    working_dir: /runner
+    network_mode: host
+    cgroup: host
+    mem_limit: 256m
+    memswap_limit: 256m
+    pull_policy: never
+    restart: "no"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      PYTHONPATH: /runner:/app/src
+      RAG_EVAL_BASELINE_KEY: ${RAG_EVAL_BASELINE_KEY}
+      RAG_EVAL_CANDIDATE_KEY: ${RAG_EVAL_CANDIDATE_KEY}
+    volumes:
+      - {<<: *bind, source: "${RAG_EVAL_RUNNER_CHECKOUT:?Use the reviewed runner checkout}/evaluation", target: /runner/evaluation, read_only: true}
+      - {<<: *bind, source: "${RAG_EVAL_EVIDENCE:?Use a new private guest evidence directory}", target: /campaign}
+      - {<<: *bind, source: /sys/fs/cgroup, target: /sys/fs/cgroup, read_only: true}
+
+networks:
+  baseline: {}
+  candidate: {}
