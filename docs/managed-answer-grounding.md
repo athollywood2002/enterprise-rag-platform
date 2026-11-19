@@ -77,131 +77,70 @@ development cases: this is question-level blinding, not an unseen-corpus benchma
 Twelve cases do not establish general improvement. Record the exact candidate commit
 before any reveal; changes after reveal make this set development evidence.
 
-The protected bundle includes reviewer instructions and an evaluation adapter. It
-and raw evidence stay private, outside Git. **No real-model comparison has run.**
+The custodian retains the protected bundle, its grading adapter and the raw evidence. Preserve earlier campaign evidence. Report the four previously dispatched questions separately from the eight previously untouched questions.
 
-## Runnable bounded comparison, for the custodian
+## Balanced comparison on the evaluation branch
 
-`evaluation.managed_compare` defaults to an **offline plan**. Execution requires
-separate owner authorization for two already-running, independently isolated APIs.
-This implementation task grants no such inference/deployment authorization. Do not
-point the command at the deployed API or shared model services through a tunnel.
-The tool does not start services, import data, change settings or restore an installation.
+Build both APIs from their separately pinned commits. Run only the client and host inspection tools from the independently reviewed evaluation commit. Make two independent copies of one verified application/Qdrant snapshot and one copy of the verified model volume. Check the selected job, document IDs, revisions, all selected point IDs and payloads, model digests, and source/image identities against the retained records. Use the custodian's exact 12-question export and receipt. Gold, grading criteria and the blind key stay with the custodian.
 
-After the candidate commit is fixed, the custodian exports a private JSON array with
-only `id` and `question` per case; expected answers/passages/rubric remain grader-only.
-The reviewer should adapt the sealed bundle's evaluation script to these response
-artifacts without changing the frozen question or gold bytes. Use the same immutable
-index snapshot, selected job, models/digests and CPU/memory for both arms. Baseline
-and candidate must be distinct fixed commits; no prompt changes between arms.
+### Test host and ownership
 
-Prepare a private plan with exactly:
+1. On the guest, record `/proc/meminfo`, CPU allocation, `/proc/vmstat`, available disk, and the deployed stack's state, resource use, limits and storage roots. Account separately for production and the OS. The experiment's memory caps total **14.25 GiB** (12 GiB Ollama, four 512 MiB services and a 256 MiB runner). Model weights, context cache and runtime allocations share the Ollama cap. Compare available headroom to this budget before preparation and again before dispatch. Record the existing running/stopped state for final verification.
+2. The evaluation-only [Compose file](../evaluation/compose.managed-compare.yaml) uses two private bridge networks and one experiment-owned model server connected to both. Supply the unique campaign ID, capacity-reviewed CPU quota, pinned local API images, original collection prefix, two experiment keys, new private evidence directory, reviewed runner checkout and independent snapshot directories named in the file. Prepare directories with the image UID's required access. Check **before starting services** that the five writable storage roots are distinct and disjoint from production, including their resolved paths and backing files. Preserve production mounts, ports and resources. Validate Compose with `docker compose -f evaluation/compose.managed-compare.yaml config --quiet` to keep keys out of logs.
+3. Attach `org.enterprise-rag.eval.campaign` and `org.enterprise-rag.eval.role` labels as in the Compose file. Only the two API ports are published, on numeric loopback. The APIs route directly to their respective Qdrant containers and to the same Ollama container. The runner uses the host network and host cgroup namespace. Give it read-only access to cgroup v2. The host inspector uses read-only Docker metadata. Keep the Docker socket outside the client. Record effective Ollama context, residency and loading state from configuration and metadata before and after execution, with no warm-up.
+4. Produce a private ownership receipt **on the guest host** with the reviewed code. Obtain the actual source roots of the deployed API, Qdrant and model mounts from inspection. Pass every protected root explicitly. This command needs access to the exact mount paths for directory identity checks.
 
-```json
-{
-  "questions": "questions-only.json",
-  "questions_sha256": "<SHA256 of exact question-export bytes>",
-  "freeze_sha256": "<frozen bundle SHA256>",
-  "custodian_receipt": "reviewer-adapter-receipt.json",
-  "custodian_receipt_sha256": "<SHA256 of nonrevealing custodian receipt>",
-  "arms": {
-    "baseline": {
-      "url": "http://127.0.0.1:19001",
-      "key_env": "RAG_EVAL_BASELINE_KEY",
-      "state_receipt": "baseline-state.json",
-      "state_sha256": "<SHA256 of receipt bytes>"
-    },
-    "candidate": {
-      "url": "http://127.0.0.1:19002",
-      "key_env": "RAG_EVAL_CANDIDATE_KEY",
-      "state_receipt": "candidate-state.json",
-      "state_sha256": "<SHA256 of receipt bytes>"
-    }
-  }
-}
+```sh
+python3 -m evaluation.campaign_resources --campaign "$RAG_EVAL_CAMPAIGN" \
+  --protect "$production_api_storage" --protect "$production_qdrant_storage" \
+  --protect "$production_model_storage" --output "$new_evidence/ownership.json"
 ```
 
-Each fresh, metadata-only operator-inspected state receipt has these exact top-level
-fields: `git_commit` (full SHA), `isolated: true`, `deployment: false`,
-`shared_services: false`, `observed_at` (timezone-aware ISO timestamp), `inspection`
-(inspection method/reference, no credentials) and `settings`. Settings have exactly:
+The receipt records labeled container and image IDs, published bindings, the model/database targets resolved on the inspected bridges, all bridge members, mount identities, effective memory/CPU limits and the model-loading environment. The inspector checks the API routes and excludes foreign bridge members. The independently inspected, checksummed receipt binds the plan to those endpoints. Metadata-only API readiness establishes model names and availability. It cannot attest model digests, image contents or a new container behind a reassigned port. Preserve fresh before/after inspections and the host supervisor's identity/restart checks during the run.
 
-- `think: "default"`, `num_predict: 1536`, `model_timeout_seconds: 180`, `top_k: 5`;
-- `job_id` (same selected snapshot job), `resources` (identical positive integer
-  `cpu_count` and `memory_bytes` limits);
+### Private inputs
+
+The plan is a JSON object with the following fields.
+
+| Field | Value |
+| --- | --- |
+| `campaign_id` | Unique campaign label, also bound into the authorization and the consumption marker. |
+| `runner` | Object with full reviewed `commit` and `source_sha256`. The latter maps the four filenames from `evaluation.managed_compare.runner_sources()` to SHA-256 over exact source bytes from that commit. |
+| `order` | `baseline-first-on-odd-candidate-first-on-even` |
+| `budget` | `{"http_seconds":300,"batch_seconds":7200,"no_new_after_seconds":6870}` |
+| `questions`, `questions_sha256`, `freeze_sha256` | Path and exact byte hash of the question-only export, and hash of the original sealed bundle. |
+| `custodian_receipt`, `custodian_receipt_sha256` | Path and hash. The custodian binds the sealed hash, export hash, count 12 and exact fields `["id","question"]` using `sealed_bundle_sha256_unchanged`, `question_export_sha256`, `question_export_count` and `question_export_fields`. |
+| `ownership_receipt`, `ownership_sha256` | Path and exact byte hash of the host inspector output. |
+| `arms` | `baseline` and `candidate`, each containing only `url`, `key_env`, `state_receipt`, and `state_sha256`. Use the inspected loopback bindings and dedicated `RAG_EVAL_*_KEY` variable names. |
+
+Each arm's operator-signed-off state receipt contains exactly `git_commit`, `isolated: true`, `deployment: false`, `campaign_id`, `api_container_id`, a timezone-qualified `observed_at`, a non-secret `inspection` reference, and `settings`. Inspection must bind the image ID to its pinned API source. Set `settings` with exactly these fields:
+
+- `think: "default"`, `num_predict: 1536`, `model_timeout_seconds: 180`, `embedding_timeout_seconds: 120`, `top_k: 5`;
+- `job_id`, `resources` containing positive integer `cpu_count` and `memory_bytes` (the API memory limit);
 - `chat_model`, `chat_digest`, `embed_model`, `embed_digest`;
-- `corpus_sha256`, `index_sha256` (inspected corpus/index snapshot manifests);
-- `documents_sha256`: SHA-256 of canonical `/library/documents` JSON, encoded by
-  `evaluation.managed_compare.encode` (sorted keys, UTF-8, default JSON separators).
+- `corpus_sha256`, `index_sha256` and `documents_sha256`. Bind the snapshot manifests and hash the complete `/library/documents` JSON with `evaluation.managed_compare.encode`.
 
-Both settings objects must be identical. Receipt timestamps must be less than 15
-minutes old when execution starts. Digests/settings/isolation are operator
-attestations, **not remotely proven by readiness**. Inspect them independently before
-and after the comparison; preserve those receipts privately. Live readiness checks
-model names/availability, and document snapshots are checked before and after. A
-document receipt is not a proof of all underlying vector bytes.
+Both settings objects must match. Both state receipts and the host receipt must be at most 15 minutes old at launch. Paths in the plan are relative to its directory or absolute in the client namespace. Keep private files in dedicated directories and use mode 0600 for files. The authorization object contains `owner_reference`, `campaign_id`, the exact `plan_sha256`, `isolated_execution_authorized: true` and a fixed absolute nonsymlink `ledger_dir`. Keep the old ledger and original evidence intact.
 
-The pinned custodian receipt must bind `question_export_sha256`,
-`sealed_bundle_sha256_unchanged`, `question_export_count` and
-`question_export_fields: ["id", "question"]` to this export and frozen bundle. The
-runner checks these links and saves the exact export bytes, not re-encoded JSON.
-The operator must authenticate the receipt's provenance independently; a file hash
-does not prove who wrote it. Both arms must be byte-identical clones of one library
-snapshot, including revision metadata and complete document records, not separate
-reimports of identical source files. Relative input paths can refer outside the
-plan folder; this is a trusted operator tool, not a filesystem sandbox.
+### Preflight, dispatch and closeout
 
-Plan-only command (no network or generation):
+Inside the prepared, resource-limited runner, validate the plan and then exercise the actual cgroup/disk reader before consuming the live ledger. Point `--disk-path` at a mount on the guest filesystem backing the experiment; verify this correspondence during host inspection. These two preflight commands make zero network requests.
 
 ```sh
-PYTHONPATH=src python -m evaluation.managed_compare --plan /private/path/plan.json
+python -m evaluation.managed_compare --plan /campaign/plan.json
+python -m evaluation.managed_compare --plan /campaign/plan.json --check-resources --disk-path /campaign
 ```
 
-Only after separate isolated-execution authorization, create a private authorization
-JSON with exactly `owner_reference`, `plan_sha256` (exact plan-file bytes),
-`isolated_execution_authorized: true` and `ledger_dir` (the fixed absolute private
-campaign ledger directory). Set dedicated API keys in the named environment
-variables without putting them in the plan, receipt, command line or Git. Then:
+After exact-head review and owner authorization, use one invocation with a fresh results directory.
 
 ```sh
-PYTHONPATH=src python -m evaluation.managed_compare \
-  --plan /private/path/plan.json \
-  --execute-authorization /private/path/authorization.json \
-  --output /private/path/NEW-results
+python -m evaluation.managed_compare --plan /campaign/plan.json \
+  --execute-authorization /campaign/authorization.json --disk-path /campaign \
+  --output /campaign/new-results
 ```
 
-The runner permits numeric-loopback HTTP only, blocks the deployed API's port 18000,
-disables proxies/redirects/transport retries, and consumes the canonical authorization
-identity in its pinned campaign ledger via an exclusive durable file before any
-network access. Loopback alone does not establish
-isolation: do not use a forwarded shared/deployed endpoint. A consumed authorization
-cannot be reused even with another output directory. Do not remove it to resume.
-Copying or reformatting unchanged authorization content still hits the same ledger
-identity. Changing the ledger or authorization content requires new owner approval;
-the file-based gate does not authenticate or constrain a malicious operator.
+Consumption is exclusive per campaign in its fixed ledger, including when the same authorization is copied or reserialized. The runner reserves each unique arm/case before dispatch, then checks the cutoff again. A durable, explicitly undispatched reservation consumes no attempt. A reservation without a known outcome counts once. Never resend an uncertain request. Readiness and document preflight use metadata only. Each ordinal gets two serial requests in the frozen order. Source lists and retrieval metadata must match within each pair, whichever arm went first. Empty answers, cap exhaustion and wrong answers stay in the grading set. A transport, resource, ownership, parity or time failure stops the campaign.
 
-Requests are sequential: baseline then candidate for each unchanged question, same
-order in both arms, exactly one attempt per question per arm, `top_k=5` and explicit
-job scope. Limits: application 180s (inspected), outer HTTP wall 300s, batch 3600s,
-no new generation request after 3270s, 8MiB response ceiling. No SSH is used. A
-durable reservation precedes dispatch; any uncertainty must be investigated from
-the retained journal, never resent. New-output-only mode prevents local resumption.
+Each ask keeps its exact HTTP entity bytes, hashes, generation evidence, ranked passages, timings and reservation. Interrupted prefixes have separate partial evidence. The privacy-preserving client requests identity encoding. Unexpected content encodings retain their wire bytes and stop the run. Telemetry records absolute guest paging counters and deltas from the first sample, available memory, disk free, and each experiment cgroup's usage, limits, swap and memory events before dispatch and at least every five seconds during requests. Existing idle guest swap is recorded separately. An experiment OOM, swapping, disappearance/limit change or free disk below 4 GiB stops dispatch. On a kernel without swap-peak accounting, use a zero swap limit for every monitored cgroup. Keep actual host snapshots/telemetry even on a partial run.
 
-Raw HTTP bytes, hashes, response/empty-body/empty-answer distinctions, timings,
-generation evidence, returned excerpts, input hashes and metadata receipts are
-retained with private permissions and checksums. A failed request or different
-returned evidence between arms stops the comparison, retaining both failures and
-successes. On cancellation, unresolved reservations remain explicitly uncertain.
-The tool does not collect or display model reasoning.
-
-Every response is marked **UNREVIEWED**, including successes. The custodian separately
-grades passage retrieval, answer correctness, exact cited-claim support, omitted
-conditions and correct abstention against the sealed gold. Report answer/citation/
-combined scores, confounds and all failures; no automatic semantic improvement claim.
-Model nondeterminism, API/model idle/loading/cache state and question exposure remain
-limitations even when requests and retrieved passages match.
-Baseline always runs first within each pair; this introduces a model-warmth/order
-bias, so timing differences must not be treated as unbiased speed comparisons.
-
-Submit for independent code/evidence review before any merge or deployment. Do not
-change unrelated connector/retention work or existing PRs as part of this correction.
+The custodian randomizes and conceals the arm identities before grading each attempted answer using the frozen rubric. Keep the random mapping private and lock per-answer worksheets before unblinding. Report primary untouched questions, previously exposed questions, full and attempted denominators, per-case gains/regressions, condition and citation support, appropriate abstentions, false refusals, and infrastructure/empty/cap failures. Timings include order and model residency effects. Verify the Mac evidence copy before exact-identity cleanup. Recheck protected production state and authenticated readiness if it was running. A merge or production update requires a separate decision.
