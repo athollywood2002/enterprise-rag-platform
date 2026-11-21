@@ -20,13 +20,22 @@ from pathlib import Path
 
 from qdrant_client import models
 
-from .collection_safety import validate_writable_collection_name
 from .core import RagEngine
 from .folder_parser import (
     COMPATIBLE_PARSERS,
     FORMATS,
     PARSER_VERSION,
     DocumentError,
+)
+from .index_compatibility import (
+    collection_name,
+    legacy_identity,
+    registered_context,
+    verify_backend,
+    verify_documents,
+)
+from .index_compatibility import (
+    fingerprint as index_fingerprint,
 )
 from .source_roots import inventory, open_beneath, relative_path
 
@@ -454,9 +463,11 @@ class Library:
 
     def get_engine(self, config):
         with self.engine_lock:
-            if config.qdrant_collection not in self.engines:
-                self.engines[config.qdrant_collection] = self.engine_factory(config)
-            return self.engines[config.qdrant_collection]
+            # An endpoint change must never reuse a client connected to the old backend.
+            key = (config.qdrant_url, config.qdrant_collection)
+            if key not in self.engines:
+                self.engines[key] = self.engine_factory(config)
+            return self.engines[key]
 
     def model_context(self, parser_version=PARSER_VERSION, *, parser_versions=None):
         # Ollama tags identify model bytes, not just mutable names. Fail closed on missing identity.
@@ -483,14 +494,27 @@ class Library:
             "overlap": 150,
             "format": 1,
             "destination": self.config.qdrant_collection,
-            "database": self.config.qdrant_url,
         }
         contexts = []
         for version in parser_versions or (parser_version,):
             signature["parser"] = version
-            fingerprint = digest(json.dumps(signature, sort_keys=True).encode())
-            collection = self.config.qdrant_collection[:100] + "_ui_" + fingerprint[:16]
-            validate_writable_collection_name(collection)
+            fingerprint = index_fingerprint(signature)
+            collection = collection_name(signature, fingerprint)
+            with self.db() as db:
+                registered = registered_context(db, signature)
+                if registered:
+                    fingerprint, collection = registered["fingerprint"], registered["collection"]
+                else:
+                    # Preserve the old endpoint's exact identity until explicitly
+                    # registered from verified provenance. Never guess old URLs,
+                    # scan collections, or accept arbitrary stored fingerprints.
+                    old_fp, old_collection = legacy_identity(
+                        {**signature, "database": self.config.qdrant_url}
+                    )
+                    if db.execute(
+                        "SELECT 1 FROM documents WHERE fingerprint=?", (old_fp,)
+                    ).fetchone():
+                        fingerprint, collection = old_fp, old_collection
             contexts.append(
                 (
                     fingerprint,
@@ -806,7 +830,7 @@ class Library:
         with self.index_lock:
             with self.db() as db:
                 rows = db.execute(
-                    "SELECT id,revision,fingerprint,collection FROM documents WHERE fingerprint IN ("
+                    "SELECT * FROM documents WHERE fingerprint IN ("
                     + ",".join("?" for _ in compatible)
                     + ")",
                     tuple(compatible),
@@ -817,16 +841,41 @@ class Library:
                         for r in db.execute("SELECT doc_id FROM files WHERE job_id=?", (job_id,))
                     }
                     rows = [r for r in rows if r["id"] in allowed]
+                # A matching hash cannot redirect a query to an unrelated collection.
+                if any(r["collection"] != compatible[r["fingerprint"]] for r in rows):
+                    raise DocumentError(
+                        "index_compatibility", "Registered collection identity mismatch."
+                    )
+                verify_documents(db, rows)
+                anchors = {}
+                if db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE name='index_contexts' AND type='table'"
+                ).fetchone():
+                    anchors = {
+                        r["fingerprint"]: json.loads(r["provenance"])["points"]
+                        for r in db.execute("SELECT fingerprint,provenance FROM index_contexts")
+                    }
             if not rows:
                 raise DocumentError(
                     "no_documents",
-                    "No compatible indexed documents in this selection. Ingest documents first.",
+                    "No compatible indexed documents in this selection. If the database endpoint changed, register verified legacy provenance before reuse; otherwise check model/parser identity and selection.",
+                )
+            for collection in sorted({r["collection"] for r in rows}):
+                selected = [r for r in rows if r["collection"] == collection]
+                verify_backend(
+                    engine.db, collection, selected, anchors.get(selected[0]["fingerprint"], ())
                 )
             query_filter = models.Filter(
                 must=[
                     models.FieldCondition(
                         key="revision", match=models.MatchAny(any=[r["revision"] for r in rows])
-                    )
+                    ),
+                    models.FieldCondition(
+                        key="document_id", match=models.MatchAny(any=[r["id"] for r in rows])
+                    ),
+                    models.HasIdCondition(
+                        has_id=[pid for r in rows for pid in json.loads(r["points"])]
+                    ),
                 ]
             )
             return engine.ask(
