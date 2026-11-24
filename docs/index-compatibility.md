@@ -45,6 +45,42 @@ TLS and prevention of concurrent external database mutation remain operator
 responsibilities. The application owns its registry and index under its existing
 single-process contract. It does not add authentication identities or ACLs.
 
+## Saved bindings and verified replacements
+
+Runtime verification compares each preserved document with its immutable saved
+reference, including its revision, collection, fingerprint and complete unique
+point membership. Matching current SQLite tables to each other is insufficient.
+Missing, extra, duplicate or substituted IDs fail. Read-only Qdrant scrolling
+checks the exact membership of the document/revision, including unexpected points
+not listed in SQLite. Every expected point must match its full payload and stored
+vector hashes. An anchor binding mismatch always rejects verification. Missing
+saved documents in the selected scope also fail; retired and outside-job data
+remain excluded.
+
+A legitimate application replacement creates a new revision and new point IDs.
+Before publication the predecessor's metadata must match the trusted reference,
+and the new stored points are read and verified. The visibility transaction
+updates the document and its latest `index_publications` receipt atomically. The
+receipt contains the complete document, point bindings, stored content hashes and
+predecessor revision. A failed transaction retains the old visibility and receipt.
+The original saved proof is never rewritten.
+
+Subsequent reads require the latest publication receipt when one exists; they
+cannot choose an older saved revision instead. This allows verified replacements
+after restart while rejecting consistent SQLite/Qdrant relabeling without a
+publication record. Existing native data without a saved reference or receipt
+retains basic binding verification; successful publications from this version
+always create receipts. Unrecorded changes to registered legacy revisions are
+rejected rather than inferred to be legitimate.
+
+The trusted inputs are the saved proof and application-owned publication metadata
+under the existing single-process writer contract. A checksum detects changes to
+a record; it does not authenticate a party capable of rewriting both records and
+their checksums. Operators must preserve this trust boundary. Receipt schema 1
+uses the current checksum serialization without changing old proof bytes or the
+legacy fingerprint format. Canonical-format changes and verification caching are
+separate follow-ups; the full verification reads remain in place here.
+
 ## Required legacy provenance
 
 Use a cold, independently verified saved registry and saved Qdrant data. Work on

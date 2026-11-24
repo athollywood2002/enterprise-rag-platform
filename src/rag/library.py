@@ -28,8 +28,12 @@ from .folder_parser import (
     DocumentError,
 )
 from .index_compatibility import (
+    DOCUMENT_FIELDS,
     collection_name,
+    document_reference_groups,
     legacy_identity,
+    point_ids,
+    record_publication,
     registered_context,
     verify_backend,
     verify_documents,
@@ -660,6 +664,10 @@ class Library:
                     "SELECT * FROM documents WHERE id=?", (row["doc_id"],)
                 ).fetchone()
                 count = db.execute("SELECT count(*) FROM documents").fetchone()[0]
+                if previous:
+                    # Verify the predecessor's trusted binding before permitting
+                    # a new application publication to supersede it.
+                    document_reference_groups(db, [previous])
             if not previous and count >= self.config.ingest_max_documents:
                 raise DocumentError("document_limit", "Indexed document limit reached.")
             if (
@@ -727,6 +735,24 @@ class Library:
                     "index_verification",
                     "Indexed chunks could not be verified. Previous revision remains searchable.",
                 )
+            document = dict(
+                zip(
+                    DOCUMENT_FIELDS,
+                    (
+                        row["doc_id"],
+                        f"{job['mode']}:{job['source']}",
+                        row["path"],
+                        content_hash,
+                        fingerprint,
+                        revision,
+                        collection,
+                        json.dumps(ids),
+                        time.time(),
+                    ),
+                    strict=True,
+                )
+            )
+            anchors = verify_backend(engine.db, collection, [document], capture=True)
             with self.index_lock:
                 current_fingerprint, _ = self.model_context()
                 if current_fingerprint != fingerprint:
@@ -755,19 +781,8 @@ class Library:
                             "INSERT OR IGNORE INTO native_index_contexts VALUES(?,?)",
                             (fingerprint, collection),
                         )
-                    db.execute(
-                        "INSERT OR REPLACE INTO documents VALUES(?,?,?,?,?,?,?,?,?)",
-                        (
-                            row["doc_id"],
-                            f"{job['mode']}:{job['source']}",
-                            row["path"],
-                            content_hash,
-                            fingerprint,
-                            revision,
-                            collection,
-                            json.dumps(ids),
-                            time.time(),
-                        ),
+                    self._publish_document(
+                        db, document, anchors, previous["revision"] if previous else None
                     )
                     db.execute(
                         "UPDATE files SET status='completed',done=total,error=?,code=? WHERE id=?",
@@ -803,6 +818,26 @@ class Library:
                     (row["doc_id"],),
                 )
             self.refresh_jobs()
+
+    def _publish_document(self, db, document, anchors, previous_revision):
+        """Commit a verified staged revision and its reference in one transaction."""
+        previous = db.execute("SELECT * FROM documents WHERE id=?", (document["id"],)).fetchone()
+        if (previous["revision"] if previous else None) != previous_revision:
+            raise DocumentError("index_compatibility", "Publication predecessor changed.")
+        if previous:
+            document_reference_groups(db, [previous])
+        if document["revision"] == previous_revision:
+            raise DocumentError("index_compatibility", "Published revisions are immutable.")
+        if previous and set(point_ids(previous)) & set(point_ids(document)):
+            raise DocumentError(
+                "index_compatibility", "Replacement cannot reuse immutable point IDs."
+            )
+        verify_documents(db, [document])
+        record_publication(db, document, anchors, previous_revision)
+        db.execute(
+            "INSERT OR REPLACE INTO documents VALUES(?,?,?,?,?,?,?,?,?)",
+            tuple(document[k] for k in DOCUMENT_FIELDS),
+        )
 
     def cleanup(self):
         with self.index_lock:
@@ -874,6 +909,7 @@ class Library:
                     + ")",
                     tuple(compatible),
                 ).fetchall()
+                allowed = None
                 if job_id:
                     allowed = {
                         r[0]
@@ -886,24 +922,14 @@ class Library:
                         "index_compatibility", "Registered collection identity mismatch."
                     )
                 verify_documents(db, rows)
-                anchors = {}
-                if db.execute(
-                    "SELECT 1 FROM sqlite_master WHERE name='index_contexts' AND type='table'"
-                ).fetchone():
-                    anchors = {
-                        r["fingerprint"]: json.loads(r["provenance"])["points"]
-                        for r in db.execute("SELECT fingerprint,provenance FROM index_contexts")
-                    }
+                groups = document_reference_groups(db, rows, compatible=compatible, allowed=allowed)
             if not rows:
                 raise DocumentError(
                     "no_documents",
                     "No compatible indexed documents in this selection. If the database endpoint changed, register verified legacy provenance before reuse; otherwise check model/parser identity and selection.",
                 )
-            for collection in sorted({r["collection"] for r in rows}):
-                selected = [r for r in rows if r["collection"] == collection]
-                verify_backend(
-                    engine.db, collection, selected, anchors.get(selected[0]["fingerprint"], ())
-                )
+            for (collection, _anchored), group in groups.items():
+                verify_backend(engine.db, collection, group["documents"], group["anchors"])
             query_filter = models.Filter(
                 must=[
                     models.FieldCondition(

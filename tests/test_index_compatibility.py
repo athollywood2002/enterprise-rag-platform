@@ -27,6 +27,7 @@ from rag.index_compatibility import (
     fingerprint,
     legacy_identity,
     register_legacy_context,
+    verify_backend,
 )
 from rag.library import Library
 
@@ -528,6 +529,197 @@ def test_runtime_rechecks_registered_full_payload_and_vector(saved):
         saved["lib"].ask("selection only")
 
 
+@pytest.mark.parametrize(
+    "corruption",
+    [
+        "relabel",
+        "missing_document",
+        "remove",
+        "substitute",
+        "extra",
+        "backend_extra",
+        "duplicate",
+        "payload",
+        "vector",
+    ],
+)
+def test_saved_revision_corruption_fails_before_dispatch(saved, monkeypatch, corruption):
+    assert register(saved)
+    lib, client = saved["lib"], saved["qdrant"]
+    document = saved["proof"]["documents"][0]
+    ids = json.loads(document["points"])
+    replacement_ids = list(ids)
+    original = client.retrieve(saved["collection"], [ids[0]], with_payload=True, with_vectors=True)[
+        0
+    ]
+    if corruption == "relabel":
+        revision = uid("unauthorized-revision")
+        with lib.db() as db:
+            db.execute("UPDATE documents SET revision=? WHERE id=?", (revision, document["id"]))
+            db.execute("UPDATE revisions SET id=? WHERE id=?", (revision, document["revision"]))
+            db.execute("UPDATE files SET revision=? WHERE doc_id=?", (revision, document["id"]))
+        client.set_payload(saved["collection"], {"revision": revision}, points=ids)
+    elif corruption == "missing_document":
+        with lib.db() as db:
+            db.execute("DELETE FROM documents WHERE id=?", (document["id"],))
+        client.delete(saved["collection"], models.PointIdsList(points=ids))
+    elif corruption in {"remove", "substitute", "extra", "backend_extra"}:
+        new_id = uid("unauthorized-point")
+        if corruption != "remove":
+            client.upsert(
+                saved["collection"],
+                [models.PointStruct(id=new_id, payload=original.payload, vector=original.vector)],
+            )
+        if corruption in {"remove", "substitute"}:
+            client.delete(saved["collection"], models.PointIdsList(points=[ids[0]]))
+            replacement_ids = ids[1:] if corruption == "remove" else [new_id, *ids[1:]]
+        elif corruption == "extra":
+            replacement_ids.append(new_id)
+    elif corruption == "duplicate":
+        replacement_ids[-1] = replacement_ids[0]
+    elif corruption == "payload":
+        client.set_payload(saved["collection"], {"text": "unauthorized payload"}, points=[ids[0]])
+    else:
+        client.update_vectors(
+            saved["collection"], [models.PointVectors(id=ids[0], vector=[0.0, 1.0, 0.0])]
+        )
+    if replacement_ids != ids:
+        with lib.db() as db:
+            db.execute(
+                "UPDATE documents SET points=? WHERE id=?",
+                (json.dumps(replacement_ids), document["id"]),
+            )
+            db.execute(
+                "UPDATE revisions SET points=? WHERE id=?",
+                (json.dumps(replacement_ids), document["revision"]),
+            )
+    dispatch = Mock(side_effect=AssertionError("Model dispatch must not occur"))
+    monkeypatch.setattr(SelectionObserver, "ask", dispatch)
+    with pytest.raises(DocumentError) as error:
+        lib.ask("offline verification only", job_id="selected")
+    assert error.value.code == "index_compatibility"
+    dispatch.assert_not_called()
+    saved["forbidden"].assert_not_called()
+
+
+def test_anchor_binding_mismatch_cannot_disable_hash_check(saved):
+    anchors = deepcopy(saved["proof"]["points"])
+    anchors[0]["revision"] = uid("wrong-anchor-binding")
+    with pytest.raises(DocumentError, match="binding|membership"):
+        verify_backend(saved["qdrant"], saved["collection"], saved["proof"]["documents"], anchors)
+
+
+@pytest.mark.parametrize("abort", [False, True])
+def test_verified_replacement_and_reference_commit_together(saved, abort):
+    assert register(saved)
+    lib, client = saved["lib"], saved["qdrant"]
+    original = saved["proof"]["documents"][0]
+    document = {
+        **original,
+        "revision": uid("verified-replacement"),
+        "content_hash": hashlib.sha256(b"verified replacement source").hexdigest(),
+        "indexed": original["indexed"] + 100,
+    }
+    ids = [
+        str(uuid.uuid5(uuid.NAMESPACE_URL, document["revision"] + ":" + str(i))) for i in range(2)
+    ]
+    document["points"] = json.dumps(ids)
+    # Precomputed disposable points exercise the application's publication
+    # boundary without invoking any embedding or generation method.
+    client.upsert(
+        saved["collection"],
+        [
+            models.PointStruct(
+                id=pid,
+                vector=[1.0, 0.0, 0.0],
+                payload={
+                    "document_id": document["id"],
+                    "revision": document["revision"],
+                    "text": f"replacement fact {i}",
+                    "source": f"{document['source']}/{document['path']}",
+                    "chunk": i,
+                },
+            )
+            for i, pid in enumerate(ids)
+        ],
+    )
+    anchors = verify_backend(client, saved["collection"], [document], capture=True)
+
+    def publish():
+        with lib.index_lock, lib.db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("UPDATE revisions SET state='retired' WHERE id=?", (original["revision"],))
+            db.execute(
+                "INSERT INTO revisions VALUES(?,?,?,?,?)",
+                (
+                    document["revision"],
+                    document["id"],
+                    document["collection"],
+                    document["points"],
+                    "active",
+                ),
+            )
+            lib._publish_document(db, document, anchors, original["revision"])
+            if abort:
+                raise RuntimeError("abort after publication, before commit")
+
+    if abort:
+        with pytest.raises(RuntimeError, match="before commit"):
+            publish()
+    else:
+        publish()
+    result = lib.ask("observe current selected revision", job_id="selected")
+    current = document if not abort else original
+    selected = {str(p.id) for p in result["points"] if p.payload["document_id"] == current["id"]}
+    assert selected == set(json.loads(current["points"]))
+    with lib.db() as db:
+        row = db.execute("SELECT * FROM documents WHERE id=?", (current["id"],)).fetchone()
+        assert row["revision"] == current["revision"]
+        assert (
+            db.execute("SELECT provenance FROM index_contexts").fetchone()[0].encode()
+            == saved["raw"]
+        )
+        if abort:
+            assert not db.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='index_publications'"
+            ).fetchone()
+        else:
+            receipt = json.loads(
+                db.execute(
+                    "SELECT receipt FROM index_publications WHERE doc_id=?", (current["id"],)
+                ).fetchone()[0]
+            )
+            assert receipt["previous_revision"] == original["revision"]
+            assert {p["id"] for p in receipt["points"]} == set(ids)
+    if not abort:
+        # Receipt and visibility survive restart; retaining the original saved
+        # proof does not permanently prevent verified replacement revisions.
+        lib.close()
+        lib = Library(lib.config, lib.engine_factory, start_worker=False)
+        saved["lib"] = lib
+        assert {
+            str(p.id)
+            for p in lib.ask("after restart", job_id="selected")["points"]
+            if p.payload["document_id"] == current["id"]
+        } == set(ids)
+        # Replaying an older saved revision must not bypass the latest receipt.
+        with lib.db() as db:
+            db.execute(
+                "UPDATE documents SET revision=?,points=?,content_hash=?,indexed=? WHERE id=?",
+                (
+                    original["revision"],
+                    original["points"],
+                    original["content_hash"],
+                    original["indexed"],
+                    original["id"],
+                ),
+            )
+            db.execute("UPDATE revisions SET state='retired' WHERE id=?", (document["revision"],))
+            db.execute("UPDATE revisions SET state='active' WHERE id=?", (original["revision"],))
+        with pytest.raises(DocumentError, match="trusted revision reference"):
+            lib.ask("replayed saved revision", job_id="selected")
+
+
 def test_arbitrary_legacy_fingerprint_and_bad_proof_rejected(saved):
     proof = deepcopy(saved["proof"])
     proof["documents"][0]["fingerprint"] = "f" * 64
@@ -644,7 +836,13 @@ def test_cli_verify_apply_backup_and_repeat(saved, tmp_path):
 
     class ReadOnlyClient:
         def __getattr__(self, name):
-            assert name in {"get_aliases", "collection_exists", "get_collection", "retrieve"}
+            assert name in {
+                "get_aliases",
+                "collection_exists",
+                "get_collection",
+                "retrieve",
+                "scroll",
+            }
             return getattr(saved["qdrant"], name)
 
         def close(self):
