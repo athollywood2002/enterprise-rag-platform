@@ -52,6 +52,7 @@ class Library:
         self.config = config
         self.engine_factory = engine_factory
         self.engines = {}
+        self.native_fingerprints = set()
         self.engine_lock = threading.Lock()
         self.root = Path(config.ingest_data_dir).resolve()
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -498,7 +499,7 @@ class Library:
         contexts = []
         for version in parser_versions or (parser_version,):
             signature["parser"] = version
-            fingerprint = index_fingerprint(signature)
+            native_fingerprint = fingerprint = index_fingerprint(signature)
             collection = collection_name(signature, fingerprint)
             with self.db() as db:
                 registered = registered_context(db, signature)
@@ -515,6 +516,8 @@ class Library:
                         "SELECT 1 FROM documents WHERE fingerprint=?", (old_fp,)
                     ).fetchone():
                         fingerprint, collection = old_fp, old_collection
+                if fingerprint == native_fingerprint:
+                    self.native_fingerprints.add(fingerprint)
             contexts.append(
                 (
                     fingerprint,
@@ -524,6 +527,31 @@ class Library:
                 )
             )
         return contexts if parser_versions is not None else contexts[0]
+
+    def verify_ingestion_context(self, fingerprint, collection):
+        # A new v2 context is not permission to replace an unresolved legacy
+        # index. Native publications and explicit legacy registrations are the
+        # durable evidence for other identities in this destination namespace.
+        with self.db() as db:
+            known = {(fingerprint, collection)}
+            for table in ("index_contexts", "native_index_contexts"):
+                if db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+                ).fetchone():
+                    known.update(
+                        (r["fingerprint"], r["collection"])
+                        for r in db.execute(f"SELECT fingerprint,collection FROM {table}")
+                    )
+            prefix = self.config.qdrant_collection[:100] + "_ui_"
+            if any(
+                r["collection"].startswith(prefix)
+                and (r["fingerprint"], r["collection"]) not in known
+                for r in db.execute("SELECT fingerprint,collection FROM documents")
+            ):
+                raise DocumentError(
+                    "legacy_registration_required",
+                    "Existing index identity is unresolved. Verify legacy registration before importing into this collection prefix.",
+                )
 
     def parse(self, path, name):
         if sys.platform != "linux":
@@ -626,6 +654,7 @@ class Library:
             content_hash = digest(path.read_bytes())
             fingerprint, engine = self.model_context()
             collection = engine.config.qdrant_collection
+            self.verify_ingestion_context(fingerprint, collection)
             with self.db() as db:
                 previous = db.execute(
                     "SELECT * FROM documents WHERE id=?", (row["doc_id"],)
@@ -716,6 +745,16 @@ class Library:
                         (row["doc_id"],),
                     )
                     db.execute("UPDATE revisions SET state='active' WHERE id=?", (revision,))
+                    if fingerprint in self.native_fingerprints:
+                        # Only a successful native publication records this
+                        # identity. Commit its marker with the document, so a
+                        # later model/parser change or restart stays usable.
+                        db.execute("""CREATE TABLE IF NOT EXISTS native_index_contexts (
+                            fingerprint TEXT PRIMARY KEY, collection TEXT NOT NULL)""")
+                        db.execute(
+                            "INSERT OR IGNORE INTO native_index_contexts VALUES(?,?)",
+                            (fingerprint, collection),
+                        )
                     db.execute(
                         "INSERT OR REPLACE INTO documents VALUES(?,?,?,?,?,?,?,?,?)",
                         (

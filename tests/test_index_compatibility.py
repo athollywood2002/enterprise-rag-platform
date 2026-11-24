@@ -100,7 +100,9 @@ def saved(tmp_path, monkeypatch):
             ("selected", "browser", "fixture", "completed", 1.0, 0),
         )
         for i in range(15):
-            doc_id, revision = uid(f"doc:{i}"), uid(f"rev:{i}")
+            # Match Library.create's source/path identity for real upload tests.
+            doc_id = hashlib.sha256(f"browser:fixture:{i}.txt".encode()).hexdigest()
+            revision = uid(f"rev:{i}")
             ids = [uid(f"point:{i}:{j}") for j in range(10 if i < 3 else 9)]
             points = [
                 models.PointStruct(
@@ -235,6 +237,107 @@ def test_hostname_change_requires_proof_then_preserves_all_data(saved):
     assert dump(saved) == before
     with lib.db() as db:
         assert db.execute("SELECT count(*) FROM index_contexts").fetchone()[0] == 1
+
+
+def preserved_index_state(saved):
+    with saved["lib"].db() as db:
+        tables = {
+            table: [tuple(row) for row in db.execute(f"SELECT * FROM {table} ORDER BY id")]
+            for table in ("documents", "revisions")
+        }
+    points, cursor = saved["qdrant"].scroll(
+        saved["collection"], limit=1000, with_payload=True, with_vectors=True
+    )
+    assert cursor is None and len(points) == 138
+    assert len(tables["documents"]) == len(tables["revisions"]) == 15
+    return checksum(
+        {
+            **tables,
+            "collections": sorted(c.name for c in saved["qdrant"].get_collections().collections),
+            "points": sorted(
+                [point.model_dump(mode="json") for point in points], key=lambda p: str(p["id"])
+            ),
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    "registration,unchanged",
+    [
+        ("missing", True),
+        ("failed", True),
+        ("verified", True),
+        ("original", True),
+        ("missing", False),
+    ],
+)
+def test_import_requires_resolved_legacy_identity(saved, monkeypatch, registration, unchanged):
+    lib = saved["lib"]
+    document = saved["proof"]["documents"][0]
+    data = b"synthetic unchanged source\n"
+    # Pin a self-consistent disposable reference before beginning the import.
+    document["content_hash"] = hashlib.sha256(data).hexdigest()
+    with lib.db() as db:
+        db.execute(
+            "UPDATE documents SET content_hash=? WHERE id=?",
+            (document["content_hash"], document["id"]),
+        )
+    saved["raw"] = encode(saved["proof"])
+    saved["hash"] = hashlib.sha256(saved["raw"]).hexdigest()
+    if registration == "verified":
+        assert register(saved)
+    elif registration == "failed":
+        with pytest.raises(DocumentError, match="incompatible"):
+            register(saved, signature={**saved["signature"], "digest": "wrong-model"})
+    if registration != "original":
+        lib.config.qdrant_url = "http://changed-hostname:6333"
+
+    path = document["path"] if unchanged else "new-file.txt"
+    selection = [{"path": path, "size": len(data)}]
+    preview = lib.preview("browser", "fixture", selection)
+    job = lib.create("browser", "fixture", selection, preview_digest=preview["preview_digest"])
+    file = job["files"][0]
+    assert (file["doc_id"] == document["id"]) is unchanged
+    lib.begin_upload(job["id"], file["id"])
+    staged = lib.staging / (file["id"] + ".upload")
+    staged.write_bytes(data)
+    lib.finish_upload(file["id"], staged)
+    lib.start_job(job["id"])
+
+    forbidden = []
+    for owner, name in (
+        (lib, "parse"),
+        (RagEngine, "ensure_collection"),
+        *(
+            (saved["qdrant"], method)
+            for method in (
+                "create_collection",
+                "delete_collection",
+                "upsert",
+                "delete",
+                "update_vectors",
+                "set_payload",
+            )
+        ),
+    ):
+        stub = Mock(side_effect=AssertionError(f"Import reached forbidden method: {name}"))
+        monkeypatch.setattr(owner, name, stub)
+        forbidden.append(stub)
+    before = preserved_index_state(saved)
+    lib.run_once()  # Actual worker selection -> process -> failure or unchanged skip.
+    result = lib.get_job(job["id"])["files"][0]
+    if registration in {"missing", "failed"}:
+        assert (result["status"], result["code"]) == ("failed", "legacy_registration_required")
+        with lib.db() as db:
+            assert not db.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='native_index_contexts'"
+            ).fetchone()
+    else:
+        assert (result["status"], result["code"]) == ("skipped", "unchanged")
+    saved["forbidden"].assert_not_called()
+    for stub in forbidden:
+        stub.assert_not_called()
+    assert preserved_index_state(saved) == before
 
 
 def test_native_identity_does_not_depend_on_endpoint(saved):

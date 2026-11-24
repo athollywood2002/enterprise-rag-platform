@@ -187,6 +187,32 @@ def test_root_namespace_and_model_change(library):
     assert len({d["collection"] for d in lib.documents()["documents"]}) == 2
 
 
+@linux_parser
+def test_fresh_native_publication_remains_usable_after_restart(library):
+    lib = library
+    assert (
+        finish(lib, upload(lib, {"first.txt": b"first synthetic fact"}))["counts"]["successful"]
+        == 1
+    )
+    first = lib.documents()["documents"][0]
+    with lib.db() as db:
+        marker = db.execute("SELECT * FROM native_index_contexts").fetchone()
+        assert (marker["fingerprint"], marker["collection"]) == (
+            first["fingerprint"],
+            first["collection"],
+        )
+    lib.close()
+    restarted = Library(lib.config, lib.engine_factory, start_worker=False)
+    try:
+        lib.test_state["digest"] = "different-synthetic-model"
+        changed = finish(restarted, upload(restarted, {"first.txt": b"replacement synthetic fact"}))
+        assert changed["counts"]["successful"] == 1
+        current = restarted.documents()["documents"][0]
+        assert current["fingerprint"] != first["fingerprint"]
+    finally:
+        restarted.close()
+
+
 @pytest.mark.parametrize("failure", ["parse", "embed", "index"])
 @linux_parser
 def test_failed_replacement_preserves_searchable_revision(library, monkeypatch, failure):

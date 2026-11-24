@@ -20,6 +20,17 @@ revisions, job membership or Qdrant data. One context cannot silently replace
 another. A conflicting native version 2 context requires separate investigation.
 Registration is deliberately not an automatic startup migration.
 
+Imports stop with `legacy_registration_required` if this destination prefix
+contains an identity that cannot be resolved at the current endpoint and has
+neither verified legacy registration nor a successful native publication record.
+This check runs before parsing, embedding or index writes, including unchanged
+files. A failed registration does not authorize a new v2 collection. Successful
+native v2 publications record their fingerprint/collection in
+`native_index_contexts` in the document visibility transaction, so fresh installs
+and subsequent native model/parser changes remain usable after a restart.
+Unattributed identities require explicit verification; the application does not
+guess whether they represent an endpoint change or a model change.
+
 Each selected document must still have exactly one matching active revision,
 matching collection and point memberships. Before model dispatch, read-only
 verification checks all selected point IDs and their document/revision bindings;
