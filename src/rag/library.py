@@ -20,13 +20,26 @@ from pathlib import Path
 
 from qdrant_client import models
 
-from .collection_safety import validate_writable_collection_name
 from .core import RagEngine
 from .folder_parser import (
     COMPATIBLE_PARSERS,
     FORMATS,
     PARSER_VERSION,
     DocumentError,
+)
+from .index_compatibility import (
+    DOCUMENT_FIELDS,
+    collection_name,
+    document_reference_groups,
+    legacy_identity,
+    point_ids,
+    record_publication,
+    registered_context,
+    verify_backend,
+    verify_documents,
+)
+from .index_compatibility import (
+    fingerprint as index_fingerprint,
 )
 from .source_roots import inventory, open_beneath, relative_path
 
@@ -43,6 +56,7 @@ class Library:
         self.config = config
         self.engine_factory = engine_factory
         self.engines = {}
+        self.native_fingerprints = set()
         self.engine_lock = threading.Lock()
         self.root = Path(config.ingest_data_dir).resolve()
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -454,9 +468,11 @@ class Library:
 
     def get_engine(self, config):
         with self.engine_lock:
-            if config.qdrant_collection not in self.engines:
-                self.engines[config.qdrant_collection] = self.engine_factory(config)
-            return self.engines[config.qdrant_collection]
+            # An endpoint change must never reuse a client connected to the old backend.
+            key = (config.qdrant_url, config.qdrant_collection)
+            if key not in self.engines:
+                self.engines[key] = self.engine_factory(config)
+            return self.engines[key]
 
     def model_context(self, parser_version=PARSER_VERSION, *, parser_versions=None):
         # Ollama tags identify model bytes, not just mutable names. Fail closed on missing identity.
@@ -483,14 +499,29 @@ class Library:
             "overlap": 150,
             "format": 1,
             "destination": self.config.qdrant_collection,
-            "database": self.config.qdrant_url,
         }
         contexts = []
         for version in parser_versions or (parser_version,):
             signature["parser"] = version
-            fingerprint = digest(json.dumps(signature, sort_keys=True).encode())
-            collection = self.config.qdrant_collection[:100] + "_ui_" + fingerprint[:16]
-            validate_writable_collection_name(collection)
+            native_fingerprint = fingerprint = index_fingerprint(signature)
+            collection = collection_name(signature, fingerprint)
+            with self.db() as db:
+                registered = registered_context(db, signature)
+                if registered:
+                    fingerprint, collection = registered["fingerprint"], registered["collection"]
+                else:
+                    # Preserve the old endpoint's exact identity until explicitly
+                    # registered from verified provenance. Never guess old URLs,
+                    # scan collections, or accept arbitrary stored fingerprints.
+                    old_fp, old_collection = legacy_identity(
+                        {**signature, "database": self.config.qdrant_url}
+                    )
+                    if db.execute(
+                        "SELECT 1 FROM documents WHERE fingerprint=?", (old_fp,)
+                    ).fetchone():
+                        fingerprint, collection = old_fp, old_collection
+                if fingerprint == native_fingerprint:
+                    self.native_fingerprints.add(fingerprint)
             contexts.append(
                 (
                     fingerprint,
@@ -500,6 +531,31 @@ class Library:
                 )
             )
         return contexts if parser_versions is not None else contexts[0]
+
+    def verify_ingestion_context(self, fingerprint, collection):
+        # A new v2 context is not permission to replace an unresolved legacy
+        # index. Native publications and explicit legacy registrations are the
+        # durable evidence for other identities in this destination namespace.
+        with self.db() as db:
+            known = {(fingerprint, collection)}
+            for table in ("index_contexts", "native_index_contexts"):
+                if db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+                ).fetchone():
+                    known.update(
+                        (r["fingerprint"], r["collection"])
+                        for r in db.execute(f"SELECT fingerprint,collection FROM {table}")
+                    )
+            prefix = self.config.qdrant_collection[:100] + "_ui_"
+            if any(
+                r["collection"].startswith(prefix)
+                and (r["fingerprint"], r["collection"]) not in known
+                for r in db.execute("SELECT fingerprint,collection FROM documents")
+            ):
+                raise DocumentError(
+                    "legacy_registration_required",
+                    "Existing index identity is unresolved. Verify legacy registration before importing into this collection prefix.",
+                )
 
     def parse(self, path, name):
         if sys.platform != "linux":
@@ -602,11 +658,16 @@ class Library:
             content_hash = digest(path.read_bytes())
             fingerprint, engine = self.model_context()
             collection = engine.config.qdrant_collection
+            self.verify_ingestion_context(fingerprint, collection)
             with self.db() as db:
                 previous = db.execute(
                     "SELECT * FROM documents WHERE id=?", (row["doc_id"],)
                 ).fetchone()
                 count = db.execute("SELECT count(*) FROM documents").fetchone()[0]
+                if previous:
+                    # Verify the predecessor's trusted binding before permitting
+                    # a new application publication to supersede it.
+                    document_reference_groups(db, [previous])
             if not previous and count >= self.config.ingest_max_documents:
                 raise DocumentError("document_limit", "Indexed document limit reached.")
             if (
@@ -674,6 +735,24 @@ class Library:
                     "index_verification",
                     "Indexed chunks could not be verified. Previous revision remains searchable.",
                 )
+            document = dict(
+                zip(
+                    DOCUMENT_FIELDS,
+                    (
+                        row["doc_id"],
+                        f"{job['mode']}:{job['source']}",
+                        row["path"],
+                        content_hash,
+                        fingerprint,
+                        revision,
+                        collection,
+                        json.dumps(ids),
+                        time.time(),
+                    ),
+                    strict=True,
+                )
+            )
+            anchors = verify_backend(engine.db, collection, [document], capture=True)
             with self.index_lock:
                 current_fingerprint, _ = self.model_context()
                 if current_fingerprint != fingerprint:
@@ -692,19 +771,18 @@ class Library:
                         (row["doc_id"],),
                     )
                     db.execute("UPDATE revisions SET state='active' WHERE id=?", (revision,))
-                    db.execute(
-                        "INSERT OR REPLACE INTO documents VALUES(?,?,?,?,?,?,?,?,?)",
-                        (
-                            row["doc_id"],
-                            f"{job['mode']}:{job['source']}",
-                            row["path"],
-                            content_hash,
-                            fingerprint,
-                            revision,
-                            collection,
-                            json.dumps(ids),
-                            time.time(),
-                        ),
+                    if fingerprint in self.native_fingerprints:
+                        # Only a successful native publication records this
+                        # identity. Commit its marker with the document, so a
+                        # later model/parser change or restart stays usable.
+                        db.execute("""CREATE TABLE IF NOT EXISTS native_index_contexts (
+                            fingerprint TEXT PRIMARY KEY, collection TEXT NOT NULL)""")
+                        db.execute(
+                            "INSERT OR IGNORE INTO native_index_contexts VALUES(?,?)",
+                            (fingerprint, collection),
+                        )
+                    self._publish_document(
+                        db, document, anchors, previous["revision"] if previous else None
                     )
                     db.execute(
                         "UPDATE files SET status='completed',done=total,error=?,code=? WHERE id=?",
@@ -740,6 +818,26 @@ class Library:
                     (row["doc_id"],),
                 )
             self.refresh_jobs()
+
+    def _publish_document(self, db, document, anchors, previous_revision):
+        """Commit a verified staged revision and its reference in one transaction."""
+        previous = db.execute("SELECT * FROM documents WHERE id=?", (document["id"],)).fetchone()
+        if (previous["revision"] if previous else None) != previous_revision:
+            raise DocumentError("index_compatibility", "Publication predecessor changed.")
+        if previous:
+            document_reference_groups(db, [previous])
+        if document["revision"] == previous_revision:
+            raise DocumentError("index_compatibility", "Published revisions are immutable.")
+        if previous and set(point_ids(previous)) & set(point_ids(document)):
+            raise DocumentError(
+                "index_compatibility", "Replacement cannot reuse immutable point IDs."
+            )
+        verify_documents(db, [document])
+        record_publication(db, document, anchors, previous_revision)
+        db.execute(
+            "INSERT OR REPLACE INTO documents VALUES(?,?,?,?,?,?,?,?,?)",
+            tuple(document[k] for k in DOCUMENT_FIELDS),
+        )
 
     def cleanup(self):
         with self.index_lock:
@@ -806,27 +904,43 @@ class Library:
         with self.index_lock:
             with self.db() as db:
                 rows = db.execute(
-                    "SELECT id,revision,fingerprint,collection FROM documents WHERE fingerprint IN ("
+                    "SELECT * FROM documents WHERE fingerprint IN ("
                     + ",".join("?" for _ in compatible)
                     + ")",
                     tuple(compatible),
                 ).fetchall()
+                allowed = None
                 if job_id:
                     allowed = {
                         r[0]
                         for r in db.execute("SELECT doc_id FROM files WHERE job_id=?", (job_id,))
                     }
                     rows = [r for r in rows if r["id"] in allowed]
+                # A matching hash cannot redirect a query to an unrelated collection.
+                if any(r["collection"] != compatible[r["fingerprint"]] for r in rows):
+                    raise DocumentError(
+                        "index_compatibility", "Registered collection identity mismatch."
+                    )
+                verify_documents(db, rows)
+                groups = document_reference_groups(db, rows, compatible=compatible, allowed=allowed)
             if not rows:
                 raise DocumentError(
                     "no_documents",
-                    "No compatible indexed documents in this selection. Ingest documents first.",
+                    "No compatible indexed documents in this selection. If the database endpoint changed, register verified legacy provenance before reuse; otherwise check model/parser identity and selection.",
                 )
+            for (collection, _anchored), group in groups.items():
+                verify_backend(engine.db, collection, group["documents"], group["anchors"])
             query_filter = models.Filter(
                 must=[
                     models.FieldCondition(
                         key="revision", match=models.MatchAny(any=[r["revision"] for r in rows])
-                    )
+                    ),
+                    models.FieldCondition(
+                        key="document_id", match=models.MatchAny(any=[r["id"] for r in rows])
+                    ),
+                    models.HasIdCondition(
+                        has_id=[pid for r in rows for pid in json.loads(r["points"])]
+                    ),
                 ]
             )
             return engine.ask(
